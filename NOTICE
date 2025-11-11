@@ -1,0 +1,11 @@
+Copyright (c) 2025 Mateo Echavarría / 2wiks
+
+This project contains the following third-party components licensed under the Apache License 2.0:
+
+- Gradle Wrapper scripts (gradlew, gradlew.bat)
+  Copyright 2015 the original author or authors.
+  Licensed under the Apache License, Version 2.0
+  See: https://www.apache.org/licenses/LICENSE-2.0
+
+All other code and assets in this repository are proprietary and subject to LICENSE-PROPRIETARY.txt.
+

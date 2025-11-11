@@ -1,0 +1,10 @@
+Copyright (c) 2025 Mateo Echavarría / 2wiks
+
+All Rights Reserved.
+
+This repository contains proprietary code and assets created by Mateo Echavarría / 2wiks.
+
+You may not copy, modify, distribute, or publish this proprietary material without prior written permission from the copyright holder.
+
+Note: Parts of this repository are third-party works licensed under the Apache License 2.0. See the root LICENSE files and file headers for details.
+
