@@ -82,10 +82,16 @@ class ScreenCreateHeadachesViewModelTest {
 
         @Test
         fun `should successfully add new record`() = runBlocking {
+            coEvery { repository.save(any()) } returns Unit
+            
             vm.submitAction(Action.Init(profileId = profileId))
             vm.submitAction(Action.SetHeadacheIntensity(5))
 
             vm.submitAction(Action.Add)
+            
+            // Wait for the flow to complete and coroutines to finish
+            delay(100)
+            
             coVerify(exactly = 0) { eventHandler.handleEvent(any()) }
             coVerify(exactly = 1) { navigator.onBackPressed() }
         }

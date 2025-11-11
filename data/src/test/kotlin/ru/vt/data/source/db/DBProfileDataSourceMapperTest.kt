@@ -25,7 +25,7 @@ internal class DBProfileDataSourceMapperTest {
             birthDay = 12,
             birthMonth = 2,
             birthYear = 1986,
-            gender = AppGender.FEMALE.name,
+            gender = AppGender.FEMALE.key,
             heightCm = 160,
             weightG = 70
         )
@@ -40,7 +40,7 @@ internal class DBProfileDataSourceMapperTest {
             birthDay = 12,
             birthMonth = 2,
             birthYear = 1986,
-            gender = AppGender.FEMALE.name,
+            gender = AppGender.FEMALE.key,
             heightCm = 160,
             weightG = 70
         )

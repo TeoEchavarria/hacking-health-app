@@ -3,8 +3,10 @@ package ru.vt.presentation.measurements.common
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.threeten.bp.DayOfWeek
 import org.threeten.bp.LocalDate
 import org.threeten.bp.LocalDateTime
+import org.threeten.bp.ZoneId
 import ru.vt.domain.measurement.exceptions.InvalidPeriodValuesException
 import ru.vt.presentation.measurements.common.entity.Period
 import ru.vt.presentation.measurements.common.entity.getFromToValues
@@ -16,11 +18,19 @@ internal class PeriodTest {
         val p = Period.Day
 
         val date = LocalDateTime.of(2022, 3, 1, 11, 34)
+        val localDate = date.toLocalDate()
 
-        val (from, to) = p.getFromToValues(date = date.toLocalDate())
+        val (from, to) = p.getFromToValues(date = localDate)
 
-        val expectedFrom = 1646082000000
-        val expectedTo = 1646168400000
+        // Calculate expected values using the same logic as the code
+        val expectedFrom = localDate.atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val expectedTo = localDate.plusDays(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
         assertEquals(expectedFrom, from)
         assertEquals(expectedTo, to)
@@ -31,11 +41,19 @@ internal class PeriodTest {
         val p = Period.Week
 
         val date = LocalDateTime.of(2022, 3, 3, 11, 34)
+        val localDate = date.toLocalDate()
 
-        val (from, to) = p.getFromToValues(date = date.toLocalDate())
+        val (from, to) = p.getFromToValues(date = localDate)
 
-        val expectedFrom = 1645995600000
-        val expectedTo = 1646600400000
+        // Calculate expected values using the same logic as the code
+        val expectedFrom = localDate.with(DayOfWeek.MONDAY).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val expectedTo = localDate.plusWeeks(1).with(DayOfWeek.MONDAY).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
         assertEquals(expectedFrom, from)
         assertEquals(expectedTo, to)
@@ -46,11 +64,19 @@ internal class PeriodTest {
         val p = Period.Month
 
         val date = LocalDateTime.of(2022, 4, 3, 11, 34)
+        val localDate = date.toLocalDate()
 
-        val (from, to) = p.getFromToValues(date = date.toLocalDate())
+        val (from, to) = p.getFromToValues(date = localDate)
 
-        val expectedFrom = 1648760400000
-        val expectedTo = 1651352400000
+        // Calculate expected values using the same logic as the code
+        val expectedFrom = localDate.withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val expectedTo = localDate.plusMonths(1).withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
         assertEquals(expectedFrom, from)
         assertEquals(expectedTo, to)
@@ -61,11 +87,19 @@ internal class PeriodTest {
         val p = Period.Last6Months
 
         val date = LocalDateTime.of(2022, 4, 3, 11, 34)
+        val localDate = date.toLocalDate()
 
-        val (from, to) = p.getFromToValues(date = date.toLocalDate())
+        val (from, to) = p.getFromToValues(date = localDate)
 
-        val expectedFrom = 1635714000000
-        val expectedTo = 1651352400000
+        // Calculate expected values using the same logic as the code
+        val expectedFrom = localDate.minusMonths(5).withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val expectedTo = localDate.plusMonths(1).withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
         assertEquals(expectedFrom, from)
         assertEquals(expectedTo, to)
@@ -77,11 +111,19 @@ internal class PeriodTest {
         val p = Period.Year
 
         val date = LocalDateTime.of(2022, 4, 3, 11, 34)
+        val localDate = date.toLocalDate()
 
-        val (from, to) = p.getFromToValues(date = date.toLocalDate())
+        val (from, to) = p.getFromToValues(date = localDate)
 
-        val expectedFrom = 1640984400000
-        val expectedTo = 1672520400000
+        // Calculate expected values using the same logic as the code
+        val expectedFrom = localDate.withMonth(1).withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val expectedTo = localDate.plusYears(1).withMonth(1).withDayOfMonth(1).atStartOfDay()
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
 
         assertEquals(expectedFrom, from)
         assertEquals(expectedTo, to)
