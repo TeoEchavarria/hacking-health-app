@@ -37,5 +37,6 @@
     <dimen name="separator_height">1dp</dimen>
     <dimen name="separator_margin_top">1dp</dimen>
     <dimen name="update_food_text_size">20sp</dimen>
+    <dimen name="layout_margin_small">8dp</dimen>
 
 </resources>

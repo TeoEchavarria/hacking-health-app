@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
+import com.samsung.android.health.sdk.sample.healthdiary.utils.buildReadRequest
 import com.samsung.android.health.sdk.sample.healthdiary.utils.dateFormat
 import com.samsung.android.sdk.health.data.HealthDataStore
 import com.samsung.android.sdk.health.data.data.AssociatedDataPoints
@@ -18,7 +19,6 @@ import com.samsung.android.sdk.health.data.error.ResolvablePlatformException
 import com.samsung.android.sdk.health.data.request.DataType
 import com.samsung.android.sdk.health.data.request.DataTypes
 import com.samsung.android.sdk.health.data.request.IdFilter
-import com.samsung.android.sdk.health.data.request.LocalTimeFilter
 import com.samsung.android.sdk.health.data.request.Ordering
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,10 +45,11 @@ class SleepViewModel(private val healthDataStore: HealthDataStore) :
     fun readSleepData(dateTime: LocalDateTime) {
         dayStartTimeAsText.set(dateTime.format(dateFormat))
 
-        val readRequest = DataTypes.SLEEP.readDataRequestBuilder
-            .setLocalTimeFilter(LocalTimeFilter.of(dateTime, dateTime.plusDays(1)))
-            .setOrdering(Ordering.ASC)
-            .build()
+        val readRequest = DataTypes.SLEEP.buildReadRequest(
+            start = dateTime,
+            end = dateTime.plusDays(1),
+            ordering = Ordering.ASC
+        )
 
         /**  Make SDK call to read Sleep data */
         viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {

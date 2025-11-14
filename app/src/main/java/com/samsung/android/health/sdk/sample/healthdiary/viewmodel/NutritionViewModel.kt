@@ -15,6 +15,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.entries.DailyIntakeCalories
 import com.samsung.android.health.sdk.sample.healthdiary.entries.FoodInfoTable
 import com.samsung.android.health.sdk.sample.healthdiary.entries.NutritionUpdateData
+import com.samsung.android.health.sdk.sample.healthdiary.utils.buildReadRequest
 import com.samsung.android.health.sdk.sample.healthdiary.utils.dateFormat
 import com.samsung.android.sdk.health.data.HealthDataStore
 import com.samsung.android.sdk.health.data.data.HealthDataPoint
@@ -24,7 +25,6 @@ import com.samsung.android.sdk.health.data.permission.Permission
 import com.samsung.android.sdk.health.data.request.DataType.NutritionType
 import com.samsung.android.sdk.health.data.request.DataType.NutritionType.MealType
 import com.samsung.android.sdk.health.data.request.DataTypes
-import com.samsung.android.sdk.health.data.request.LocalTimeFilter
 import com.samsung.android.sdk.health.data.request.Ordering
 import kotlinx.coroutines.CoroutineExceptionHandler
 import java.time.Instant
@@ -57,10 +57,11 @@ class NutritionViewModel(private val healthDataStore: HealthDataStore) :
     fun readNutritionData(dateTime: LocalDateTime) {
         dayStartTimeAsText.set(dateTime.format(dateFormat))
 
-        val readRequest = DataTypes.NUTRITION.readDataRequestBuilder
-            .setLocalTimeFilter(LocalTimeFilter.of(dateTime, dateTime.plusDays(1)))
-            .setOrdering(Ordering.ASC)
-            .build()
+        val readRequest = DataTypes.NUTRITION.buildReadRequest(
+            start = dateTime,
+            end = dateTime.plusDays(1),
+            ordering = Ordering.ASC
+        )
 
         /**  Make SDK call to read nutrition data */
         viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {

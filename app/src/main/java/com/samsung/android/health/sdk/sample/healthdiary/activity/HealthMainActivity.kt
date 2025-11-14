@@ -4,7 +4,6 @@
 package com.samsung.android.health.sdk.sample.healthdiary.activity
 
 import android.content.Intent
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -15,8 +14,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.samsung.android.health.sdk.sample.healthdiary.R
+import com.samsung.android.health.sdk.sample.healthdiary.adapters.HealthMetricCardAdapter
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.HealthMainBinding
+import com.samsung.android.health.sdk.sample.healthdiary.entries.HealthMetricCardUiState
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
@@ -29,9 +31,13 @@ import com.samsung.android.sdk.health.data.permission.Permission
 import com.samsung.android.sdk.health.data.request.DataTypes
 import kotlinx.coroutines.launch
 
-class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
+class HealthMainActivity : AppCompatActivity(),
+    View.OnClickListener,
+    HealthMetricCardAdapter.CardClickListener {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
+    private lateinit var metricCardAdapter: HealthMetricCardAdapter
+    private lateinit var binding: HealthMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,15 +47,17 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
         )[HealthMainViewModel::class.java]
 
         /**  Initialize OnClickListener on Heart Rate, Sleep, Nutrition and Step buttons and set sdk version */
-        DataBindingUtil
-            .setContentView<HealthMainBinding>(this, R.layout.health_main)
-            .run {
-                cvNutrition.setOnClickListener(this@HealthMainActivity)
-                cvStep.setOnClickListener(this@HealthMainActivity)
-                cvHeartRate.setOnClickListener(this@HealthMainActivity)
-                cvSleep.setOnClickListener(this@HealthMainActivity)
-                versionValue.text = SdkVersion.getVersionName()
-            }
+        binding = DataBindingUtil
+            .setContentView(this, R.layout.health_main)
+        binding.cvNutrition.setOnClickListener(this)
+        binding.cvStep.setOnClickListener(this)
+        binding.cvHeartRate.setOnClickListener(this)
+        binding.cvSleep.setOnClickListener(this)
+        binding.versionValue.text = SdkVersion.getVersionName()
+
+        metricCardAdapter = HealthMetricCardAdapter(this)
+        binding.additionalMetricsList.layoutManager = LinearLayoutManager(this)
+        binding.additionalMetricsList.adapter = metricCardAdapter
 
         /** Show toast on exception occurrence **/
 
@@ -65,6 +73,12 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         collectResponse()
+        observeMetricCards()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        healthMainViewModel.refreshMetricCards()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -130,6 +144,19 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
+    override fun onCardClicked(uiState: HealthMetricCardUiState) {
+        val permSet = uiState.definition.permissions.toMutableSet()
+        if (permSet.isEmpty()) {
+            launchRespectiveActivity(uiState.definition.activityId)
+        } else {
+            healthMainViewModel.checkForPermission(
+                this,
+                permSet,
+                uiState.definition.activityId
+            )
+        }
+    }
+
     private fun collectResponse() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -146,12 +173,41 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
+    private fun observeMetricCards() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                healthMainViewModel.metricCards.collect { cards ->
+                    metricCardAdapter.submitList(cards)
+                }
+            }
+        }
+    }
+
     private fun launchRespectiveActivity(activityId: Int) {
         val intent = when (activityId) {
             AppConstants.NUTRITION_ACTIVITY -> Intent(this, NutritionActivity::class.java)
             AppConstants.STEP_ACTIVITY -> Intent(this, StepActivity::class.java)
             AppConstants.HEART_RATE_ACTIVITY -> Intent(this, HeartRateActivity::class.java)
             AppConstants.SLEEP_ACTIVITY -> Intent(this, SleepActivity::class.java)
+            AppConstants.EXERCISE_ACTIVITY -> Intent(this, ExerciseActivity::class.java)
+            AppConstants.EXERCISE_LOCATION_ACTIVITY -> Intent(this, ExerciseLocationActivity::class.java)
+            AppConstants.SKIN_TEMPERATURE_ACTIVITY -> Intent(this, SkinTemperatureActivity::class.java)
+            AppConstants.BLOOD_OXYGEN_ACTIVITY -> Intent(this, BloodOxygenActivity::class.java)
+            AppConstants.ACTIVITY_SUMMARY_ACTIVITY -> Intent(this, ActivitySummaryActivity::class.java)
+            AppConstants.FLOORS_CLIMBED_ACTIVITY -> Intent(this, FloorsClimbedActivity::class.java)
+            AppConstants.BLOOD_GLUCOSE_ACTIVITY -> Intent(this, BloodGlucoseActivity::class.java)
+            AppConstants.BLOOD_PRESSURE_ACTIVITY -> Intent(this, BloodPressureActivity::class.java)
+            AppConstants.BODY_COMPOSITION_ACTIVITY -> Intent(this, BodyCompositionActivity::class.java)
+            AppConstants.SLEEP_GOAL_ACTIVITY -> Intent(this, SleepGoalActivity::class.java)
+            AppConstants.STEPS_GOAL_ACTIVITY -> Intent(this, StepsGoalActivity::class.java)
+            AppConstants.ACTIVE_CALORIES_GOAL_ACTIVITY -> Intent(this, ActiveCaloriesGoalActivity::class.java)
+            AppConstants.ACTIVE_TIME_GOAL_ACTIVITY -> Intent(this, ActiveTimeGoalActivity::class.java)
+            AppConstants.WATER_INTAKE_ACTIVITY -> Intent(this, WaterIntakeActivity::class.java)
+            AppConstants.WATER_INTAKE_GOAL_ACTIVITY -> Intent(this, WaterIntakeGoalActivity::class.java)
+            AppConstants.NUTRITION_GOAL_ACTIVITY -> Intent(this, NutritionGoalActivity::class.java)
+            AppConstants.ENERGY_SCORE_ACTIVITY -> Intent(this, EnergyScoreActivity::class.java)
+            AppConstants.USER_PROFILE_ACTIVITY -> Intent(this, UserProfileActivity::class.java)
+            AppConstants.BODY_TEMPERATURE_ACTIVITY -> Intent(this, BodyTemperatureActivity::class.java)
             else -> null
         }
         if (intent != null) {

@@ -43,6 +43,44 @@
             android:screenOrientation="portrait" />
         <activity android:name=".activity.UpdateFoodActivity"
             android:screenOrientation="portrait" />
+        <activity android:name=".activity.ExerciseActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.ExerciseLocationActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.SkinTemperatureActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.BloodOxygenActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.ActivitySummaryActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.FloorsClimbedActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.BloodGlucoseActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.BloodPressureActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.BodyCompositionActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.SleepGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.StepsGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.ActiveCaloriesGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.ActiveTimeGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.WaterIntakeActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.WaterIntakeGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.NutritionGoalActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.EnergyScoreActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.UserProfileActivity"
+            android:screenOrientation="portrait" />
+        <activity android:name=".activity.BodyTemperatureActivity"
+            android:screenOrientation="portrait" />
     </application>
 
 </manifest>

@@ -69,6 +69,101 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
                 UpdateFoodViewModel(getHealthDataStore())
             }
 
+            ExerciseViewModel::class.java -> {
+                Log.d(TAG, "Creando ExerciseViewModel")
+                ExerciseViewModel(getHealthDataStore())
+            }
+
+            ExerciseLocationViewModel::class.java -> {
+                Log.d(TAG, "Creando ExerciseLocationViewModel")
+                ExerciseLocationViewModel(getHealthDataStore())
+            }
+
+            SkinTemperatureDetailViewModel::class.java -> {
+                Log.d(TAG, "Creando SkinTemperatureDetailViewModel")
+                SkinTemperatureDetailViewModel(getHealthDataStore())
+            }
+
+            BloodOxygenDetailViewModel::class.java -> {
+                Log.d(TAG, "Creando BloodOxygenDetailViewModel")
+                BloodOxygenDetailViewModel(getHealthDataStore())
+            }
+
+            ActivitySummaryViewModel::class.java -> {
+                Log.d(TAG, "Creando ActivitySummaryViewModel")
+                ActivitySummaryViewModel(getHealthDataStore())
+            }
+
+            FloorsClimbedViewModel::class.java -> {
+                Log.d(TAG, "Creando FloorsClimbedViewModel")
+                FloorsClimbedViewModel(getHealthDataStore())
+            }
+
+            BloodGlucoseViewModel::class.java -> {
+                Log.d(TAG, "Creando BloodGlucoseViewModel")
+                BloodGlucoseViewModel(getHealthDataStore())
+            }
+
+            BloodPressureDetailViewModel::class.java -> {
+                Log.d(TAG, "Creando BloodPressureDetailViewModel")
+                BloodPressureDetailViewModel(getHealthDataStore())
+            }
+
+            BodyCompositionViewModel::class.java -> {
+                Log.d(TAG, "Creando BodyCompositionViewModel")
+                BodyCompositionViewModel(getHealthDataStore())
+            }
+
+            SleepGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando SleepGoalViewModel")
+                SleepGoalViewModel(getHealthDataStore())
+            }
+
+            StepsGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando StepsGoalViewModel")
+                StepsGoalViewModel(getHealthDataStore())
+            }
+
+            ActiveCaloriesGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando ActiveCaloriesGoalViewModel")
+                ActiveCaloriesGoalViewModel(getHealthDataStore())
+            }
+
+            ActiveTimeGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando ActiveTimeGoalViewModel")
+                ActiveTimeGoalViewModel(getHealthDataStore())
+            }
+
+            WaterIntakeViewModel::class.java -> {
+                Log.d(TAG, "Creando WaterIntakeViewModel")
+                WaterIntakeViewModel(getHealthDataStore())
+            }
+
+            WaterIntakeGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando WaterIntakeGoalViewModel")
+                WaterIntakeGoalViewModel(getHealthDataStore())
+            }
+
+            NutritionGoalViewModel::class.java -> {
+                Log.d(TAG, "Creando NutritionGoalViewModel")
+                NutritionGoalViewModel(getHealthDataStore())
+            }
+
+            EnergyScoreViewModel::class.java -> {
+                Log.d(TAG, "Creando EnergyScoreViewModel")
+                EnergyScoreViewModel(getHealthDataStore())
+            }
+
+            UserProfileViewModel::class.java -> {
+                Log.d(TAG, "Creando UserProfileViewModel")
+                UserProfileViewModel(getHealthDataStore())
+            }
+
+            BodyTemperatureViewModel::class.java -> {
+                Log.d(TAG, "Creando BodyTemperatureViewModel")
+                BodyTemperatureViewModel(getHealthDataStore())
+            }
+
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     } catch (e: Exception) {

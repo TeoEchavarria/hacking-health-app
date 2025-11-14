@@ -71,4 +71,27 @@
     <string name="data_source_dairy">"Health Dairy</string>
     <string name="times">" \u0078 "</string>
 
+    <string name="exercise">Exercise</string>
+    <string name="exercise_location">Exercise Location</string>
+    <string name="skin_temperature">Skin Temperature</string>
+    <string name="blood_oxygen">Blood Oxygen</string>
+    <string name="activity_summary">Activity Summary</string>
+    <string name="floors_climbed">Floors Climbed</string>
+    <string name="blood_glucose">Blood Glucose</string>
+    <string name="blood_pressure">Blood Pressure</string>
+    <string name="body_composition">Body Composition</string>
+    <string name="sleep_goal">Sleep Goal</string>
+    <string name="steps_goal">Steps Goal</string>
+    <string name="active_calories_goal">Active Calories Goal</string>
+    <string name="active_time_goal">Active Time Goal</string>
+    <string name="water_intake">Water Intake</string>
+    <string name="water_intake_goal">Water Intake Goal</string>
+    <string name="nutrition_goal">Nutrition Goal</string>
+    <string name="energy_score">Energy Score</string>
+    <string name="user_profile">User Profile</string>
+    <string name="body_temperature">Body Temperature</string>
+    <string name="additional_metrics">More Health Metrics</string>
+    <string name="loading_value">Loading...</string>
+    <string name="data_source_label">Source: %1$s</string>
+
 </resources>
