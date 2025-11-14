@@ -21,6 +21,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.OnS
 import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.SwipeTypeEnum
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showDatePickerDialogueBox
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.SleepViewModel
@@ -111,8 +112,8 @@ class SleepActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 sleepViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@SleepActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@SleepActivity, exception)
                         resolveException(exception, this@SleepActivity)
                     }
                 }

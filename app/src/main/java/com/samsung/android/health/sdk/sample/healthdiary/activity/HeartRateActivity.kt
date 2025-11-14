@@ -21,6 +21,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.OnS
 import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.SwipeTypeEnum
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showDatePickerDialogueBox
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HeartRateViewModel
@@ -106,8 +107,8 @@ class HeartRateActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 heartRateViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@HeartRateActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@HeartRateActivity, exception)
                         resolveException(exception, this@HeartRateActivity)
                     }
                 }

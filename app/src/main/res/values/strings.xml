@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Health Diary</string>
     <string name="version">SDK version:</string>
-    <string name="connect_to_samsung_health">Connect to Samsung Health</string>
+    <string name="connect_to_samsung_health">Conectar con Samsung Health (Solicitar permisos)</string>
 
     <string name="time">Time:</string>
     <string name="no_data">No Data</string>

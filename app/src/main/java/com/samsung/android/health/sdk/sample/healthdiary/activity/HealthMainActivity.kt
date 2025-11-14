@@ -19,6 +19,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.R
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.HealthMainBinding
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthMainViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
@@ -55,8 +56,8 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 healthMainViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@HealthMainActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@HealthMainActivity, exception)
                         resolveException(exception, this@HealthMainActivity)
                     }
                 }
@@ -74,6 +75,7 @@ class HealthMainActivity : AppCompatActivity(), View.OnClickListener {
     override fun onOptionsItemSelected(item: MenuItem): Boolean =
         when (item.itemId) {
             R.id.permission -> {
+                showToast(this, "Conectando con Samsung Health...\nSolicitando permisos de acceso a datos de salud")
                 healthMainViewModel.connectToSamsungHealth(this)
                 true
             }

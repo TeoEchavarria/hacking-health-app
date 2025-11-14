@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permisos requeridos para Samsung Health SDK -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- Queries declaration para Android 11+ - Permite encontrar y comunicarse con Samsung Health -->
+    <!-- Incluimos ambos package names posibles para compatibilidad con diferentes versiones -->
+    <queries>
+        <package android:name="com.samsung.android.app.shealth" />
+        <package android:name="com.sec.android.app.shealth" />
+    </queries>
 
     <application
         android:icon="@mipmap/ic_launcher"

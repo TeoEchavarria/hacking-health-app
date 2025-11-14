@@ -32,6 +32,8 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
     private val _permissionResponse = MutableStateFlow(Pair(AppConstants.WAITING, -1))
     private val _exceptionResponse = MutableStateFlow(Throwable("Default"))
     private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+        Log.e(TAG, "Excepción capturada en coroutine: ${exception.message}", exception)
+        Log.e(TAG, "Stack trace: ${exception.stackTraceToString()}")
         viewModelScope.launch {
             _exceptionResponse.emit(exception)
         }
@@ -44,13 +46,26 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
         permSet: MutableSet<Permission>,
         activityId: Int,
     ) {
+        Log.d(TAG, "checkForPermission: Verificando ${permSet.size} permisos para activityId=$activityId")
+        permSet.forEach { perm ->
+            Log.d(TAG, "  - Permiso: ${perm.dataType} (${perm.accessType})")
+        }
+        
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            val grantedPermissions = healthDataStore.getGrantedPermissions(permSet)
+            try {
+                val grantedPermissions = healthDataStore.getGrantedPermissions(permSet)
+                Log.d(TAG, "checkForPermission: ${grantedPermissions.size} permisos ya otorgados de ${permSet.size} solicitados")
 
-            if (grantedPermissions.containsAll(permSet)) {
-                _permissionResponse.emit(Pair(AppConstants.SUCCESS, activityId))
-            } else {
-                requestForPermission(context, permSet, activityId)
+                if (grantedPermissions.containsAll(permSet)) {
+                    Log.i(TAG, "checkForPermission: Todos los permisos ya están otorgados")
+                    _permissionResponse.emit(Pair(AppConstants.SUCCESS, activityId))
+                } else {
+                    Log.i(TAG, "checkForPermission: Faltan permisos, solicitando...")
+                    requestForPermission(context, permSet, activityId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "checkForPermission: Error al verificar permisos", e)
+                throw e
             }
         }
     }
@@ -60,24 +75,41 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
         permSet: MutableSet<Permission>,
         activityId: Int,
     ) {
+        Log.d(TAG, "requestForPermission: Solicitando ${permSet.size} permisos")
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            val activity = context as Activity
-            val result = healthDataStore.requestPermissions(permSet, activity)
-            Log.i(TAG, "requestPermissions: Success ${result.size}")
-
-            if (result.containsAll(permSet)) {
-                _permissionResponse.emit(Pair(AppConstants.SUCCESS, activityId))
-            } else {
-                withContext(Dispatchers.Main) {
-                    _permissionResponse.emit(Pair(AppConstants.NO_PERMISSION, -1))
-                    Log.i(TAG, "requestPermissions: NO_PERMISSION")
+            try {
+                val activity = context as Activity
+                Log.d(TAG, "requestForPermission: Llamando a healthDataStore.requestPermissions()")
+                val result = healthDataStore.requestPermissions(permSet, activity)
+                Log.i(TAG, "requestPermissions: Resultado - ${result.size} permisos otorgados de ${permSet.size} solicitados")
+                
+                result.forEach { perm ->
+                    Log.d(TAG, "  - Permiso otorgado: ${perm.dataType} (${perm.accessType})")
                 }
+
+                if (result.containsAll(permSet)) {
+                    Log.i(TAG, "requestPermissions: Todos los permisos fueron otorgados exitosamente")
+                    _permissionResponse.emit(Pair(AppConstants.SUCCESS, activityId))
+                } else {
+                    val missing = permSet - result.toSet()
+                    Log.w(TAG, "requestPermissions: Faltan ${missing.size} permisos:")
+                    missing.forEach { perm ->
+                        Log.w(TAG, "  - Permiso faltante: ${perm.dataType} (${perm.accessType})")
+                    }
+                    withContext(Dispatchers.Main) {
+                        _permissionResponse.emit(Pair(AppConstants.NO_PERMISSION, -1))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "requestForPermission: Error al solicitar permisos", e)
+                throw e
             }
         }
     }
 
     // Permissions for all data types accessed in this application
     fun connectToSamsungHealth(context: Context) {
+        Log.i(TAG, "connectToSamsungHealth: Iniciando conexión con Samsung Health")
         val permSet = setOf(
             Permission.of(DataTypes.STEPS, AccessType.READ),
             Permission.of(DataTypes.SLEEP, AccessType.READ),
@@ -87,8 +119,28 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
             Permission.of(DataTypes.HEART_RATE, AccessType.READ),
             Permission.of(DataTypes.NUTRITION, AccessType.WRITE)
         )
+        Log.d(TAG, "connectToSamsungHealth: Solicitando ${permSet.size} permisos:")
+        permSet.forEach { perm ->
+            Log.d(TAG, "  - ${perm.dataType} (${perm.accessType})")
+        }
+        
         viewModelScope.launch(Dispatchers.IO + exceptionHandler) {
-            healthDataStore.requestPermissions(permSet, context as Activity)
+            try {
+                Log.d(TAG, "connectToSamsungHealth: Llamando a healthDataStore.requestPermissions()")
+                val activity = context as Activity
+                val result = healthDataStore.requestPermissions(permSet, activity)
+                Log.i(TAG, "connectToSamsungHealth: Resultado - ${result.size} permisos otorgados de ${permSet.size} solicitados")
+                
+                if (result.containsAll(permSet)) {
+                    Log.i(TAG, "connectToSamsungHealth: ✓ Conexión exitosa - Todos los permisos otorgados")
+                } else {
+                    val missing = permSet - result.toSet()
+                    Log.w(TAG, "connectToSamsungHealth: ⚠ Algunos permisos no fueron otorgados (${missing.size} faltantes)")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "connectToSamsungHealth: ✗ Error al conectar con Samsung Health", e)
+                throw e
+            }
         }
     }
 

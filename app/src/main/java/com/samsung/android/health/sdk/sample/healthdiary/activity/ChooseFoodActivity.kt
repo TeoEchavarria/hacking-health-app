@@ -15,6 +15,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.entries.FoodInfoTable
 import com.samsung.android.health.sdk.sample.healthdiary.utils.getMealType
 import com.samsung.android.health.sdk.sample.healthdiary.utils.getTime
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.ChooseFoodViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
@@ -68,8 +69,8 @@ class ChooseFoodActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 chooseFoodViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@ChooseFoodActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@ChooseFoodActivity, exception)
                         resolveException(exception, this@ChooseFoodActivity)
                     }
                 }

@@ -18,6 +18,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.entries.NutritionUpdate
 import com.samsung.android.health.sdk.sample.healthdiary.utils.getMealType
 import com.samsung.android.health.sdk.sample.healthdiary.utils.getTime
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.UpdateFoodViewModel
@@ -89,8 +90,8 @@ class UpdateFoodActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 updateFoodViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@UpdateFoodActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@UpdateFoodActivity, exception)
                         resolveException(exception, this@UpdateFoodActivity)
                     }
                 }

@@ -26,6 +26,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.Swi
 import com.samsung.android.health.sdk.sample.healthdiary.utils.formatString
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showDatePickerDialogueBox
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.NutritionViewModel
@@ -188,8 +189,8 @@ class NutritionActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 nutritionViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@NutritionActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@NutritionActivity, exception)
                         resolveException(exception, this@NutritionActivity)
                     }
                 }

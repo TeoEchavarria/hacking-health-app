@@ -21,6 +21,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.OnS
 import com.samsung.android.health.sdk.sample.healthdiary.utils.SwipeDetector.SwipeTypeEnum
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showDatePickerDialogueBox
+import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.StepViewModel
@@ -106,8 +107,8 @@ class StepActivity : AppCompatActivity() {
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 stepViewModel.exceptionResponse.collect { exception ->
-                    if(exception.message!! != "Default"){
-                        showToast(this@StepActivity, exception.message!!)
+                    if(exception.message != "Default"){
+                        showErrorToast(this@StepActivity, exception)
                         resolveException(exception, this@StepActivity)
                     }
                 }
