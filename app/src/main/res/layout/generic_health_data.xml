@@ -90,6 +90,7 @@
             android:gravity="center"
             android:padding="@dimen/layout_margin"
             android:text="@string/no_data"
+            android:textColor="@color/text_secondary"
             android:textAppearance="?attr/textAppearanceBody1"
             android:visibility="gone" />
 

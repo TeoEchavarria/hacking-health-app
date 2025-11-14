@@ -62,7 +62,7 @@ abstract class BaseHealthDataActivity<VM : BaseHealthDataViewModel<*>> : AppComp
         super.onResume()
         viewModel.readMetricData(startDate)
         if (startDate == currentDate) {
-            binding.moveNextDate.setColorFilter(getColor(R.color.silver))
+            binding.moveNextDate.setColorFilter(getColor(R.color.disabled))
         } else {
             binding.moveNextDate.setColorFilter(getColor(R.color.black))
         }
@@ -145,13 +145,13 @@ abstract class BaseHealthDataActivity<VM : BaseHealthDataViewModel<*>> : AppComp
 
     private fun handleNavigationColors() {
         if (startDate == minimumDate) {
-            binding.movePreviousDate.setColorFilter(getColor(R.color.silver))
+            binding.movePreviousDate.setColorFilter(getColor(R.color.disabled))
         } else {
             binding.movePreviousDate.setColorFilter(getColor(R.color.black))
         }
 
         if (startDate == currentDate) {
-            binding.moveNextDate.setColorFilter(getColor(R.color.silver))
+            binding.moveNextDate.setColorFilter(getColor(R.color.disabled))
         } else {
             binding.moveNextDate.setColorFilter(getColor(R.color.black))
         }

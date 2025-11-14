@@ -14,4 +14,12 @@
     <color name="white_bar">#00000000</color>
     <color name="black_text">#000000</color>
     <color name="blue_mid">#4A7EBB</color>
+    
+    <!-- Improved color palette for better contrast and visibility -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_hint">#BDBDBD</color>
+    <color name="disabled">#9E9E9E</color>
+    <color name="background_card">#FFFFFF</color>
+    <color name="divider">#E0E0E0</color>
 </resources>

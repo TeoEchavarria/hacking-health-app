@@ -158,6 +158,7 @@
                                 android:layout_below="@+id/breakfast_title"
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_detail_size" />
 
                             <TextView
@@ -176,7 +177,7 @@
                                 android:layout_alignBottom="@+id/breakfast"
                                 android:layout_toStartOf="@+id/breakfast_box"
                                 android:text="@string/cals"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView
@@ -235,6 +236,7 @@
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_below="@+id/morning_snack_title"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <TextView
@@ -253,7 +255,7 @@
                                 android:layout_alignBottom="@+id/morning_snack"
                                 android:layout_toStartOf="@+id/morning_snack_box"
                                 android:text="@string/cals"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView
@@ -312,6 +314,7 @@
                                 android:layout_below="@+id/lunch_title"
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <TextView
@@ -330,7 +333,7 @@
                                 android:layout_alignBottom="@+id/lunch"
                                 android:text="@string/cals"
                                 android:layout_toStartOf="@+id/lunch_box"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView
@@ -389,6 +392,7 @@
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_below="@+id/afternoon_snack_title"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <TextView
@@ -407,7 +411,7 @@
                                 android:layout_alignBottom="@+id/afternoon_snack"
                                 android:text="@string/cals"
                                 android:layout_toStartOf="@+id/afternoon_snack_box"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView
@@ -466,6 +470,7 @@
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_below="@+id/evening_snack_title"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <TextView
@@ -484,7 +489,7 @@
                                 android:layout_marginStart="@dimen/margin_start"
                                 android:layout_alignBottom="@+id/evening_snack"
                                 android:text="@string/cals"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView
@@ -543,6 +548,7 @@
                                 android:layout_below="@+id/dinner_title"
                                 android:layout_marginTop="@dimen/list_margin_start"
                                 android:layout_marginEnd="@dimen/layout_margin_end"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <TextView
@@ -561,7 +567,7 @@
                                 android:layout_alignBottom="@+id/dinner"
                                 android:layout_toStartOf="@+id/dinner_box"
                                 android:text="@string/cals"
-                                android:textColor="@color/silver"
+                                android:textColor="@color/text_secondary"
                                 android:textSize="@dimen/list_text_size" />
 
                             <ImageView

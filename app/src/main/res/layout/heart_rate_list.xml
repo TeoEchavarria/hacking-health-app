@@ -24,13 +24,15 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/text_secondary"
                 android:text="@string/time" />
 
             <TextView
                 android:id="@+id/heart_rate_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/margin_start" />
+                android:layout_marginStart="@dimen/margin_start"
+                android:textColor="@color/text_primary" />
 
         </LinearLayout>
 
@@ -74,6 +76,7 @@
                             android:id="@+id/min_heart_rate"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
                             android:text="@string/min_heart_rate"/>
 
                         <TextView
@@ -81,6 +84,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="match_parent"
                             android:layout_marginStart="@dimen/list_margin_start"
+                            android:textColor="@color/text_primary"
                             android:text="@string/no_data" />
 
                     </LinearLayout>
@@ -94,6 +98,7 @@
                             android:id="@+id/max_heart_rate"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:textColor="@color/text_secondary"
                             android:text="@string/max_heart_rate" />
 
                         <TextView
@@ -101,6 +106,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="@dimen/list_margin_start"
+                            android:textColor="@color/text_primary"
                             android:text="@string/no_data" />
 
                     </LinearLayout>

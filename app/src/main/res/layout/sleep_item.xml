@@ -24,6 +24,7 @@
                     android:id="@+id/bed_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
                     android:text="@string/time_in_bed" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -50,6 +51,7 @@
                     android:layout_height="wrap_content"
                     android:id="@+id/stages"
                     android:textStyle="bold"
+                    android:textColor="@color/text_primary"
                     android:text="@string/sleep_stages"/>
 
                 <TextView
@@ -58,6 +60,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/stages"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/stage_awake" />
 
                 <TextView
@@ -67,6 +70,7 @@
                     android:layout_toEndOf="@+id/stage_awake"
                     android:layout_below="@+id/stages"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data" />
 
                 <TextView
@@ -75,6 +79,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/stage_awake"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/stage_rem" />
 
                 <TextView
@@ -84,6 +89,7 @@
                     android:layout_below="@+id/stage_awake"
                     android:layout_toEndOf="@+id/stage_rem"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data" />
 
                 <TextView
@@ -92,6 +98,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/stage_rem"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/stage_light"/>
 
                 <TextView
@@ -101,6 +108,7 @@
                     android:layout_below="@+id/stage_rem"
                     android:layout_toEndOf="@+id/stage_light"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data"/>
 
                 <TextView
@@ -109,6 +117,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/stage_light"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/stage_deep"/>
 
                 <TextView
@@ -118,6 +127,7 @@
                     android:layout_below="@+id/stage_light"
                     android:layout_toEndOf="@+id/stage_deep"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data"/>
 
                 <TextView
@@ -127,6 +137,7 @@
                     android:layout_marginTop="@dimen/list_margin_top"
                     android:textStyle="bold"
                     android:layout_below="@+id/stage_deep"
+                    android:textColor="@color/text_primary"
                     android:text="@string/skin_temp"/>
 
                 <TextView
@@ -135,6 +146,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/skin_temp"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/min_max"/>
 
                 <TextView
@@ -144,6 +156,7 @@
                     android:layout_toEndOf="@+id/min_max_skin_temp"
                     android:layout_below="@+id/skin_temp"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data"/>
 
                 <TextView
@@ -153,6 +166,7 @@
                     android:layout_toEndOf="@+id/min_skin_temp_value"
                     android:layout_below="@+id/skin_temp"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/slash"/>
 
                 <TextView
@@ -162,6 +176,7 @@
                     android:layout_toEndOf="@+id/slash"
                     android:layout_below="@+id/skin_temp"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data" />
 
                 <TextView
@@ -170,6 +185,7 @@
                     android:layout_height="wrap_content"
                     android:textStyle="bold"
                     android:layout_below="@+id/min_max_skin_temp"
+                    android:textColor="@color/text_primary"
                     android:text="@string/oxygen"/>
 
                 <TextView
@@ -178,6 +194,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/layout_margin_start"
                     android:layout_below="@+id/oxygen"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/min_max"/>
 
                 <TextView
@@ -187,6 +204,7 @@
                     android:layout_toEndOf="@+id/min_max_oxygen"
                     android:layout_below="@+id/oxygen"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data"/>
 
                 <TextView
@@ -196,6 +214,7 @@
                     android:layout_toEndOf="@+id/min_oxygen_value"
                     android:layout_below="@+id/oxygen"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_secondary"
                     android:text="@string/slash"/>
 
                 <TextView
@@ -205,6 +224,7 @@
                     android:layout_toEndOf="@+id/oxygen_slash"
                     android:layout_below="@+id/oxygen"
                     android:layout_marginStart="@dimen/list_margin_start"
+                    android:textColor="@color/text_primary"
                     android:text="@string/no_data" />
             </RelativeLayout>
         </LinearLayout>

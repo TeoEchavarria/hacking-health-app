@@ -27,6 +27,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:text="@string/time"
+                    android:textColor="@color/text_secondary"
                     android:textAlignment="center"
                     android:textSize="@dimen/list_text_size" />
 
@@ -35,6 +36,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/margin_start"
+                    android:textColor="@color/text_primary"
                     android:textSize="@dimen/list_text_size" />
 
             </LinearLayout>
@@ -62,6 +64,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/list_margin_start"
                     android:layout_marginTop="@dimen/list_margin_top"
+                    android:textColor="@color/text_secondary"
                     android:textSize="@dimen/list_text_size"
                     android:text="@string/steps"
                     android:textStyle="bold" />

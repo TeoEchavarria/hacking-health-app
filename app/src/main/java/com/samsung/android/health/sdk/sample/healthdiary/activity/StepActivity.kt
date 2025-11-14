@@ -69,12 +69,12 @@ class StepActivity : AppCompatActivity() {
             showDatePickerDialogueBox(this@StepActivity, startDate) { newStartDate ->
                 startDate = newStartDate
                 if (startDate == minimumDate) {
-                    binding.movePreviousDate.setColorFilter(getColor(R.color.silver))
+                    binding.movePreviousDate.setColorFilter(getColor(R.color.disabled))
                 } else {
                     binding.movePreviousDate.setColorFilter(getColor(R.color.black))
                 }
                 if (newStartDate == currentDate) {
-                    binding.moveNextDate.setColorFilter(getColor(R.color.silver))
+                    binding.moveNextDate.setColorFilter(getColor(R.color.disabled))
                 } else {
                     binding.moveNextDate.setColorFilter(getColor(R.color.black))
                 }
@@ -120,7 +120,7 @@ class StepActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (startDate == currentDate) {
-            binding.moveNextDate.setColorFilter(getColor(R.color.silver))
+            binding.moveNextDate.setColorFilter(getColor(R.color.disabled))
         }
         stepViewModel.readStepData(startDate)
     }
@@ -134,7 +134,7 @@ class StepActivity : AppCompatActivity() {
         if (startDate > minimumDate) {
             startDate = startDate.minusDays(1)
             if (startDate == minimumDate) {
-                binding.movePreviousDate.setColorFilter(getColor(R.color.silver))
+                binding.movePreviousDate.setColorFilter(getColor(R.color.disabled))
             }
             binding.moveNextDate.setColorFilter(getColor(R.color.black))
             stepViewModel.readStepData(startDate)
@@ -145,7 +145,7 @@ class StepActivity : AppCompatActivity() {
         if (startDate < currentDate) {
             startDate = startDate.plusDays(1)
             if (startDate == currentDate) {
-                binding.moveNextDate.setColorFilter(getColor(R.color.silver))
+                binding.moveNextDate.setColorFilter(getColor(R.color.disabled))
             }
             binding.movePreviousDate.setColorFilter(getColor(R.color.black))
             stepViewModel.readStepData(startDate)

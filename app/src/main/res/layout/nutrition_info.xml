@@ -18,6 +18,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/protein"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -25,6 +26,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/protein_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -34,6 +36,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -44,7 +47,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -56,6 +59,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/total_fat"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -63,6 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/total_fat_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -72,6 +77,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -82,7 +88,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -94,6 +100,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/saturated_fat"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -101,6 +108,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/saturated_fat_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -110,6 +118,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -120,7 +129,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -132,6 +141,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/poly_saturated_fat"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -139,6 +149,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/poly_saturated_fat_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -148,6 +159,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -158,7 +170,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -170,6 +182,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/mono_saturated_fat"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -177,6 +190,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/mono_saturated_fat_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -186,6 +200,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -196,7 +211,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -208,6 +223,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/trans_fat"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -215,6 +231,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/trans_fat_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -224,6 +241,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -234,7 +252,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -246,6 +264,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/carbohydrate"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -253,6 +272,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/carbohydrate_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -262,6 +282,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -272,7 +293,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -284,6 +305,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/dietary_fiber"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -291,6 +313,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/dietary_fiber_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -300,6 +323,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -310,7 +334,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -322,6 +346,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/sugar"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -329,6 +354,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/sugar_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -338,6 +364,7 @@
                 android:text="@string/gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -348,7 +375,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -360,6 +387,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/cholesterol"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -367,6 +395,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/cholesterol_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -376,6 +405,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -386,7 +416,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -398,6 +428,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/sodium"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -405,6 +436,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/sodium_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -414,6 +446,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -424,7 +457,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -436,6 +469,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/potassium"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -443,6 +477,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/potassium_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -452,6 +487,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -462,7 +498,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -474,6 +510,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/vitamin_a"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -481,6 +518,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/vitamin_a_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -490,6 +528,7 @@
                 android:text="@string/micro_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -500,7 +539,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -512,6 +551,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/vitamin_c"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -519,6 +559,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/vitamin_c_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -528,6 +569,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -538,7 +580,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -550,6 +592,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/calcium"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -557,6 +600,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/calcium_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -566,6 +610,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
@@ -576,7 +621,7 @@
             android:layout_marginTop="@dimen/separator_margin_top"
             android:layout_marginStart="@dimen/layout_margin_start"
             android:layout_marginEnd="@dimen/layout_margin_end"
-            android:background="@color/blue_mid" />
+            android:background="@color/divider" />
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -588,6 +633,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/iron"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -595,6 +641,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toStartOf="@+id/iron_unit"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/list_text_size"/>
 
             <TextView
@@ -604,6 +651,7 @@
                 android:text="@string/milli_gram"
                 android:layout_marginStart="@dimen/list_margin_start"
                 android:layout_alignParentEnd="true"
+                android:textColor="@color/text_secondary"
                 android:textSize="@dimen/list_text_size"/>
 
         </RelativeLayout>
