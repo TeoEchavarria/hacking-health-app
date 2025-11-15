@@ -30,4 +30,14 @@
     <color name="steps_accent">#4DB6AC</color>
     <color name="steps_chart_line">#4DB6AC</color>
     <color name="steps_chart_grid">#F5F5F5</color>
+    
+    <!-- Sleep stage colors for chart -->
+    <color name="sleep_stage_awake">#FF6B6B</color>
+    <color name="sleep_stage_rem">#4ECDC4</color>
+    <color name="sleep_stage_light">#FFE66D</color>
+    <color name="sleep_stage_deep">#95E1D3</color>
+    
+    <!-- Sleep chart colors -->
+    <color name="sleep_chart_text_secondary">#9E9E9E</color>
+    <color name="sleep_chart_grid">#F5F5F5</color>
 </resources>

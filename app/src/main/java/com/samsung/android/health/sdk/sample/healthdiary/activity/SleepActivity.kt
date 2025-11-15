@@ -3,6 +3,7 @@
  */
 package com.samsung.android.health.sdk.sample.healthdiary.activity
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
@@ -11,6 +12,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.components.YAxis
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.ValueFormatter
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.samsung.android.health.sdk.sample.healthdiary.R
 import com.samsung.android.health.sdk.sample.healthdiary.SleepActivityBinding
 import com.samsung.android.health.sdk.sample.healthdiary.adapters.SleepAdapter
@@ -25,7 +33,12 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.SleepViewModel
+import com.samsung.android.sdk.health.data.data.HealthDataPoint
+import com.samsung.android.sdk.health.data.data.entries.SleepSession
+import com.samsung.android.sdk.health.data.request.DataType
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class SleepActivity : AppCompatActivity() {
 
@@ -52,6 +65,7 @@ class SleepActivity : AppCompatActivity() {
             }
 
         initializeOnClickListeners()
+        setupLineChart()
         setSwipeDetector()
         setSleepDataObservers()
     }
@@ -83,6 +97,63 @@ class SleepActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupLineChart() {
+        binding.sleepChart.apply {
+            description.isEnabled = false
+            setTouchEnabled(false)
+            setDragEnabled(false)
+            setScaleEnabled(false)
+            setPinchZoom(false)
+            setDrawGridBackground(false)
+            setBackgroundColor(Color.TRANSPARENT)
+            
+            // Configure X axis
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                textColor = getColor(R.color.sleep_chart_text_secondary)
+                textSize = 10f
+                setDrawGridLines(false)
+                setDrawAxisLine(false)
+                granularity = 1f
+                labelCount = 5
+                valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        val hour = value.toInt()
+                        return when (hour) {
+                            0 -> "00:00"
+                            6 -> "06:00"
+                            12 -> "12:00"
+                            18 -> "18:00"
+                            23 -> "24:00"
+                            else -> ""
+                        }
+                    }
+                }
+            }
+            
+            // Configure Y axis (left)
+            axisLeft.apply {
+                textColor = getColor(R.color.sleep_chart_text_secondary)
+                textSize = 10f
+                setDrawGridLines(true)
+                gridColor = getColor(R.color.sleep_chart_grid)
+                gridLineWidth = 0.5f
+                setDrawAxisLine(false)
+                setDrawZeroLine(false)
+                axisMinimum = 0f
+            }
+            
+            // Configure Y axis (right) - hide it
+            axisRight.isEnabled = false
+            
+            // Configure legend - hide it
+            legend.isEnabled = false
+            
+            // Animate
+            animateX(1000)
+        }
+    }
+
     private fun setSwipeDetector() {
         SwipeDetector(binding.sleepList).setOnSwipeListener(object : OnSwipeEvent {
             override fun swipeEventDetected(
@@ -97,10 +168,193 @@ class SleepActivity : AppCompatActivity() {
         })
     }
 
+    private fun getStageColor(stageType: DataType.SleepType.StageType): Int {
+        return when (stageType) {
+            DataType.SleepType.StageType.AWAKE -> getColor(R.color.sleep_stage_awake)
+            DataType.SleepType.StageType.REM -> getColor(R.color.sleep_stage_rem)
+            DataType.SleepType.StageType.LIGHT -> getColor(R.color.sleep_stage_light)
+            DataType.SleepType.StageType.DEEP -> getColor(R.color.sleep_stage_deep)
+            else -> getColor(R.color.sleep_stage_light)
+        }
+    }
+
+    private fun updateChart(sleepDataList: List<HealthDataPoint>) {
+        if (sleepDataList.isEmpty()) {
+            binding.sleepChart.data = null
+            binding.sleepChart.invalidate()
+            return
+        }
+        
+        // Process all sleep sessions to calculate minutes per hour per stage
+        val hourMinutesMap = mutableMapOf<Int, MutableMap<DataType.SleepType.StageType, Int>>()
+        
+        for (hour in 0..23) {
+            hourMinutesMap[hour] = mutableMapOf(
+                DataType.SleepType.StageType.AWAKE to 0,
+                DataType.SleepType.StageType.REM to 0,
+                DataType.SleepType.StageType.LIGHT to 0,
+                DataType.SleepType.StageType.DEEP to 0
+            )
+        }
+        
+        sleepDataList.forEach { sleepData ->
+            val zoneOffset = sleepData.zoneOffset
+            val sleepSessionList = sleepData.getValue(DataType.SleepType.SESSIONS) as? List<SleepSession>
+            
+            sleepSessionList?.forEach { session ->
+                session.stages?.forEach { stage ->
+                    val startLocal = LocalDateTime.ofInstant(stage.startTime, zoneOffset)
+                    val endLocal = LocalDateTime.ofInstant(stage.endTime, zoneOffset)
+                    val durationSeconds = (stage.endTime.epochSecond - stage.startTime.epochSecond).toInt()
+                    val durationMinutes = durationSeconds / 60
+                    
+                    val stageType = stage.stage
+                    if (stageType == DataType.SleepType.StageType.UNDEFINED) {
+                        return@forEach
+                    }
+                    
+                    // Distribute minutes across hours
+                    var currentTime = startLocal
+                    while (currentTime.isBefore(endLocal)) {
+                        val currentHour = currentTime.hour
+                        val hourEnd = currentTime.toLocalDate().atStartOfDay().plusHours((currentHour + 1).toLong())
+                        val segmentEnd = if (endLocal.isBefore(hourEnd)) endLocal else hourEnd
+                        val segmentSeconds = java.time.Duration.between(currentTime, segmentEnd).seconds.toInt()
+                        val segmentMinutes = segmentSeconds / 60
+                        
+                        val currentHourMinutes = hourMinutesMap[currentHour]?.get(stageType) ?: 0
+                        hourMinutesMap[currentHour]?.set(stageType, currentHourMinutes + segmentMinutes)
+                        
+                        currentTime = segmentEnd
+                    }
+                }
+            }
+        }
+        
+        // Calculate accumulated values per hour and determine predominant stage
+        var accumulatedMinutes = 0f
+        val allEntries = mutableListOf<Entry>()
+        val hourStageMap = mutableMapOf<Int, DataType.SleepType.StageType>()
+        
+        // Create entries for all 24 hours
+        for (hour in 0..23) {
+            val hourStages = hourMinutesMap[hour] ?: emptyMap()
+            val totalHourMinutes = hourStages.values.sum()
+            accumulatedMinutes += totalHourMinutes
+            
+            if (totalHourMinutes > 0) {
+                // Find predominant stage type
+                val predominantStage = hourStages.maxByOrNull { it.value }?.key 
+                    ?: DataType.SleepType.StageType.LIGHT
+                hourStageMap[hour] = predominantStage
+            } else {
+                // No sleep data for this hour, use previous stage or default
+                if (hour > 0) {
+                    hourStageMap[hour] = hourStageMap[hour - 1] ?: DataType.SleepType.StageType.LIGHT
+                } else {
+                    hourStageMap[hour] = DataType.SleepType.StageType.LIGHT
+                }
+            }
+            
+            allEntries.add(Entry(hour.toFloat(), accumulatedMinutes))
+        }
+        
+        if (allEntries.isEmpty() || allEntries.all { it.y == 0f }) {
+            binding.sleepChart.data = null
+            binding.sleepChart.invalidate()
+            return
+        }
+        
+        // Create segments for continuous ranges of the same stage type
+        // Strategy: Each segment ends at transition point, next segment starts at same point
+        // This ensures continuity - both segments share the transition point
+        val dataSets = mutableListOf<LineDataSet>()
+        var currentSegmentStart = 0
+        var currentStage = hourStageMap[0] ?: DataType.SleepType.StageType.LIGHT
+        
+        for (hour in 1..23) {
+            val stage = hourStageMap[hour] ?: DataType.SleepType.StageType.LIGHT
+            
+            // If stage changed, finalize previous segment and start new one
+            if (stage != currentStage) {
+                // Get the entry at the transition point
+                val transitionEntry = allEntries[hour]
+                
+                // Create segment from currentSegmentStart to transition hour (inclusive)
+                if (currentSegmentStart <= hour) {
+                    val segmentEntries = mutableListOf<Entry>()
+                    
+                    // Add all hours from start to transition hour (inclusive)
+                    for (h in currentSegmentStart..hour) {
+                        val entry = allEntries[h]
+                        segmentEntries.add(Entry(entry.x, entry.y))
+                    }
+                    
+                    if (segmentEntries.size >= 2) {
+                        val dataSet = LineDataSet(segmentEntries, "").apply {
+                            color = getStageColor(currentStage)
+                            lineWidth = 2.5f
+                            setDrawCircles(false)
+                            setDrawValues(false)
+                            mode = LineDataSet.Mode.CUBIC_BEZIER
+                            cubicIntensity = 0.2f
+                            setDrawFilled(true)
+                            fillColor = getStageColor(currentStage)
+                            fillAlpha = 20
+                        }
+                        
+                        dataSets.add(dataSet)
+                    }
+                }
+                
+                // Start new segment from the transition hour (will include it as first point)
+                currentSegmentStart = hour
+                currentStage = stage
+            }
+        }
+        
+        // Create final segment from currentSegmentStart to end
+        if (currentSegmentStart <= 23) {
+            val segmentEntries = mutableListOf<Entry>()
+            
+            for (h in currentSegmentStart..23) {
+                val entry = allEntries[h]
+                segmentEntries.add(Entry(entry.x, entry.y))
+            }
+            
+            if (segmentEntries.size >= 2) {
+                val dataSet = LineDataSet(segmentEntries, "").apply {
+                    color = getStageColor(currentStage)
+                    lineWidth = 2.5f
+                    setDrawCircles(false)
+                    setDrawValues(false)
+                    mode = LineDataSet.Mode.CUBIC_BEZIER
+                    cubicIntensity = 0.2f
+                    setDrawFilled(true)
+                    fillColor = getStageColor(currentStage)
+                    fillAlpha = 20
+                }
+                
+                dataSets.add(dataSet)
+            }
+        }
+        
+        if (dataSets.isEmpty()) {
+            binding.sleepChart.data = null
+            binding.sleepChart.invalidate()
+            return
+        }
+        
+        val lineData = LineData(dataSets as List<ILineDataSet>)
+        binding.sleepChart.data = lineData
+        binding.sleepChart.invalidate()
+    }
+
     private fun setSleepDataObservers() {
         /**  Update sleep UI */
         sleepViewModel.dailySleepData.observe(this) {
             sleepAdapter.updateList(it)
+            updateChart(it)
         }
 
         /**  Update sleep Associate UI */
