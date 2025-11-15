@@ -1,6 +1,6 @@
 <!-- Copyright (C) 2024 Samsung Electronics Co., Ltd. All rights reserved -->
 <resources>
-    <string name="app_name">Health Diary</string>
+    <string name="app_name">Hacking Health</string>
     <string name="version">SDK version:</string>
     <string name="connect_to_samsung_health">Conectar con Samsung Health (Solicitar permisos)</string>
 
