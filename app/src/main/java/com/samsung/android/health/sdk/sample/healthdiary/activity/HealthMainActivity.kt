@@ -14,10 +14,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
+import android.view.LayoutInflater
 import com.samsung.android.health.sdk.sample.healthdiary.R
-import com.samsung.android.health.sdk.sample.healthdiary.adapters.HealthMetricCardAdapter
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.HealthMainBinding
+import com.samsung.android.health.sdk.sample.healthdiary.databinding.ItemHealthMetricCardBinding
 import com.samsung.android.health.sdk.sample.healthdiary.entries.HealthMetricCardUiState
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
@@ -32,11 +32,9 @@ import com.samsung.android.sdk.health.data.request.DataTypes
 import kotlinx.coroutines.launch
 
 class HealthMainActivity : AppCompatActivity(),
-    View.OnClickListener,
-    HealthMetricCardAdapter.CardClickListener {
+    View.OnClickListener {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
-    private lateinit var metricCardAdapter: HealthMetricCardAdapter
     private lateinit var binding: HealthMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,10 +52,6 @@ class HealthMainActivity : AppCompatActivity(),
         binding.cvHeartRate.setOnClickListener(this)
         binding.cvSleep.setOnClickListener(this)
         binding.versionValue.text = SdkVersion.getVersionName()
-
-        metricCardAdapter = HealthMetricCardAdapter(this)
-        binding.additionalMetricsList.layoutManager = LinearLayoutManager(this)
-        binding.additionalMetricsList.adapter = metricCardAdapter
 
         /** Show toast on exception occurrence **/
 
@@ -144,7 +138,7 @@ class HealthMainActivity : AppCompatActivity(),
         }
     }
 
-    override fun onCardClicked(uiState: HealthMetricCardUiState) {
+    private fun onCardClicked(uiState: HealthMetricCardUiState) {
         val permSet = uiState.definition.permissions.toMutableSet()
         if (permSet.isEmpty()) {
             launchRespectiveActivity(uiState.definition.activityId)
@@ -177,9 +171,35 @@ class HealthMainActivity : AppCompatActivity(),
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 healthMainViewModel.metricCards.collect { cards ->
-                    metricCardAdapter.submitList(cards)
+                    updateMetricCards(cards)
                 }
             }
+        }
+    }
+
+    private fun updateMetricCards(cards: List<HealthMetricCardUiState>) {
+        binding.additionalMetricsContainer.removeAllViews()
+        
+        cards.forEach { uiState ->
+            val cardBinding = ItemHealthMetricCardBinding.inflate(
+                LayoutInflater.from(this),
+                binding.additionalMetricsContainer,
+                false
+            )
+            
+            cardBinding.metricTitle.setText(uiState.definition.titleRes)
+            cardBinding.metricIcon.setImageResource(uiState.definition.iconRes)
+            cardBinding.metricValue.text = if (uiState.isLoading) {
+                getString(R.string.loading_value)
+            } else {
+                uiState.latestValue
+            }
+            
+            cardBinding.root.setOnClickListener {
+                onCardClicked(uiState)
+            }
+            
+            binding.additionalMetricsContainer.addView(cardBinding.root)
         }
     }
 
