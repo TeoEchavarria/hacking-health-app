@@ -12,6 +12,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.github.mikephil.charting.components.Legend
+import com.github.mikephil.charting.components.LegendEntry
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.Entry
@@ -141,13 +144,79 @@ class SleepActivity : AppCompatActivity() {
                 setDrawAxisLine(false)
                 setDrawZeroLine(false)
                 axisMinimum = 0f
+                valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return String.format("%.1fh", value)
+                    }
+                }
+                
+                // Add 8-hour sleep goal line
+                val goalLine = LimitLine(8f, getString(R.string.sleep_goal_8h)).apply {
+                    lineColor = getColor(R.color.sleep_goal_line)
+                    lineWidth = 2f
+                    enableDashedLine(10f, 10f, 0f)
+                    labelPosition = LimitLine.LimitLabelPosition.RIGHT_TOP
+                    textSize = 10f
+                    textColor = getColor(R.color.sleep_goal_line)
+                }
+                addLimitLine(goalLine)
             }
             
             // Configure Y axis (right) - hide it
             axisRight.isEnabled = false
             
-            // Configure legend - hide it
-            legend.isEnabled = false
+            // Configure legend with custom entries (only 4 stages)
+            legend.apply {
+                isEnabled = true
+                orientation = Legend.LegendOrientation.HORIZONTAL
+                horizontalAlignment = Legend.LegendHorizontalAlignment.CENTER
+                verticalAlignment = Legend.LegendVerticalAlignment.BOTTOM
+                setDrawInside(false)
+                textColor = getColor(R.color.sleep_chart_text_secondary)
+                textSize = 10f
+                formSize = 8f
+                formToTextSpace = 4f
+                xEntrySpace = 8f
+                yEntrySpace = 4f
+                
+                // Create custom legend entries for the 4 sleep stages
+                setCustom(
+                    listOf(
+                        LegendEntry(
+                            getString(R.string.stage_awake),
+                            Legend.LegendForm.SQUARE,
+                            8f,
+                            8f,
+                            null,
+                            getColor(R.color.sleep_stage_awake)
+                        ),
+                        LegendEntry(
+                            getString(R.string.stage_rem),
+                            Legend.LegendForm.SQUARE,
+                            8f,
+                            8f,
+                            null,
+                            getColor(R.color.sleep_stage_rem)
+                        ),
+                        LegendEntry(
+                            getString(R.string.stage_light),
+                            Legend.LegendForm.SQUARE,
+                            8f,
+                            8f,
+                            null,
+                            getColor(R.color.sleep_stage_light)
+                        ),
+                        LegendEntry(
+                            getString(R.string.stage_deep),
+                            Legend.LegendForm.SQUARE,
+                            8f,
+                            8f,
+                            null,
+                            getColor(R.color.sleep_stage_deep)
+                        )
+                    )
+                )
+            }
             
             // Animate
             animateX(1000)
@@ -232,7 +301,8 @@ class SleepActivity : AppCompatActivity() {
         }
         
         // Calculate accumulated values per hour and determine predominant stage
-        var accumulatedMinutes = 0f
+        // Convert to hours for better clarity
+        var accumulatedHours = 0f
         val allEntries = mutableListOf<Entry>()
         val hourStageMap = mutableMapOf<Int, DataType.SleepType.StageType>()
         
@@ -240,7 +310,8 @@ class SleepActivity : AppCompatActivity() {
         for (hour in 0..23) {
             val hourStages = hourMinutesMap[hour] ?: emptyMap()
             val totalHourMinutes = hourStages.values.sum()
-            accumulatedMinutes += totalHourMinutes
+            val totalHourHours = totalHourMinutes / 60f // Convert minutes to hours
+            accumulatedHours += totalHourHours
             
             if (totalHourMinutes > 0) {
                 // Find predominant stage type
@@ -256,7 +327,7 @@ class SleepActivity : AppCompatActivity() {
                 }
             }
             
-            allEntries.add(Entry(hour.toFloat(), accumulatedMinutes))
+            allEntries.add(Entry(hour.toFloat(), accumulatedHours))
         }
         
         if (allEntries.isEmpty() || allEntries.all { it.y == 0f }) {

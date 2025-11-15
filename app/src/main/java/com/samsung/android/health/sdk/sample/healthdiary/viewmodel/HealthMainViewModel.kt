@@ -63,9 +63,13 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
     private val _todayStepsTotal = MutableStateFlow("0")
     val todayStepsTotal: StateFlow<String> = _todayStepsTotal
 
+    private val _todaySleepTotal = MutableStateFlow("0.0h")
+    val todaySleepTotal: StateFlow<String> = _todaySleepTotal
+
     init {
         refreshMetricCards()
         getTodayStepsTotal()
+        getTodaySleepTotal()
     }
 
     fun checkForPermission(
@@ -204,6 +208,7 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
             _metricCards.emit(updatedCards)
         }
         getTodayStepsTotal()
+        getTodaySleepTotal()
     }
 
     fun getTodayStepsTotal() {
@@ -234,6 +239,41 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
             } catch (e: Exception) {
                 Log.w(TAG, "Error obteniendo pasos del día actual", e)
                 _todayStepsTotal.emit("0")
+            }
+        }
+    }
+
+    fun getTodaySleepTotal() {
+        viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {
+            try {
+                val today = LocalDateTime.now()
+                val startOfDay = today.withHour(0).withMinute(0).withSecond(0).withNano(0)
+                val endOfDay = startOfDay.plusDays(1)
+
+                val readRequest = DataTypes.SLEEP.buildReadRequest(
+                    start = startOfDay,
+                    end = endOfDay,
+                    ordering = Ordering.ASC
+                )
+
+                val sleepDataList = healthDataStore.readData(readRequest).dataList
+                var totalSleepMinutes = 0L
+
+                sleepDataList.forEach { sleepData ->
+                    val duration = sleepData.getValue(DataType.SleepType.DURATION)
+                    if (duration != null) {
+                        // Duration is in seconds, convert to minutes
+                        totalSleepMinutes += (duration as Long) / 60
+                    }
+                }
+
+                // Convert minutes to hours with one decimal place
+                val totalSleepHours = totalSleepMinutes / 60f
+                val formattedTotal = String.format("%.1fh", totalSleepHours)
+                _todaySleepTotal.emit(formattedTotal)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error obteniendo sueño del día actual", e)
+                _todaySleepTotal.emit("0.0h")
             }
         }
     }

@@ -26,6 +26,7 @@
     <string name="cals">Cal</string>
 
     <string name="sleep">Sleep</string>
+    <string name="sleep_goal_8h">Meta: 8h</string>
     <string name="sleep_stages">Stages:</string>
     <string name="associate_data">Associate Data</string>
     <string name="skin_temp">Skin Temp:</string>

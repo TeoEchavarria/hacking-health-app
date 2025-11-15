@@ -50,7 +50,7 @@ class HealthMainActivity : AppCompatActivity(),
         binding.cvNutrition.setOnClickListener(this)
         binding.cvStep.setOnClickListener(this)
         binding.cvHeartRate.setOnClickListener(this)
-        binding.cvSleep.setOnClickListener(this)
+        binding.cvSleepTotal.setOnClickListener(this)
         binding.versionValue.text = SdkVersion.getVersionName()
 
         /** Show toast on exception occurrence **/
@@ -69,6 +69,7 @@ class HealthMainActivity : AppCompatActivity(),
         collectResponse()
         observeMetricCards()
         observeTodaySteps()
+        observeTodaySleep()
     }
 
     override fun onResume() {
@@ -128,7 +129,7 @@ class HealthMainActivity : AppCompatActivity(),
                 )
             }
 
-            R.id.cv_sleep -> {
+            R.id.cv_sleep_total -> {
                 val permSet = mutableSetOf(
                     Permission.of(DataTypes.SLEEP, AccessType.READ),
                     Permission.of(DataTypes.BLOOD_OXYGEN, AccessType.READ),
@@ -183,6 +184,16 @@ class HealthMainActivity : AppCompatActivity(),
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 healthMainViewModel.todayStepsTotal.collect { totalSteps ->
                     binding.stepsValue.text = totalSteps
+                }
+            }
+        }
+    }
+
+    private fun observeTodaySleep() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                healthMainViewModel.todaySleepTotal.collect { totalSleep ->
+                    binding.sleepValue.text = totalSleep
                 }
             }
         }
