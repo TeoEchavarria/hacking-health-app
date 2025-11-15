@@ -153,10 +153,12 @@ class StepActivity : AppCompatActivity() {
             hourStepsMap[hour] = (hourStepsMap[hour] ?: 0L) + steps
         }
         
-        // Create entries for each hour
+        // Create entries with accumulated steps
+        var accumulatedSteps: Long = 0
         for (hour in 0..23) {
-            val steps = hourStepsMap[hour] ?: 0L
-            entries.add(Entry(hour.toFloat(), steps.toFloat()))
+            val stepsInHour = hourStepsMap[hour] ?: 0L
+            accumulatedSteps += stepsInHour
+            entries.add(Entry(hour.toFloat(), accumulatedSteps.toFloat()))
         }
         
         return entries
