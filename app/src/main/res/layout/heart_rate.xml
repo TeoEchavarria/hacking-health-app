@@ -11,6 +11,7 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         android:orientation="vertical"
         tools:context=".activity.HeartRateActivity">
 
@@ -32,6 +33,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/layout_margin_start"
                 android:text="@string/heart_rate_heading"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_size"
                 android:textStyle="bold" />
 
@@ -57,7 +59,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="@{viewModel.dayStartTimeAsText}"
-                android:textColor="@color/black"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/date_text_size" />
 
             <ImageButton

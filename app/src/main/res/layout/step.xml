@@ -10,6 +10,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         android:orientation="vertical">
 
         <LinearLayout
@@ -31,6 +32,7 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="@dimen/layout_margin_start"
                 android:text="@string/steps"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_size"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -55,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="@{viewModel.dayStartTimeAsText}"
-                android:textColor="@color/black"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/date_text_size" />
 
             <ImageButton
@@ -85,7 +87,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/margin_start"
                     android:text="@{viewModel.totalStepCount}"
-                    android:textColor="@color/black_text"
+                    android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_size"
                     android:textStyle="bold" />
 
@@ -95,7 +97,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/margin_start"
                     android:text="@string/steps"
-                    android:textColor="@color/black_text"
+                    android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_size"
                     android:textStyle="bold" />
             </LinearLayout>

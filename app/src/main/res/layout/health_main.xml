@@ -6,7 +6,7 @@
     <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@color/white_smoke"
+        android:background="@color/white"
         tools:context=".activity.HealthMainActivity">
 
         <LinearLayout
@@ -19,6 +19,7 @@
                 android:id="@+id/cv_step"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="@dimen/card_view_radius">
 
                 <LinearLayout
@@ -39,6 +40,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/layout_margin_start"
                         android:text="@string/steps"
+                        android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -49,6 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/card_view_margin_top"
+                app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="@dimen/card_view_radius">
 
                 <LinearLayout
@@ -69,6 +72,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/layout_margin_start"
                         android:text="@string/sleep"
+                        android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -79,6 +83,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/card_view_margin_top"
+                app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="@dimen/card_view_radius">
 
                 <LinearLayout
@@ -99,6 +104,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/layout_margin_start"
                         android:text="@string/nutrition"
+                        android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -109,6 +115,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/card_view_margin_top"
+                app:cardBackgroundColor="@color/white"
                 app:cardCornerRadius="@dimen/card_view_radius">
 
                 <LinearLayout
@@ -129,6 +136,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="@dimen/layout_margin_start"
                         android:text="@string/heart_rate_heading"
+                        android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -140,7 +148,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/layout_margin_top"
                 android:text="@string/additional_metrics"
-                android:textAppearance="?attr/textAppearanceSubtitle1"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size"
                 android:textStyle="bold" />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -161,6 +170,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
                 android:textStyle="bold"
                 android:text="@string/version" />
 
@@ -168,6 +178,7 @@
                 android:id="@+id/version_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
                 android:textStyle="bold"
                 android:layout_marginStart="@dimen/margin_start"
                 android:layout_marginEnd="@dimen/layout_margin_end" />

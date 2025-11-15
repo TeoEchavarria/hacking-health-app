@@ -48,7 +48,7 @@
                     android:id="@+id/heart_rate_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/black_text"
+                    android:textColor="@color/text_primary"
                     android:textSize="@dimen/text_size"
                     android:textStyle="bold" />
 

@@ -38,7 +38,7 @@
                 android:id="@+id/duration_display"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/black_text"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_size"
                 android:textStyle="bold" />
 

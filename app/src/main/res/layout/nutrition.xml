@@ -13,6 +13,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/white"
         android:orientation="vertical"
         tools:context=".activity.NutritionActivity">
 
@@ -35,6 +36,7 @@
                 android:layout_gravity="center_vertical"
                 android:layout_marginStart="@dimen/layout_margin_start"
                 android:text="@string/nutrition"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/text_size"
                 android:textStyle="bold" />
 
@@ -60,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="@{viewModel.dayStartTimeAsText}"
-                android:textColor="@color/black"
+                android:textColor="@color/text_primary"
                 android:textSize="@dimen/date_text_size" />
 
             <ImageButton
@@ -91,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:textStyle="bold"
                     android:layout_alignParentBottom="true"
-                    android:textColor="@color/black_text"
+                    android:textColor="@color/text_primary"
                     android:text="@string/total"
                     android:textSize="@dimen/text_size" />
 
@@ -103,7 +105,7 @@
                     android:layout_marginEnd="@dimen/layout_margin_end"
                     android:layout_alignParentBottom="true"
                     android:textStyle="bold"
-                    android:textColor="@color/black_text"
+                    android:textColor="@color/text_primary"
                     android:text="@{viewModel.totalCaloriesCount}"
                     android:textSize="@dimen/text_size" />
 
@@ -146,7 +148,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:id="@+id/breakfast_title"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_alignBottom="@+id/breakfast"
                                 android:text="@string/breakfast"
                                 android:textSize="@dimen/list_text_size" />
@@ -165,7 +167,7 @@
                                 android:id="@+id/breakfast"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/breakfast_cal"
                                 android:textSize="@dimen/date_text_size" />
 
@@ -224,7 +226,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:id="@+id/morning_snack_title"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:text="@string/morning_snack"
                                 android:layout_alignBottom="@+id/morning_snack"
                                 android:textSize="@dimen/list_text_size" />
@@ -243,7 +245,7 @@
                                 android:id="@+id/morning_snack"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/morning_snack_cal"
                                 android:textSize="@dimen/date_text_size" />
 
@@ -303,7 +305,7 @@
                                 android:layout_height="wrap_content"
                                 android:id="@+id/lunch_title"
                                 android:layout_alignBottom="@+id/lunch"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:text="@string/lunch"
                                 android:textSize="@dimen/list_text_size" />
 
@@ -321,7 +323,7 @@
                                 android:id="@+id/lunch"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/lunch_cal"
                                 android:textSize="@dimen/date_text_size" />
 
@@ -381,7 +383,7 @@
                                 android:layout_height="wrap_content"
                                 android:id="@+id/afternoon_snack_title"
                                 android:layout_alignBottom="@+id/afternoon_snack"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:text="@string/afternoon_snack"
                                 android:textSize="@dimen/list_text_size" />
 
@@ -399,7 +401,7 @@
                                 android:id="@+id/afternoon_snack"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/afternoon_snack_cal"
                                 android:textSize="@dimen/date_text_size" />
 
@@ -459,7 +461,7 @@
                                 android:layout_height="wrap_content"
                                 android:id="@+id/evening_snack_title"
                                 android:layout_alignBottom="@+id/evening_snack"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:text="@string/evening_snack"
                                 android:textSize="@dimen/list_text_size" />
 
@@ -477,7 +479,7 @@
                                 android:id="@+id/evening_snack"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/evening_snack_cal"
                                 android:textSize="@dimen/date_text_size" />
 
@@ -537,7 +539,7 @@
                                 android:layout_height="wrap_content"
                                 android:id="@+id/dinner_title"
                                 android:layout_alignBottom="@+id/dinner"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:text="@string/dinner"
                                 android:textSize="@dimen/list_text_size" />
 
@@ -555,7 +557,7 @@
                                 android:id="@+id/dinner"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textColor="@color/black_text"
+                                android:textColor="@color/text_primary"
                                 android:layout_toStartOf="@+id/dinner_cal"
                                 android:textSize="@dimen/date_text_size" />
 

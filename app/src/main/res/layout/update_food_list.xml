@@ -53,7 +53,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/no_data"
-                        android:textColor="@color/black_text"
+                        android:textColor="@color/text_primary"
                         android:textSize="@dimen/update_food_text_size"
                         android:textStyle="bold" />
 
