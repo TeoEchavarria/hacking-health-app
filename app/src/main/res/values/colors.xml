@@ -22,4 +22,12 @@
     <color name="disabled">#9E9E9E</color>
     <color name="background_card">#FFFFFF</color>
     <color name="divider">#E0E0E0</color>
+    
+    <!-- Minimalist Apple-style colors for Steps card -->
+    <color name="steps_card_background">#E0F2F1</color>
+    <color name="steps_text_primary">#424242</color>
+    <color name="steps_text_secondary">#9E9E9E</color>
+    <color name="steps_accent">#4DB6AC</color>
+    <color name="steps_chart_line">#4DB6AC</color>
+    <color name="steps_chart_grid">#F5F5F5</color>
 </resources>

@@ -15,15 +15,21 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.utils.HealthMetricRegistry
 import com.samsung.android.health.sdk.sample.healthdiary.utils.buildReadRequest
 import com.samsung.android.sdk.health.data.HealthDataStore
+import com.samsung.android.sdk.health.data.data.AggregatedData
 import com.samsung.android.sdk.health.data.data.DataPoint
 import com.samsung.android.sdk.health.data.data.Field
 import com.samsung.android.sdk.health.data.data.HealthDataPoint
 import com.samsung.android.sdk.health.data.data.UserDataPoint
 import com.samsung.android.sdk.health.data.permission.AccessType
 import com.samsung.android.sdk.health.data.permission.Permission
+import com.samsung.android.sdk.health.data.request.DataType
 import com.samsung.android.sdk.health.data.request.DataTypes
+import com.samsung.android.sdk.health.data.request.LocalTimeFilter
+import com.samsung.android.sdk.health.data.request.LocalTimeGroup
+import com.samsung.android.sdk.health.data.request.LocalTimeGroupUnit
 import com.samsung.android.sdk.health.data.request.Ordering
 import com.samsung.android.sdk.health.data.request.ReadDataRequest
+import com.samsung.android.sdk.health.data.response.DataResponse
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,8 +60,12 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
     )
     val metricCards: StateFlow<List<HealthMetricCardUiState>> = _metricCards
 
+    private val _todayStepsTotal = MutableStateFlow("0")
+    val todayStepsTotal: StateFlow<String> = _todayStepsTotal
+
     init {
         refreshMetricCards()
+        getTodayStepsTotal()
     }
 
     fun checkForPermission(
@@ -192,6 +202,39 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
                 HealthMetricCardUiState(definition, value, false)
             }
             _metricCards.emit(updatedCards)
+        }
+        getTodayStepsTotal()
+    }
+
+    fun getTodayStepsTotal() {
+        viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {
+            try {
+                val today = LocalDateTime.now()
+                val startOfDay = today.withHour(0).withMinute(0).withSecond(0).withNano(0)
+                val endOfDay = startOfDay.plusDays(1)
+
+                val localtimeFilter = LocalTimeFilter.of(startOfDay, endOfDay)
+                val localTimeGroup = LocalTimeGroup.of(LocalTimeGroupUnit.HOURLY, 1)
+                val aggregateRequest = DataType.StepsType.TOTAL.requestBuilder
+                    .setLocalTimeFilterWithGroup(localtimeFilter, localTimeGroup)
+                    .setOrdering(Ordering.ASC)
+                    .build()
+
+                val result = healthDataStore.aggregateData(aggregateRequest)
+                var totalSteps: Long = 0
+
+                result.dataList.forEach { stepData ->
+                    val hourlySteps = stepData.value as Long
+                    totalSteps += hourlySteps
+                }
+
+                // Format number with thousands separator
+                val formattedTotal = String.format("%,d", totalSteps)
+                _todayStepsTotal.emit(formattedTotal)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error obteniendo pasos del día actual", e)
+                _todayStepsTotal.emit("0")
+            }
         }
     }
 

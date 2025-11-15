@@ -108,10 +108,11 @@
                 android:layout_margin="@dimen/layout_margin"
                 android:orientation="vertical">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/steps_list"
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/steps_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="@dimen/steps_chart_height"
+                    android:layout_margin="@dimen/steps_chart_padding" />
 
             </LinearLayout>
         </LinearLayout>

@@ -38,5 +38,14 @@
     <dimen name="separator_margin_top">1dp</dimen>
     <dimen name="update_food_text_size">20sp</dimen>
     <dimen name="layout_margin_small">8dp</dimen>
+    
+    <!-- Minimalist Apple-style dimensions for Steps card -->
+    <dimen name="steps_card_padding">24dp</dimen>
+    <dimen name="steps_value_text_size">48sp</dimen>
+    <dimen name="steps_title_text_size">14sp</dimen>
+    <dimen name="steps_card_corner_radius">16dp</dimen>
+    <dimen name="steps_card_elevation">2dp</dimen>
+    <dimen name="steps_chart_height">350dp</dimen>
+    <dimen name="steps_chart_padding">20dp</dimen>
 
 </resources>

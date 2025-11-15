@@ -68,6 +68,7 @@ class HealthMainActivity : AppCompatActivity(),
 
         collectResponse()
         observeMetricCards()
+        observeTodaySteps()
     }
 
     override fun onResume() {
@@ -172,6 +173,16 @@ class HealthMainActivity : AppCompatActivity(),
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 healthMainViewModel.metricCards.collect { cards ->
                     updateMetricCards(cards)
+                }
+            }
+        }
+    }
+
+    private fun observeTodaySteps() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                healthMainViewModel.todayStepsTotal.collect { totalSteps ->
+                    binding.stepsValue.text = totalSteps
                 }
             }
         }
