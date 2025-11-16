@@ -135,3 +135,5 @@ class BodyTemperatureActivity : BaseHealthDataActivity<BodyTemperatureViewModel>
     override val iconRes: Int = R.drawable.ic_health_metric
 }
 
+
+
