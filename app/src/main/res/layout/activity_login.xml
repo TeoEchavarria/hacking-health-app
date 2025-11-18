@@ -80,6 +80,8 @@
                 app:boxStrokeWidth="2dp"
                 app:hintTextColor="@android:color/black"
                 app:boxStrokeColor="@android:color/black"
+                app:endIconMode="password_toggle"
+                app:endIconTint="@android:color/black"
                 android:layout_marginBottom="8dp"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -94,7 +96,7 @@
                     android:imeOptions="actionDone"
                     android:minHeight="56dp"
                     android:paddingStart="16dp"
-                    android:paddingEnd="16dp" />
+                    android:paddingEnd="0dp" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Login Error -->

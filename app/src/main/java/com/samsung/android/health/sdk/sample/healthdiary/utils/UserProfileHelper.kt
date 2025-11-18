@@ -84,7 +84,7 @@ object UserProfileHelper {
     }
     
     private fun formatGender(genderCode: Int): String {
-        // Códigos típicos: 0 = Unknown, 1 = Male, 2 = Female
+        // Typical codes: 0 = Unknown, 1 = Male, 2 = Female
         return when (genderCode) {
             1 -> "male"
             2 -> "female"

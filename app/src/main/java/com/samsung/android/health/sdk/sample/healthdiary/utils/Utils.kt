@@ -27,18 +27,18 @@ fun showToast(context: Context, message: String) {
 }
 
 /**
- * Muestra un toast con información de error formateada
+ * Shows a toast with formatted error information
  */
 fun showErrorToast(context: Context, exception: Throwable) {
     val errorMessage = getErrorMessage(exception)
-    // Limitar longitud del mensaje para que quepa en el toast
+    // Limit message length to fit in the toast
     val displayMessage = if (errorMessage.length > 100) {
         errorMessage.substring(0, 97) + "..."
     } else {
         errorMessage
     }
     Toast.makeText(context, displayMessage, Toast.LENGTH_LONG).show()
-    Log.e("[HTK]Utils", "Error mostrado al usuario: ${formatError(exception, includeStackTrace = true)}")
+    Log.e("[HTK]Utils", "Error shown to user: ${formatError(exception, includeStackTrace = true)}")
 }
 
 fun showDatePickerDialogueBox(
@@ -76,37 +76,37 @@ fun showDatePickerDialogueBox(
 }
 
 /**
- * Formatea un error con información completa para mostrar al usuario y logging
- * @param exception La excepción a formatear
- * @param includeStackTrace Si true, incluye el stack trace (útil para debugging)
- * @return String formateado con información del error
+ * Formats an error with complete information for user display and logging
+ * @param exception The exception to format
+ * @param includeStackTrace If true, includes the stack trace (useful for debugging)
+ * @return Formatted string with error information
  */
 fun formatError(exception: Throwable, includeStackTrace: Boolean = false): String {
     val errorInfo = StringBuilder()
     
-    // Tipo de excepción
+    // Exception type
     errorInfo.append("Error: ${exception.javaClass.simpleName}\n")
     
-    // Mensaje del error
-    val message = exception.message ?: "Sin mensaje de error"
-    errorInfo.append("Mensaje: $message\n")
+    // Error message
+    val message = exception.message ?: "No error message"
+    errorInfo.append("Message: $message\n")
     
-    // Código de error si es ResolvablePlatformException
+    // Error code if it's ResolvablePlatformException
     if (exception is ResolvablePlatformException) {
         try {
             val errorCode = exception.errorCode
-            errorInfo.append("Código: $errorCode\n")
+            errorInfo.append("Code: $errorCode\n")
         } catch (e: Exception) {
-            // Error code no disponible
+            // Error code not available
         }
     }
     
-    // Causa del error
+    // Error cause
     exception.cause?.let { cause ->
-        errorInfo.append("Causa: ${cause.javaClass.simpleName}: ${cause.message}\n")
+        errorInfo.append("Cause: ${cause.javaClass.simpleName}: ${cause.message}\n")
     }
     
-    // Stack trace si se solicita
+    // Stack trace if requested
     if (includeStackTrace) {
         val sw = StringWriter()
         val pw = PrintWriter(sw)
@@ -118,28 +118,28 @@ fun formatError(exception: Throwable, includeStackTrace: Boolean = false): Strin
 }
 
 /**
- * Obtiene un mensaje de error simplificado para mostrar al usuario
- * @param exception La excepción
- * @return String con mensaje simplificado pero informativo
+ * Gets a simplified error message to show to the user
+ * @param exception The exception
+ * @return String with simplified but informative message
  */
 fun getErrorMessage(exception: Throwable): String {
-    val message = exception.message ?: "Error desconocido"
+    val message = exception.message ?: "Unknown error"
     
-    // Si es ResolvablePlatformException, intentar obtener código de error
+    // If it's ResolvablePlatformException, try to get error code
     if (exception is ResolvablePlatformException) {
         try {
             val errorCode = exception.errorCode
-            return "$message (Código: $errorCode)"
+            return "$message (Code: $errorCode)"
         } catch (e: Exception) {
-            // Continuar con mensaje normal
+            // Continue with normal message
         }
     }
     
-    // Si tiene causa, incluirla
+    // If it has a cause, include it
     exception.cause?.let { cause ->
         val causeMessage = cause.message
         if (causeMessage != null && causeMessage != message) {
-            return "$message\nCausa: $causeMessage"
+            return "$message\nCause: $causeMessage"
         }
     }
     
@@ -147,14 +147,14 @@ fun getErrorMessage(exception: Throwable): String {
 }
 
 fun resolveException(exception: Throwable, activity: Activity) {
-    // Log detallado del error antes de intentar resolverlo
-    Log.e("[HTK]Utils", "Resolviendo excepción: ${formatError(exception, includeStackTrace = true)}")
+    // Detailed error log before attempting to resolve it
+    Log.e("[HTK]Utils", "Resolving exception: ${formatError(exception, includeStackTrace = true)}")
     
     if ((exception is ResolvablePlatformException) && exception.hasResolution) {
-        Log.i("[HTK]Utils", "Excepción tiene resolución disponible, intentando resolver...")
+        Log.i("[HTK]Utils", "Exception has resolution available, attempting to resolve...")
         exception.resolve(activity)
     } else {
-        Log.w("[HTK]Utils", "Excepción no tiene resolución disponible o no es ResolvablePlatformException")
+        Log.w("[HTK]Utils", "Exception does not have resolution available or is not ResolvablePlatformException")
     }
 }
 

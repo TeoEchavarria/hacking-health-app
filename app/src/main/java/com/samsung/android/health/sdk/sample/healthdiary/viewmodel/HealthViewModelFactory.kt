@@ -24,15 +24,15 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
     
     private fun getHealthDataStore(): HealthDataStore {
         return try {
-            Log.d(TAG, "Inicializando HealthDataStore...")
+            Log.d(TAG, "Initializing HealthDataStore...")
             val store = HealthDataService.getStore(context)
-            Log.i(TAG, "HealthDataStore inicializado correctamente")
+            Log.i(TAG, "HealthDataStore initialized successfully")
             store
         } catch (e: Exception) {
-            Log.e(TAG, "Error al inicializar HealthDataStore: ${e.message}", e)
+            Log.e(TAG, "Error initializing HealthDataStore: ${e.message}", e)
             Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
-            throw RuntimeException("Error al inicializar Samsung Health SDK: ${e.message}. " +
-                    "Asegúrate de que Samsung Health esté instalada y actualizada.", e)
+            throw RuntimeException("Error initializing Samsung Health SDK: ${e.message}. " +
+                    "Make sure Samsung Health is installed and updated.", e)
         }
     }
     
@@ -188,7 +188,7 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     } catch (e: Exception) {
-        Log.e(TAG, "Error al crear ViewModel ${modelClass.simpleName}: ${e.message}", e)
+        Log.e(TAG, "Error creating ViewModel ${modelClass.simpleName}: ${e.message}", e)
         throw e
     } as T
 }

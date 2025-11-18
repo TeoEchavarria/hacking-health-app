@@ -185,9 +185,9 @@ class UserProfileActivity : BaseHealthDataActivity<UserProfileViewModel>() {
                             authViewModel.resetState()
                         }
                         is AuthViewModel.AuthState.Error -> {
-                            // Mostrar error solo si no es un error silencioso
+                            // Show error only if it's not a silent error
                             if (!state.message.contains("Network", ignoreCase = true)) {
-                                // No mostrar error para evitar spam, el usuario puede intentar manualmente
+                                // Don't show error to avoid spam, user can try manually
                             }
                             authViewModel.resetState()
                         }
@@ -220,7 +220,7 @@ class UserProfileActivity : BaseHealthDataActivity<UserProfileViewModel>() {
                     }
                 }
             } catch (e: Exception) {
-                // Silenciar errores de lectura, el usuario puede hacer login manualmente
+                // Silence read errors, user can login manually
             }
         }
     }
