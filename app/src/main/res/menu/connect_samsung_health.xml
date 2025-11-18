@@ -8,4 +8,10 @@
         android:layout_height="wrap_content"
         app:showAsAction="never"
         android:title="@string/connect_to_samsung_health"/>
+    <item
+        android:id="@+id/sync"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:showAsAction="never"
+        android:title="@string/sync_data"/>
 </menu>

@@ -20,11 +20,13 @@ import com.samsung.android.health.sdk.sample.healthdiary.databinding.HealthMainB
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.ItemHealthMetricCardBinding
 import com.samsung.android.health.sdk.sample.healthdiary.entries.HealthMetricCardUiState
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.resolveException
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthMainViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.SyncViewModel
 import com.samsung.android.sdk.health.data.helper.SdkVersion
 import com.samsung.android.sdk.health.data.permission.AccessType
 import com.samsung.android.sdk.health.data.permission.Permission
@@ -35,14 +37,26 @@ class HealthMainActivity : AppCompatActivity(),
     View.OnClickListener {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
+    private lateinit var syncViewModel: SyncViewModel
     private lateinit var binding: HealthMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        healthMainViewModel = ViewModelProvider(
-            this, HealthViewModelFactory(this)
-        )[HealthMainViewModel::class.java]
+        // Verificar autenticación antes de continuar
+        TokenManager.initialize(this)
+        if (!TokenManager.hasToken()) {
+            // No hay token, navegar a LoginActivity
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+            return
+        }
+
+        val factory = HealthViewModelFactory(this)
+        healthMainViewModel = ViewModelProvider(this, factory)[HealthMainViewModel::class.java]
+        syncViewModel = ViewModelProvider(this, factory)[SyncViewModel::class.java]
 
         /**  Initialize OnClickListener on Heart Rate, Sleep, Nutrition and Step buttons and set sdk version */
         binding = DataBindingUtil
@@ -70,6 +84,7 @@ class HealthMainActivity : AppCompatActivity(),
         observeMetricCards()
         observeTodaySteps()
         observeTodaySleep()
+        observeSyncState()
     }
 
     override fun onResume() {
@@ -87,6 +102,11 @@ class HealthMainActivity : AppCompatActivity(),
             R.id.permission -> {
                 showToast(this, "Conectando con Samsung Health...\nSolicitando permisos de acceso a datos de salud")
                 healthMainViewModel.connectToSamsungHealth(this)
+                true
+            }
+            
+            R.id.sync -> {
+                showSyncDialog()
                 true
             }
 
@@ -254,6 +274,60 @@ class HealthMainActivity : AppCompatActivity(),
         }
         if (intent != null) {
             startActivity(intent)
+        }
+    }
+    
+    private fun showSyncDialog() {
+        val options = arrayOf(
+            getString(R.string.sync_all),
+            getString(R.string.sync_health),
+            getString(R.string.sync_food)
+        )
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.sync_data))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> syncViewModel.syncAll()
+                    1 -> syncViewModel.syncHealth()
+                    2 -> syncViewModel.syncFood()
+                }
+            }
+            .setNegativeButton(getString(R.string.ok), null)
+            .show()
+    }
+    
+    private fun observeSyncState() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                syncViewModel.syncState.collect { state ->
+                    when (state) {
+                        is SyncViewModel.SyncState.Idle -> {
+                            // Do nothing
+                        }
+                        is SyncViewModel.SyncState.Loading -> {
+                            showToast(this@HealthMainActivity, getString(R.string.sync_in_progress))
+                        }
+                        is SyncViewModel.SyncState.Success -> {
+                            val response = state.response
+                            val message = buildString {
+                                append(getString(R.string.sync_success))
+                                append("\n")
+                                append(getString(R.string.sync_items_health, response.syncedItems.health))
+                                append("\n")
+                                append(getString(R.string.sync_items_food, response.syncedItems.food))
+                            }
+                            showToast(this@HealthMainActivity, message)
+                            syncViewModel.resetState()
+                        }
+                        is SyncViewModel.SyncState.Error -> {
+                            val errorMsg = state.message
+                            showToast(this@HealthMainActivity, "${getString(R.string.sync_error)}: $errorMsg")
+                            syncViewModel.resetState()
+                        }
+                    }
+                }
+            }
         }
     }
 }

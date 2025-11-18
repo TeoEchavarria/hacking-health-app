@@ -1,0 +1,191 @@
+package com.samsung.android.health.sdk.sample.healthdiary.api
+
+import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
+import com.google.gson.JsonParser
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import okio.Buffer
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+
+object RetrofitClient {
+    private var tokenManager: TokenManager? = null
+    
+    fun setTokenManager(manager: TokenManager) {
+        tokenManager = manager
+    }
+    
+    private val gson: Gson = GsonBuilder()
+        .setLenient()
+        .create()
+    
+    private val authInterceptor = Interceptor { chain ->
+        val originalRequest = chain.request()
+        val token = tokenManager?.getToken()
+        
+        val newRequest = if (token != null) {
+            originalRequest.newBuilder()
+                .header(ApiConstants.HEADER_AUTHORIZATION, "${ApiConstants.BEARER_PREFIX}$token")
+                .header(ApiConstants.HEADER_CONTENT_TYPE, ApiConstants.CONTENT_TYPE_JSON)
+                .build()
+        } else {
+            originalRequest.newBuilder()
+                .header(ApiConstants.HEADER_CONTENT_TYPE, ApiConstants.CONTENT_TYPE_JSON)
+                .build()
+        }
+        
+        chain.proceed(newRequest)
+    }
+    
+    private val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
+        private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
+        
+        override fun log(message: String) {
+            val timestamp = dateFormat.format(Date())
+            Log.d("API_REQUEST", "[$timestamp] $message")
+        }
+    }).apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+    
+    private val customLoggingInterceptor = Interceptor { chain ->
+        val request = chain.request()
+        val requestStartTime = System.currentTimeMillis()
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+        
+        // Log request details
+        Log.i("API_REQUEST", "═══════════════════════════════════════════════════════════")
+        Log.i("API_REQUEST", "[$timestamp] ${request.method} ${request.url}")
+        Log.i("API_REQUEST", "Request Headers:")
+        request.headers.forEach { header ->
+            val headerValue = if (header.first.equals("Authorization", ignoreCase = true)) {
+                // Ocultar parte del token por seguridad
+                val token = header.second
+                if (token.startsWith("Bearer ")) {
+                    val tokenValue = token.substring(7)
+                    if (tokenValue.length > 10) {
+                        "Bearer ${tokenValue.take(6)}...${tokenValue.takeLast(4)}"
+                    } else {
+                        "Bearer ***"
+                    }
+                } else {
+                    header.second
+                }
+            } else {
+                header.second
+            }
+            Log.i("API_REQUEST", "  ${header.first}: $headerValue")
+        }
+        
+        // Log request body if present
+        val requestBody = request.body
+        if (requestBody != null) {
+            try {
+                val buffer = Buffer()
+                requestBody.writeTo(buffer)
+                val bodyString = buffer.readUtf8()
+                if (bodyString.isNotEmpty()) {
+                    Log.i("API_REQUEST", "Request Body:")
+                    // Intentar formatear JSON
+                    try {
+                        val jsonElement: JsonElement = JsonParser.parseString(bodyString)
+                        val formattedJson = GsonBuilder().setPrettyPrinting().create().toJson(jsonElement)
+                        formattedJson.lines().forEach { line ->
+                            Log.i("API_REQUEST", "  $line")
+                        }
+                    } catch (e: Exception) {
+                        Log.i("API_REQUEST", "  $bodyString")
+                    }
+                }
+            } catch (e: IOException) {
+                Log.e("API_REQUEST", "Error reading request body: ${e.message}")
+            }
+        }
+        
+        // Execute request
+        val response = try {
+            chain.proceed(request)
+        } catch (e: Exception) {
+            val requestTime = System.currentTimeMillis() - requestStartTime
+            Log.e("API_ERROR", "═══════════════════════════════════════════════════════════")
+            Log.e("API_ERROR", "[$timestamp] Request failed after ${requestTime}ms")
+            Log.e("API_ERROR", "Error: ${e.message}")
+            Log.e("API_ERROR", "Stack trace: ${e.stackTraceToString()}")
+            Log.e("API_ERROR", "═══════════════════════════════════════════════════════════")
+            throw e
+        }
+        
+        val requestTime = System.currentTimeMillis() - requestStartTime
+        val responseTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+        
+        // Log response details
+        Log.i("API_RESPONSE", "═══════════════════════════════════════════════════════════")
+        Log.i("API_RESPONSE", "[$responseTimestamp] Response for ${request.method} ${request.url}")
+        Log.i("API_RESPONSE", "Status Code: ${response.code} ${response.message}")
+        Log.i("API_RESPONSE", "Response Time: ${requestTime}ms")
+        Log.i("API_RESPONSE", "Response Headers:")
+        response.headers.forEach { header ->
+            Log.i("API_RESPONSE", "  ${header.first}: ${header.second}")
+        }
+        
+        // Log response body
+        val responseBody = response.peekBody(1024 * 1024) // Peek up to 1MB
+        val responseBodyString = responseBody.string()
+        if (responseBodyString.isNotEmpty()) {
+            Log.i("API_RESPONSE", "Response Body:")
+            try {
+                val jsonElement: JsonElement = JsonParser.parseString(responseBodyString)
+                val formattedJson = GsonBuilder().setPrettyPrinting().create().toJson(jsonElement)
+                formattedJson.lines().forEach { line ->
+                    Log.i("API_RESPONSE", "  $line")
+                }
+            } catch (e: Exception) {
+                // Si no es JSON, mostrar como texto
+                responseBodyString.lines().take(50).forEach { line ->
+                    Log.i("API_RESPONSE", "  $line")
+                }
+                if (responseBodyString.lines().size > 50) {
+                    Log.i("API_RESPONSE", "  ... (truncated)")
+                }
+            }
+        }
+        
+        if (!response.isSuccessful) {
+            Log.e("API_ERROR", "Request failed with status ${response.code}")
+            Log.e("API_ERROR", "Error response: $responseBodyString")
+        }
+        
+        Log.i("API_RESPONSE", "═══════════════════════════════════════════════════════════")
+        
+        response
+    }
+    
+    private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(authInterceptor)
+        .addInterceptor(customLoggingInterceptor)
+        .addInterceptor(loggingInterceptor)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+    
+    private val retrofit = Retrofit.Builder()
+        .baseUrl(ApiConstants.BASE_URL)
+        .client(okHttpClient)
+        .addConverterFactory(GsonConverterFactory.create(gson))
+        .build()
+    
+    val syncApiService: SyncApiService = retrofit.create(SyncApiService::class.java)
+    val authApiService: AuthApiService = retrofit.create(AuthApiService::class.java)
+}
+

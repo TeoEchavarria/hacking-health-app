@@ -94,5 +94,34 @@
     <string name="additional_metrics">More Health Metrics</string>
     <string name="loading_value">Loading...</string>
     <string name="data_source_label">Source: %1$s</string>
+    
+    <string name="sync_data">Sincronizar Datos</string>
+    <string name="sync_all">Sincronizar Todo</string>
+    <string name="sync_health">Sincronizar Salud</string>
+    <string name="sync_food">Sincronizar Comida</string>
+    <string name="sync_in_progress">Sincronizando...</string>
+    <string name="sync_success">Sincronización exitosa</string>
+    <string name="sync_error">Error en sincronización</string>
+    <string name="sync_no_token">Token de autenticación no disponible</string>
+    <string name="sync_items_health">Elementos de salud: %1$d</string>
+    <string name="sync_items_food">Elementos de comida: %1$d</string>
+    
+    <string name="login_success">Inicio de sesión exitoso.</string>
+    <string name="profile_incomplete">Perfil incompleto. Por favor completa tu perfil en Samsung Health.</string>
+    <string name="auto_logging_in">Iniciando sesión automáticamente...</string>
+    
+    <!-- Login Activity Strings -->
+    <string name="login_title">Autenticación</string>
+    <string name="login_subtitle">Ingresa con tus credenciales</string>
+    <string name="login_username_label">Usuario</string>
+    <string name="login_username_hint">usuario_demo</string>
+    <string name="login_password_label">Contraseña</string>
+    <string name="login_password_hint">Ingresa tu contraseña</string>
+    <string name="login_button">Iniciar Sesión</string>
+    <string name="login_username_required">El usuario es requerido</string>
+    <string name="login_password_required">La contraseña es requerida</string>
+    <string name="login_failed">Error al iniciar sesión</string>
+    <string name="auth_loading">Procesando solicitud...</string>
+    <string name="auth_success_generic">Operación completada</string>
 
 </resources>

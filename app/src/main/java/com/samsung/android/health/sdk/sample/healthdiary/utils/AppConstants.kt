@@ -53,6 +53,7 @@ object AppConstants {
     val minimumDate: LocalDateTime = LocalDateTime.of(1900, 1, 1, 0, 0)
     val currentDate: LocalDateTime = LocalDateTime.now().with(LocalTime.MIDNIGHT)
     val SCOPE_IO_DISPATCHERS = Dispatchers.IO
+    const val AUTO_AUTH_FALLBACK_PASSWORD = "HealthDiary!123"
     const val BUNDLE_KEY_MEAL_TYPE = "MEAL_TYPE"
     const val BUNDLE_KEY_INSERT_DATE = "INSERT_DATE"
     const val BUNDLE_KEY_NUTRITION_DATA = "NUTRITION_DATA"

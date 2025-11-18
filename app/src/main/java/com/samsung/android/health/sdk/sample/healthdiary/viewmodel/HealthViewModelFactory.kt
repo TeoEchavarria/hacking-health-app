@@ -8,6 +8,11 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
+import com.samsung.android.health.sdk.sample.healthdiary.repository.AuthRepository
+import com.samsung.android.health.sdk.sample.healthdiary.repository.SyncRepository
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.AuthViewModel
 import com.samsung.android.sdk.health.data.HealthDataService
 import com.samsung.android.sdk.health.data.HealthDataStore
 
@@ -162,6 +167,22 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
             BodyTemperatureViewModel::class.java -> {
                 Log.d(TAG, "Creando BodyTemperatureViewModel")
                 BodyTemperatureViewModel(getHealthDataStore())
+            }
+
+            SyncViewModel::class.java -> {
+                Log.d(TAG, "Creando SyncViewModel")
+                // Initialize TokenManager and RetrofitClient if not already done
+                TokenManager.initialize(context)
+                RetrofitClient.setTokenManager(TokenManager)
+                SyncViewModel(SyncRepository())
+            }
+
+            AuthViewModel::class.java -> {
+                Log.d(TAG, "Creando AuthViewModel")
+                // Initialize TokenManager and RetrofitClient if not already done
+                TokenManager.initialize(context)
+                RetrofitClient.setTokenManager(TokenManager)
+                AuthViewModel(AuthRepository())
             }
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

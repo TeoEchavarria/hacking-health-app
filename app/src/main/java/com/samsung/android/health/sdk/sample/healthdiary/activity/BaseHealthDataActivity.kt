@@ -101,7 +101,7 @@ abstract class BaseHealthDataActivity<VM : BaseHealthDataViewModel<*>> : AppComp
         })
     }
 
-    private fun observeViewModel() {
+    protected open fun observeViewModel() {
         viewModel.records.observe(this) {
             adapter.submitList(it)
             updateEmptyStateVisibility(it.isEmpty(), null)
