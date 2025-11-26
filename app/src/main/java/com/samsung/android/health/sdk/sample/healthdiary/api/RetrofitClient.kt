@@ -10,6 +10,9 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.Buffer
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
@@ -185,7 +188,22 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
     
+    // Kotlinx Serialization JSON instance for OMH
+    private val omhJson = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        isLenient = true
+    }
+    
+    // Separate Retrofit instance for OMH sync using Kotlinx Serialization
+    private val omhRetrofit = Retrofit.Builder()
+        .baseUrl(ApiConstants.BASE_URL)
+        .client(okHttpClient)
+        .addConverterFactory(omhJson.asConverterFactory("application/json".toMediaType()))
+        .build()
+    
     val syncApiService: SyncApiService = retrofit.create(SyncApiService::class.java)
     val authApiService: AuthApiService = retrofit.create(AuthApiService::class.java)
+    val omhSyncApiService: OmhSyncApiService = omhRetrofit.create(OmhSyncApiService::class.java)
 }
 

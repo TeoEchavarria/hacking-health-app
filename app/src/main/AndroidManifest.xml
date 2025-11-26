@@ -85,6 +85,15 @@
             android:screenOrientation="portrait" />
         <activity android:name=".activity.BodyTemperatureActivity"
             android:screenOrientation="portrait" />
+
+        <service
+            android:name=".wearable.WearableReceiverService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/sensor_batch" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

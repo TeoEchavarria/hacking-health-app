@@ -3,6 +3,7 @@ plugins {
     id 'kotlin-android'
     id 'kotlin-kapt'
     id 'kotlin-parcelize'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -83,6 +84,21 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
     
+    // Kotlinx Serialization for OMH
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0'
+    implementation 'com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0'
+    
     // Security for token storage
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    
+    // Wearable Data Layer
+    implementation 'com.google.android.gms:play-services-wearable:18.1.0'
+    
+    // Room Database
+    implementation "androidx.room:room-runtime:2.6.1"
+    implementation "androidx.room:room-ktx:2.6.1"
+    kapt "androidx.room:room-compiler:2.6.1"
+    
+    // WorkManager
+    implementation "androidx.work:work-runtime-ktx:2.9.0"
 }
