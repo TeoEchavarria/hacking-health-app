@@ -4,14 +4,197 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.dao.*
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
 
-@Database(entities = [SensorDataEntity::class], version = 1)
+/**
+ * Main Room database for the Health Diary application
+ * Version 2: Added SensorBatch, UploadLog, MedicalDocument, TxAgentQuery, TxAgentResponse
+ */
+@Database(
+    entities = [
+        SensorDataEntity::class,
+        SensorBatchEntity::class,
+        UploadLogEntity::class,
+        MedicalDocumentEntity::class,
+        TxAgentQueryEntity::class,
+        TxAgentResponseEntity::class
+    ],
+    version = 2,
+    exportSchema = true
+)
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    
+    // DAOs
     abstract fun sensorDataDao(): SensorDataDao
+    abstract fun sensorBatchDao(): SensorBatchDao
+    abstract fun uploadLogDao(): UploadLogDao
+    abstract fun medicalDocumentDao(): MedicalDocumentDao
+    abstract fun txAgentQueryDao(): TxAgentQueryDao
+    abstract fun txAgentResponseDao(): TxAgentResponseDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        /**
+         * Migration from version 1 to version 2
+         * Adds new tables for comprehensive data management
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create sensor_batches table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS sensor_batches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        sensorType TEXT NOT NULL,
+                        dataJson TEXT NOT NULL,
+                        sampleCount INTEGER NOT NULL,
+                        uploaded INTEGER NOT NULL DEFAULT 0,
+                        uploadedAt INTEGER,
+                        receivedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Create upload_logs table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS upload_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        entityType TEXT NOT NULL,
+                        entityId INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        endpoint TEXT NOT NULL,
+                        responseCode INTEGER,
+                        errorMessage TEXT,
+                        dataSizeBytes INTEGER,
+                        durationMs INTEGER
+                    )
+                """.trimIndent())
+                
+                // Create indices for upload_logs
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_upload_logs_entityType_entityId 
+                    ON upload_logs(entityType, entityId)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_upload_logs_status 
+                    ON upload_logs(status)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_upload_logs_timestamp 
+                    ON upload_logs(timestamp)
+                """.trimIndent())
+                
+                // Create medical_documents table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS medical_documents (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        filename TEXT NOT NULL,
+                        filePath TEXT NOT NULL,
+                        uploadTimestamp INTEGER NOT NULL,
+                        fileSize INTEGER NOT NULL,
+                        mimeType TEXT NOT NULL,
+                        description TEXT,
+                        processed INTEGER NOT NULL DEFAULT 0,
+                        processedAt INTEGER,
+                        fileHash TEXT,
+                        pageCount INTEGER,
+                        tags TEXT
+                    )
+                """.trimIndent())
+                
+                // Create indices for medical_documents
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_medical_documents_filename 
+                    ON medical_documents(filename)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_medical_documents_uploadTimestamp 
+                    ON medical_documents(uploadTimestamp)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_medical_documents_processed 
+                    ON medical_documents(processed)
+                """.trimIndent())
+                
+                // Create txagent_queries table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS txagent_queries (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        queryText TEXT NOT NULL,
+                        documentId INTEGER,
+                        queryType TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        sentAt INTEGER,
+                        completedAt INTEGER,
+                        errorMessage TEXT,
+                        userId TEXT,
+                        FOREIGN KEY(documentId) REFERENCES medical_documents(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                
+                // Create indices for txagent_queries
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_txagent_queries_documentId 
+                    ON txagent_queries(documentId)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_txagent_queries_status 
+                    ON txagent_queries(status)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_txagent_queries_queryType 
+                    ON txagent_queries(queryType)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_txagent_queries_timestamp 
+                    ON txagent_queries(timestamp)
+                """.trimIndent())
+                
+                // Create txagent_responses table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS txagent_responses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        queryId INTEGER NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        responseText TEXT NOT NULL,
+                        metadata TEXT,
+                        confidence REAL,
+                        sources TEXT,
+                        userRating INTEGER,
+                        userFeedback TEXT,
+                        processingTimeMs INTEGER,
+                        modelVersion TEXT,
+                        FOREIGN KEY(queryId) REFERENCES txagent_queries(id) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                
+                // Create indices for txagent_responses
+                database.execSQL("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS index_txagent_responses_queryId 
+                    ON txagent_responses(queryId)
+                """.trimIndent())
+                
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_txagent_responses_timestamp 
+                    ON txagent_responses(timestamp)
+                """.trimIndent())
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -19,10 +202,20 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "health_diary_database"
-                ).build()
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration() // Only for development
+                    .build()
                 INSTANCE = instance
                 instance
             }
+        }
+        
+        /**
+         * Clear the database instance (useful for testing)
+         */
+        fun clearInstance() {
+            INSTANCE = null
         }
     }
 }

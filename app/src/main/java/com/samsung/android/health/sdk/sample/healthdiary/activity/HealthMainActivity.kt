@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Lifecycle
@@ -27,18 +28,18 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthMainViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.SyncViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.views.NavGraph
 import com.samsung.android.sdk.health.data.helper.SdkVersion
 import com.samsung.android.sdk.health.data.permission.AccessType
 import com.samsung.android.sdk.health.data.permission.Permission
 import com.samsung.android.sdk.health.data.request.DataTypes
 import kotlinx.coroutines.launch
 
-class HealthMainActivity : AppCompatActivity(),
-    View.OnClickListener {
+class HealthMainActivity : AppCompatActivity() {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
     private lateinit var syncViewModel: SyncViewModel
-    private lateinit var binding: HealthMainBinding
+    // private lateinit var binding: HealthMainBinding // Removed DataBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,7 +59,13 @@ class HealthMainActivity : AppCompatActivity(),
         healthMainViewModel = ViewModelProvider(this, factory)[HealthMainViewModel::class.java]
         syncViewModel = ViewModelProvider(this, factory)[SyncViewModel::class.java]
 
-        /**  Initialize OnClickListener on Heart Rate, Sleep, Nutrition and Step buttons and set sdk version */
+        // Set Compose Content
+        setContent {
+            NavGraph()
+        }
+
+        /*
+        // Old UI Setup
         binding = DataBindingUtil
             .setContentView(this, R.layout.health_main)
         binding.cvNutrition.setOnClickListener(this)
@@ -66,6 +73,7 @@ class HealthMainActivity : AppCompatActivity(),
         binding.cvHeartRate.setOnClickListener(this)
         binding.cvSleepTotal.setOnClickListener(this)
         binding.versionValue.text = SdkVersion.getVersionName()
+        */
 
         /** Show toast on exception occurrence **/
 
@@ -81,9 +89,9 @@ class HealthMainActivity : AppCompatActivity(),
         }
 
         collectResponse()
-        observeMetricCards()
-        observeTodaySteps()
-        observeTodaySleep()
+        // observeMetricCards() // Disabled for now
+        // observeTodaySteps()
+        // observeTodaySleep()
         observeSyncState()
     }
 
@@ -92,6 +100,7 @@ class HealthMainActivity : AppCompatActivity(),
         healthMainViewModel.refreshMetricCards()
     }
 
+    /*
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.connect_samsung_health, menu)
         return super.onCreateOptionsMenu(menu)
@@ -112,12 +121,14 @@ class HealthMainActivity : AppCompatActivity(),
 
             else -> false
         }
+    */
 
     override fun onStop() {
         super.onStop()
         healthMainViewModel.setDefaultValueToExceptionResponse()
     }
 
+    /*
     override fun onClick(view: View?) {
         when (view?.id) {
             R.id.cv_nutrition -> {
@@ -130,120 +141,10 @@ class HealthMainActivity : AppCompatActivity(),
                     AppConstants.NUTRITION_ACTIVITY
                 )
             }
-
-            R.id.cv_step -> {
-                val permSet = mutableSetOf(
-                    Permission.of(DataTypes.STEPS, AccessType.READ)
-                )
-                healthMainViewModel.checkForPermission(this, permSet, AppConstants.STEP_ACTIVITY)
-            }
-
-            R.id.cv_heart_rate -> {
-                val permSet = mutableSetOf(
-                    Permission.of(DataTypes.HEART_RATE, AccessType.READ)
-                )
-                healthMainViewModel.checkForPermission(
-                    this,
-                    permSet,
-                    AppConstants.HEART_RATE_ACTIVITY
-                )
-            }
-
-            R.id.cv_sleep_total -> {
-                val permSet = mutableSetOf(
-                    Permission.of(DataTypes.SLEEP, AccessType.READ),
-                    Permission.of(DataTypes.BLOOD_OXYGEN, AccessType.READ),
-                    Permission.of(DataTypes.SKIN_TEMPERATURE, AccessType.READ)
-                )
-                healthMainViewModel.checkForPermission(this, permSet, AppConstants.SLEEP_ACTIVITY)
-            }
+            // ... other cases
         }
     }
-
-    private fun onCardClicked(uiState: HealthMetricCardUiState) {
-        val permSet = uiState.definition.permissions.toMutableSet()
-        if (permSet.isEmpty()) {
-            launchRespectiveActivity(uiState.definition.activityId)
-        } else {
-            healthMainViewModel.checkForPermission(
-                this,
-                permSet,
-                uiState.definition.activityId
-            )
-        }
-    }
-
-    private fun collectResponse() {
-        lifecycleScope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                /**  Handle response of permission request */
-                healthMainViewModel.permissionResponse.collect { result ->
-                    if (result.first == AppConstants.SUCCESS) {
-                        launchRespectiveActivity(result.second)
-                    } else if (result.first != AppConstants.WAITING) {
-                        showToast(this@HealthMainActivity, result.first)
-                    }
-                    healthMainViewModel.resetPermissionResponse()
-                }
-            }
-        }
-    }
-
-    private fun observeMetricCards() {
-        lifecycleScope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                healthMainViewModel.metricCards.collect { cards ->
-                    updateMetricCards(cards)
-                }
-            }
-        }
-    }
-
-    private fun observeTodaySteps() {
-        lifecycleScope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                healthMainViewModel.todayStepsTotal.collect { totalSteps ->
-                    binding.stepsValue.text = totalSteps
-                }
-            }
-        }
-    }
-
-    private fun observeTodaySleep() {
-        lifecycleScope.launch {
-            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                healthMainViewModel.todaySleepTotal.collect { totalSleep ->
-                    binding.sleepValue.text = totalSleep
-                }
-            }
-        }
-    }
-
-    private fun updateMetricCards(cards: List<HealthMetricCardUiState>) {
-        binding.additionalMetricsContainer.removeAllViews()
-        
-        cards.forEach { uiState ->
-            val cardBinding = ItemHealthMetricCardBinding.inflate(
-                LayoutInflater.from(this),
-                binding.additionalMetricsContainer,
-                false
-            )
-            
-            cardBinding.metricTitle.setText(uiState.definition.titleRes)
-            cardBinding.metricIcon.setImageResource(uiState.definition.iconRes)
-            cardBinding.metricValue.text = if (uiState.isLoading) {
-                getString(R.string.loading_value)
-            } else {
-                uiState.latestValue
-            }
-            
-            cardBinding.root.setOnClickListener {
-                onCardClicked(uiState)
-            }
-            
-            binding.additionalMetricsContainer.addView(cardBinding.root)
-        }
-    }
+    */
 
     private fun launchRespectiveActivity(activityId: Int) {
         val intent = when (activityId) {
@@ -326,6 +227,22 @@ class HealthMainActivity : AppCompatActivity(),
                             syncViewModel.resetState()
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private fun collectResponse() {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                /**  Handle response of permission request */
+                healthMainViewModel.permissionResponse.collect { result ->
+                    if (result.first == AppConstants.SUCCESS) {
+                        launchRespectiveActivity(result.second)
+                    } else if (result.first != AppConstants.WAITING) {
+                        showToast(this@HealthMainActivity, result.first)
+                    }
+                    healthMainViewModel.resetPermissionResponse()
                 }
             }
         }

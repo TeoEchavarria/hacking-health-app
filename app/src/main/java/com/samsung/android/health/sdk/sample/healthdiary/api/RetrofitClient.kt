@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
 
 object RetrofitClient {
     private var tokenManager: TokenManager? = null
@@ -69,6 +70,8 @@ object RetrofitClient {
         // Log request details
         Log.i("API_REQUEST", "═══════════════════════════════════════════════════════════")
         Log.i("API_REQUEST", "[$timestamp] ${request.method} ${request.url}")
+        TelemetryLogger.log("API", "Request", "${request.method} ${request.url}")
+        
         Log.i("API_REQUEST", "Request Headers:")
         request.headers.forEach { header ->
             val headerValue = if (header.first.equals("Authorization", ignoreCase = true)) {
@@ -125,6 +128,7 @@ object RetrofitClient {
             Log.e("API_ERROR", "Error: ${e.message}")
             Log.e("API_ERROR", "Stack trace: ${e.stackTraceToString()}")
             Log.e("API_ERROR", "═══════════════════════════════════════════════════════════")
+            TelemetryLogger.log("API", "Error", "Request failed: ${e.message}")
             throw e
         }
         
@@ -136,6 +140,8 @@ object RetrofitClient {
         Log.i("API_RESPONSE", "[$responseTimestamp] Response for ${request.method} ${request.url}")
         Log.i("API_RESPONSE", "Status Code: ${response.code} ${response.message}")
         Log.i("API_RESPONSE", "Response Time: ${requestTime}ms")
+        TelemetryLogger.log("API", "Response", "${response.code} ${response.message} (${requestTime}ms)")
+
         Log.i("API_RESPONSE", "Response Headers:")
         response.headers.forEach { header ->
             Log.i("API_RESPONSE", "  ${header.first}: ${header.second}")
@@ -166,6 +172,7 @@ object RetrofitClient {
         if (!response.isSuccessful) {
             Log.e("API_ERROR", "Request failed with status ${response.code}")
             Log.e("API_ERROR", "Error response: $responseBodyString")
+            TelemetryLogger.log("API", "Error", "Status ${response.code}: $responseBodyString")
         }
         
         Log.i("API_RESPONSE", "═══════════════════════════════════════════════════════════")
@@ -182,11 +189,13 @@ object RetrofitClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
     
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(ApiConstants.BASE_URL)
-        .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create(gson))
-        .build()
+    private val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig.getApiBaseUrl())
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
     
     // Kotlinx Serialization JSON instance for OMH
     private val omhJson = Json {
@@ -196,14 +205,16 @@ object RetrofitClient {
     }
     
     // Separate Retrofit instance for OMH sync using Kotlinx Serialization
-    private val omhRetrofit = Retrofit.Builder()
-        .baseUrl(ApiConstants.BASE_URL)
-        .client(okHttpClient)
-        .addConverterFactory(omhJson.asConverterFactory("application/json".toMediaType()))
-        .build()
+    private val omhRetrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig.getApiBaseUrl())
+            .client(okHttpClient)
+            .addConverterFactory(omhJson.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
     
-    val syncApiService: SyncApiService = retrofit.create(SyncApiService::class.java)
-    val authApiService: AuthApiService = retrofit.create(AuthApiService::class.java)
-    val omhSyncApiService: OmhSyncApiService = omhRetrofit.create(OmhSyncApiService::class.java)
+    val syncApiService: SyncApiService by lazy { retrofit.create(SyncApiService::class.java) }
+    val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
+    val omhSyncApiService: OmhSyncApiService by lazy { omhRetrofit.create(OmhSyncApiService::class.java) }
 }
 
