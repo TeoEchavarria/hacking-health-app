@@ -18,13 +18,29 @@ class SensorRepository(private val context: Context) {
     private val sensorDataDao = AppDatabase.getDatabase(context).sensorDataDao()
     private val workManager = WorkManager.getInstance(context)
 
+    suspend fun saveSensorData(data: SensorData) {
+        withContext(Dispatchers.IO) {
+            val entity = SensorDataEntity(
+                deviceId = data.deviceId,
+                type = data.type,
+                timestamp = data.timestamp,
+                values = data.values.joinToString(","),
+                synced = false
+            )
+            sensorDataDao.insert(entity)
+            scheduleUpload()
+        }
+    }
+
     suspend fun saveBatch(batch: List<SensorData>) {
         withContext(Dispatchers.IO) {
             val entities = batch.map { data ->
                 SensorDataEntity(
+                    deviceId = data.deviceId,
                     type = data.type,
                     timestamp = data.timestamp,
-                    values = data.values.joinToString(",")
+                    values = data.values.joinToString(","),
+                    synced = false
                 )
             }
             sensorDataDao.insertAll(entities)

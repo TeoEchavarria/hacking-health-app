@@ -17,7 +17,10 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
 
-class WearableReceiverService : WearableListenerService() {
+import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Wearable
+
+class WearableReceiverService : WearableListenerService(), com.google.android.gms.wearable.MessageClient.OnMessageReceivedListener {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorRepository: SensorRepository
@@ -27,8 +30,50 @@ class WearableReceiverService : WearableListenerService() {
         sensorRepository = SensorRepository(applicationContext)
         Log.d(TAG, "🚀 WearableReceiverService CREATED and READY to receive data")
         TelemetryLogger.log("PHONE", "Service", "WearableReceiverService started")
+        
+        // Explicitly register MessageClient listener just in case, 
+        // although WearableListenerService should handle it if declared in Manifest with correct filters.
+        Wearable.getMessageClient(this).addListener(this)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        Wearable.getMessageClient(this).removeListener(this)
+    }
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        val path = messageEvent.path
+        val nodeId = messageEvent.sourceNodeId
+        Log.d(TAG, "📨 Message received: $path from $nodeId")
+
+        when (path) {
+            "/sensor_data" -> {
+                handleSensorData(messageEvent)
+            }
+            else -> {
+                Log.w(TAG, "⚠️ Unknown message path: $path")
+            }
+        }
+    }
+
+    private fun handleSensorData(messageEvent: MessageEvent) {
+        scope.launch {
+            val currentState = com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager.connectionState.value
+            if (currentState != com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionState.VERIFIED) {
+                Log.w(TAG, "⚠️ Dropping sensor data: Connection NOT VERIFIED (State: $currentState)")
+                return@launch
+            }
+            try {
+                val jsonString = String(messageEvent.data, Charsets.UTF_8)
+                val data = Json.decodeFromString<SensorData>(jsonString)
+                // Log.d(TAG, "  📊 Sensor data received: ${data.timestamp}")
+                
+                sensorRepository.saveSensorData(data)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error parsing sensor data", e)
+            }
+        }
+    }
 
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         Log.d(TAG, "📥 onDataChanged: Received ${dataEvents.count} event(s)")
@@ -43,6 +88,14 @@ class WearableReceiverService : WearableListenerService() {
                 when (path) {
                     "/sensor_batch" -> {
                         handleSensorBatch(event)
+                    }
+                    "/accel_test" -> {
+                        Log.d(TAG, "  🧪 ACCEL TEST received from Watch!")
+                        val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+                        val accelData = dataMapItem.dataMap.getString("accel_data")
+                        val timestamp = dataMapItem.dataMap.getLong("timestamp")
+                        Log.d(TAG, "  📊 Test data: $accelData at $timestamp")
+                        ConnectionLogManager.log(LogType.SUCCESS, TAG, "Received ACCEL TEST: $accelData")
                     }
                     "/ping" -> {
                         Log.d(TAG, "  🏓 PING received from Watch!")

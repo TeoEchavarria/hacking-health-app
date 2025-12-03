@@ -85,7 +85,7 @@ object AppConstants {
     
     // ========== Sensor Data ==========
     const val SENSOR_BATCH_SIZE = 100
-    const val SENSOR_UPLOAD_INTERVAL_MS = 300000L // 5 minutes
+    const val SENSOR_UPLOAD_INTERVAL_MS = 3000L // 5 minutes
     const val SENSOR_DATA_PATH = "/sensor_batch"
     
     // ========== Date/Time ==========

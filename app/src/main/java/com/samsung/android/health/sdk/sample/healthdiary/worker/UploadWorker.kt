@@ -10,6 +10,9 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.SensorDataEnt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorBatchRequest
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorRecordDto
+
 class UploadWorker(
     context: Context,
     params: WorkerParameters
@@ -19,27 +22,41 @@ class UploadWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            val dataToUpload = sensorDataDao.getAll()
+            // 1. Fetch unsynced data
+            val dataToUpload = sensorDataDao.getUnsynced()
             if (dataToUpload.isEmpty()) {
                 return@withContext Result.success()
             }
 
             Log.d(TAG, "Uploading ${dataToUpload.size} items")
 
-            // TODO: Implement actual API call here using RetrofitClient
-            // For now, we simulate success and delete local data
-            // val response = RetrofitClient.apiService.uploadData(dataToUpload)
-            
-            // Simulate upload delay
-            // delay(1000)
+            // 2. Map to API request format
+            val records = dataToUpload.map { entity ->
+                val values = entity.values.split(",").map { it.toFloat() }
+                SensorRecordDto(
+                    deviceId = entity.deviceId,
+                    timestamp = entity.timestamp,
+                    x = values.getOrElse(0) { 0f },
+                    y = values.getOrElse(1) { 0f },
+                    z = values.getOrElse(2) { 0f }
+                )
+            }
+            val request = SensorBatchRequest(records)
 
-            // On success, delete uploaded items
-            val ids = dataToUpload.map { it.id }
-            sensorDataDao.deleteByIds(ids)
-            
-            Log.d(TAG, "Upload success, deleted local data")
+            // 3. Call Backend
+            val response = RetrofitClient.syncApiService.uploadSensorData(request)
 
-            Result.success()
+            if (response.isSuccessful) {
+                Log.d(TAG, "Upload success, deleting local data")
+                // 4. Delete uploaded items
+                val ids = dataToUpload.map { it.id }
+                sensorDataDao.deleteByIds(ids)
+                Result.success()
+            } else {
+                Log.e(TAG, "Upload failed with code: ${response.code()}")
+                Result.retry()
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "Upload failed", e)
             Result.retry()

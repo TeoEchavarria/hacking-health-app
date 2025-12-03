@@ -7,10 +7,16 @@ import androidx.room.Query
 @Dao
 interface SensorDataDao {
     @Insert
+    suspend fun insert(data: SensorDataEntity)
+
+    @Insert
     suspend fun insertAll(data: List<SensorDataEntity>)
 
     @Query("SELECT * FROM sensor_data ORDER BY timestamp ASC")
     suspend fun getAll(): List<SensorDataEntity>
+
+    @Query("SELECT * FROM sensor_data WHERE synced = 0 ORDER BY timestamp ASC")
+    suspend fun getUnsynced(): List<SensorDataEntity>
 
     @Query("DELETE FROM sensor_data WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)

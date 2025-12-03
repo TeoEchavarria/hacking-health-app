@@ -2,16 +2,22 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "8932a3362fedb197605af4155a2f4cbd",
+    "identityHash": "84888b47af281d319db74ecbaaa2efdd",
     "entities": [
       {
         "tableName": "sensor_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `values` TEXT NOT NULL, `receivedTimestamp` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `deviceId` TEXT NOT NULL, `type` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `values` TEXT NOT NULL, `synced` INTEGER NOT NULL, `receivedTimestamp` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "deviceId",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -30,6 +36,12 @@
             "fieldPath": "values",
             "columnName": "values",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -565,7 +577,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8932a3362fedb197605af4155a2f4cbd')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '84888b47af281d319db74ecbaaa2efdd')"
     ]
   }
 }
