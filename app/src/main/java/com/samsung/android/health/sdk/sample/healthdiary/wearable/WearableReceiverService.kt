@@ -58,11 +58,6 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
 
     private fun handleSensorData(messageEvent: MessageEvent) {
         scope.launch {
-            val currentState = com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager.connectionState.value
-            if (currentState != com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionState.VERIFIED) {
-                Log.w(TAG, "⚠️ Dropping sensor data: Connection NOT VERIFIED (State: $currentState)")
-                return@launch
-            }
             try {
                 val jsonString = String(messageEvent.data, Charsets.UTF_8)
                 val data = Json.decodeFromString<SensorData>(jsonString)
