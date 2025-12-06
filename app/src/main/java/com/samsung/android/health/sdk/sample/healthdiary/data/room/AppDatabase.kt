@@ -23,7 +23,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
         TxAgentQueryEntity::class,
         TxAgentResponseEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

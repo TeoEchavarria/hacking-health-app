@@ -15,8 +15,11 @@ interface SensorDataDao {
     @Query("SELECT * FROM sensor_data ORDER BY timestamp ASC")
     suspend fun getAll(): List<SensorDataEntity>
 
-    @Query("SELECT * FROM sensor_data WHERE synced = 0 ORDER BY timestamp ASC")
-    suspend fun getUnsynced(): List<SensorDataEntity>
+    @Query("SELECT * FROM sensor_data WHERE synced = 0 ORDER BY timestamp ASC LIMIT :limit")
+    suspend fun getUnsyncedBatch(limit: Int): List<SensorDataEntity>
+
+    @Query("SELECT COUNT(*) FROM sensor_data WHERE synced = 0")
+    suspend fun getUnsyncedCount(): Int
 
     @Query("DELETE FROM sensor_data WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)

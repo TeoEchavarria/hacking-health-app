@@ -7,9 +7,10 @@ import androidx.room.PrimaryKey
 data class SensorDataEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val deviceId: String,
-    val type: String,
     val timestamp: Long,
-    val values: String, // Storing float array as comma-separated string for simplicity
+    val x: Float,
+    val y: Float,
+    val z: Float,
     val synced: Boolean = false,
-    val receivedTimestamp: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis()
 )

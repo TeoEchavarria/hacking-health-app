@@ -22,9 +22,10 @@ class SensorRepository(private val context: Context) {
         withContext(Dispatchers.IO) {
             val entity = SensorDataEntity(
                 deviceId = data.deviceId,
-                type = data.type,
                 timestamp = data.timestamp,
-                values = data.values.joinToString(","),
+                x = data.values.getOrElse(0) { 0f },
+                y = data.values.getOrElse(1) { 0f },
+                z = data.values.getOrElse(2) { 0f },
                 synced = false
             )
             sensorDataDao.insert(entity)
@@ -37,9 +38,10 @@ class SensorRepository(private val context: Context) {
             val entities = batch.map { data ->
                 SensorDataEntity(
                     deviceId = data.deviceId,
-                    type = data.type,
                     timestamp = data.timestamp,
-                    values = data.values.joinToString(","),
+                    x = data.values.getOrElse(0) { 0f },
+                    y = data.values.getOrElse(1) { 0f },
+                    z = data.values.getOrElse(2) { 0f },
                     synced = false
                 )
             }
@@ -48,7 +50,13 @@ class SensorRepository(private val context: Context) {
         }
     }
 
-    private fun scheduleUpload() {
+    suspend fun getUnsyncedCount(): Int {
+        return withContext(Dispatchers.IO) {
+            sensorDataDao.getUnsyncedCount()
+        }
+    }
+
+    fun scheduleUpload() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()

@@ -59,6 +59,9 @@ class HealthMainActivity : AppCompatActivity() {
         healthMainViewModel = ViewModelProvider(this, factory)[HealthMainViewModel::class.java]
         syncViewModel = ViewModelProvider(this, factory)[SyncViewModel::class.java]
 
+        // Trigger flush of offline sensor data
+        com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository(applicationContext).scheduleUpload()
+
         // Set Compose Content
         setContent {
             NavGraph()

@@ -64,6 +64,11 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                 // Log.d(TAG, "  📊 Sensor data received: ${data.timestamp}")
                 
                 sensorRepository.saveSensorData(data)
+                
+                val queueSize = sensorRepository.getUnsyncedCount()
+                val logMsg = "Received single: deviceId=${data.deviceId}, timestamp=${data.timestamp}, success=true, queue_size=$queueSize"
+                Log.d("ACCEL_WATCH_TO_PHONE", logMsg)
+                ConnectionLogManager.log(LogType.TRAFFIC, "ACCEL_WATCH_TO_PHONE", logMsg)
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error parsing sensor data", e)
             }
@@ -124,6 +129,14 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                     
                     sensorRepository.saveBatch(batch)
                     Log.d(TAG, "  💾 Batch saved to database")
+                    
+                    val queueSize = sensorRepository.getUnsyncedCount()
+                    if (batch.isNotEmpty()) {
+                        val summary = "count=${batch.size}, range=[${batch.first().timestamp}..${batch.last().timestamp}]"
+                        val logMsg = "Received batch: $summary, success=true, queue_size=$queueSize"
+                        Log.d("ACCEL_WATCH_TO_PHONE", logMsg)
+                        ConnectionLogManager.log(LogType.TRAFFIC, "ACCEL_WATCH_TO_PHONE", logMsg)
+                    }
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "  ❌ Error parsing batch", e)
