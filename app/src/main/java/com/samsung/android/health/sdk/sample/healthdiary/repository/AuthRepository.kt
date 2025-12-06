@@ -6,6 +6,8 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRespons
 import retrofit2.HttpException
 import java.io.IOException
 
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
+
 class AuthRepository {
     
     private val apiService = RetrofitClient.authApiService
@@ -15,7 +17,14 @@ class AuthRepository {
             val response = apiService.login(request)
             
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val loginResponse = response.body()!!
+                // Save tokens
+                TokenManager.saveAuthInfo(
+                    token = loginResponse.token,
+                    refreshToken = loginResponse.refresh,
+                    expiry = loginResponse.expiry
+                )
+                Result.success(loginResponse)
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {

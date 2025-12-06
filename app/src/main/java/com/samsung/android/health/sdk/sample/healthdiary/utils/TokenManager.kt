@@ -8,6 +8,8 @@ import androidx.security.crypto.MasterKey
 object TokenManager {
     private const val PREFS_NAME = "auth_prefs"
     private const val KEY_TOKEN = "access_token"
+    private const val KEY_REFRESH = "refresh_token"
+    private const val KEY_EXPIRY = "token_expiry"
     private const val MASTER_KEY_ALIAS = "_androidx_security_crypto_encrypted_prefs_key_"
     
     private var encryptedPrefs: SharedPreferences? = null
@@ -33,6 +35,14 @@ object TokenManager {
         }
     }
     
+    fun saveAuthInfo(token: String, refreshToken: String, expiry: String) {
+        encryptedPrefs?.edit()
+            ?.putString(KEY_TOKEN, token)
+            ?.putString(KEY_REFRESH, refreshToken)
+            ?.putString(KEY_EXPIRY, expiry)
+            ?.apply()
+    }
+    
     fun saveToken(token: String) {
         encryptedPrefs?.edit()?.putString(KEY_TOKEN, token)?.apply()
     }
@@ -40,9 +50,17 @@ object TokenManager {
     fun getToken(): String? {
         return encryptedPrefs?.getString(KEY_TOKEN, null)
     }
+
+    fun getRefreshToken(): String? {
+        return encryptedPrefs?.getString(KEY_REFRESH, null)
+    }
     
     fun clearToken() {
-        encryptedPrefs?.edit()?.remove(KEY_TOKEN)?.apply()
+        encryptedPrefs?.edit()
+            ?.remove(KEY_TOKEN)
+            ?.remove(KEY_REFRESH)
+            ?.remove(KEY_EXPIRY)
+            ?.apply()
     }
     
     fun hasToken(): Boolean {

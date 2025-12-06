@@ -7,6 +7,10 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import okhttp3.Interceptor
+import okhttp3.Authenticator
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.Route
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.Buffer
@@ -21,6 +25,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.RefreshRequest
+import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
 
 object RetrofitClient {
     private var tokenManager: TokenManager? = null
@@ -49,6 +55,57 @@ object RetrofitClient {
         }
         
         chain.proceed(newRequest)
+    }
+
+    private val authenticator = object : Authenticator {
+        override fun authenticate(route: Route?, response: Response): Request? {
+            // If we've failed 3 times, give up
+            if (responseCount(response) >= 3) {
+                return null
+            }
+
+            val refreshToken = tokenManager?.getRefreshToken() ?: return null
+
+            // Create a separate Retrofit instance to avoid circular dependency and interceptors
+            val refreshRetrofit = Retrofit.Builder()
+                .baseUrl(DeviceConfig.getApiBaseUrl())
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build()
+
+            val refreshService = refreshRetrofit.create(AuthApiService::class.java)
+
+            try {
+                val refreshResponse = refreshService.refresh(RefreshRequest(refreshToken)).execute()
+
+                if (refreshResponse.isSuccessful) {
+                    val newTokens = refreshResponse.body()
+                    if (newTokens != null) {
+                        tokenManager?.saveAuthInfo(newTokens.token, newTokens.refresh, newTokens.expiry)
+                        
+                        return response.request.newBuilder()
+                            .header(ApiConstants.HEADER_AUTHORIZATION, "${ApiConstants.BEARER_PREFIX}${newTokens.token}")
+                            .build()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("API_AUTH", "Refresh token failed: ${e.message}")
+            }
+
+            // If we reach here, refresh failed
+            // Don't clear token immediately to allow retry logic elsewhere if needed, 
+            // OR clear it to force login. For now, we just return null to stop retrying.
+            return null
+        }
+
+        private fun responseCount(response: Response): Int {
+            var result = 1
+            var prior = response.priorResponse
+            while (prior != null) {
+                result++
+                prior = prior.priorResponse
+            }
+            return result
+        }
     }
     
     private val loggingInterceptor = HttpLoggingInterceptor(object : HttpLoggingInterceptor.Logger {
@@ -184,6 +241,7 @@ object RetrofitClient {
         .addInterceptor(authInterceptor)
         .addInterceptor(customLoggingInterceptor)
         .addInterceptor(loggingInterceptor)
+        .authenticator(authenticator)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
