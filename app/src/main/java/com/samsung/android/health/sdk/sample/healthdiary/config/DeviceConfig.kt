@@ -128,7 +128,7 @@ object DeviceConfig {
     }
 
     private const val KEY_API_BASE_URL = "api_base_url"
-    private const val DEFAULT_API_BASE_URL = " https://73244b572435.ngrok-free.app"
+    private const val DEFAULT_API_BASE_URL = "https://hacking-health-api.fly.dev"
 
     fun getApiBaseUrl(): String {
         return prefs?.getString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL) ?: DEFAULT_API_BASE_URL
