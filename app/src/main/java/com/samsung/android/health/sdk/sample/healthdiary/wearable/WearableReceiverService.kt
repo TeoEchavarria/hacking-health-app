@@ -98,11 +98,6 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                         Log.d(TAG, "  📊 Test data: $accelData at $timestamp")
                         ConnectionLogManager.log(LogType.SUCCESS, TAG, "Received ACCEL TEST: $accelData")
                     }
-                    "/ping" -> {
-                        Log.d(TAG, "  🏓 PING received from Watch!")
-                        ConnectionLogManager.log(LogType.TRAFFIC, TAG, "Received PING from $nodeId")
-                        sendPong(nodeId)
-                    }
                     "/handshake_response" -> {
                         Log.d(TAG, "  🤝 Handshake Response received!")
                         handleHandshakeResponse(event, nodeId)
@@ -202,13 +197,10 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
     private fun sendPong(nodeId: String) {
         scope.launch {
             try {
-                Log.d(TAG, "📤 Sending PONG to $nodeId...")
-                val dataClient = com.google.android.gms.wearable.Wearable.getDataClient(applicationContext)
-                val putDataMapReq = com.google.android.gms.wearable.PutDataMapRequest.create("/pong")
-                putDataMapReq.dataMap.putLong("timestamp", System.currentTimeMillis())
-                val putDataReq = putDataMapReq.asPutDataRequest()
-                putDataReq.setUrgent()
-                dataClient.putDataItem(putDataReq).await()
+                Log.d(TAG, "📤 Sending PONG to $nodeId... (Message)")
+                val messageClient = Wearable.getMessageClient(applicationContext)
+                messageClient.sendMessage(nodeId, "/pong", "pong".toByteArray()).await()
+                
                 Log.d(TAG, "✅ PONG sent successfully to $nodeId")
                 TelemetryLogger.log("PHONE", "Pong", "Sent PONG to $nodeId")
             } catch (e: Exception) {
