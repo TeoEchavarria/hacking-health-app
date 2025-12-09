@@ -25,18 +25,31 @@ class UploadWorker(
     private val sensorDataDao = AppDatabase.getDatabase(context).sensorDataDao()
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // Initialize health monitor
+        UploadHealthMonitor.initialize(applicationContext)
+        UploadHealthMonitor.recordAttempt()
+        
         try {
-            Log.d(TAG, "UPLOAD_WORK_EXECUTED")
+            Log.d(TAG, "UPLOAD_WORK_EXECUTED attempt=$runAttemptCount")
             TokenManager.initialize(applicationContext)
+            
+            // Update pending count for diagnostics
+            val pendingCount = try { sensorDataDao.getUnsyncedCount() } catch (e: Exception) { -1 }
+            if (pendingCount >= 0) {
+                UploadHealthMonitor.updatePendingCount(pendingCount)
+            }
             
             // Check token validity before starting
             if (!TokenManager.hasToken()) {
-                 val pending = try { sensorDataDao.getUnsyncedCount() } catch (e: Exception) { -1 }
-                 Log.e(TAG, "Upload skipped: No token available. Pending records: $pending")
+                 Log.e(TAG, "Upload skipped: No token available. Pending records: $pendingCount")
+                 UploadHealthMonitor.recordFailure("NO_TOKEN")
+                 // CRITICAL: Always schedule next even on retry to prevent chain break
+                 UploadScheduler.scheduleNext(applicationContext)
                  return@withContext Result.retry()
             }
 
             val batchSize = 250
+            var totalUploaded = 0
             
             while (true) {
                 // 1. Fetch batch
@@ -72,8 +85,12 @@ class UploadWorker(
                         // 4. Delete uploaded items ONLY on success
                         val ids = dataToUpload.map { it.id }
                         sensorDataDao.deleteByIds(ids)
+                        totalUploaded += dataToUpload.size
                         
                         val remaining = sensorDataDao.getUnsyncedCount()
+                        UploadHealthMonitor.updatePendingCount(remaining)
+                        UploadHealthMonitor.recordSuccess(dataToUpload.size)
+                        
                         val logMsg = "batch_size=${dataToUpload.size}, range=[$firstTimestamp..$lastTimestamp], attempt=$runAttemptCount, code=${response.code()}, latency=${latency}ms, result=SUCCESS, remaining=$remaining"
                         Log.d("ACCEL_PHONE_TO_API", logMsg)
                         Log.d(TAG, "Batch upload success, remaining unsent: $remaining")
@@ -91,22 +108,33 @@ class UploadWorker(
                         Log.d("ACCEL_PHONE_TO_API", logMsg)
                         Log.e(TAG, "Upload failed: $errorReason")
                         ConnectionLogManager.log(LogType.ERROR, "ACCEL_PHONE_TO_API", logMsg)
+                        UploadHealthMonitor.recordFailure(errorReason)
                         
-                        // If token is invalid, we might want to back off longer, but WorkManager handles exponential backoff.
+                        // CRITICAL: Always schedule next even on retry to prevent chain break
+                        UploadScheduler.scheduleNext(applicationContext)
                         return@withContext Result.retry()
                     }
                 } catch (e: Exception) {
                     val latency = System.currentTimeMillis() - startTime
                     val remaining = try { sensorDataDao.getUnsyncedCount() } catch (ex: Exception) { -1 }
                     
-                    val errorReason = if (e is IOException) "NETWORK_ERROR" else "EXCEPTION"
+                    val errorReason = if (e is IOException) "NETWORK_ERROR" else "EXCEPTION: ${e.javaClass.simpleName}"
                     
                     val logMsg = "batch_size=${dataToUpload.size}, range=[$firstTimestamp..$lastTimestamp], attempt=$runAttemptCount, code=-1, latency=${latency}ms, result=FAILURE ($errorReason), remaining=$remaining"
                     Log.d("ACCEL_PHONE_TO_API", logMsg)
                     Log.e(TAG, "Upload exception: $errorReason", e)
                     ConnectionLogManager.log(LogType.ERROR, "ACCEL_PHONE_TO_API", logMsg)
+                    UploadHealthMonitor.recordFailure(errorReason)
+                    
+                    // CRITICAL: Always schedule next even on retry to prevent chain break
+                    UploadScheduler.scheduleNext(applicationContext)
                     return@withContext Result.retry()
                 }
+            }
+            
+            // Log total uploaded in this run
+            if (totalUploaded > 0) {
+                Log.d(TAG, "UPLOAD_RUN_COMPLETE: uploaded $totalUploaded records total")
             }
             
             // Schedule next run (loop)
@@ -116,6 +144,9 @@ class UploadWorker(
 
         } catch (e: Exception) {
             Log.e(TAG, "Worker critical failure", e)
+            UploadHealthMonitor.recordFailure("CRITICAL: ${e.javaClass.simpleName}")
+            // CRITICAL: Always schedule next even on critical failure
+            UploadScheduler.scheduleNext(applicationContext)
             Result.retry()
         }
     }

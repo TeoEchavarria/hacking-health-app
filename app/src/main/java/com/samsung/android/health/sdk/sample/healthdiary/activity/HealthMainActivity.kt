@@ -62,6 +62,12 @@ class HealthMainActivity : AppCompatActivity() {
 
         // Trigger flush of offline sensor data
         com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository(applicationContext).scheduleUpload()
+        
+        // Initialize upload resilience systems
+        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadHealthMonitor.initialize(applicationContext)
+        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler.ensurePeriodicSafetyNet(applicationContext)
+        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadWatchdog.start(applicationContext)
+        Log.d("HealthMainActivity", "Upload resilience systems initialized")
 
         // Start PhoneWearableService for persistent watch communication
         val serviceIntent = Intent(this, com.samsung.android.health.sdk.sample.healthdiary.wearable.PhoneWearableService::class.java)
