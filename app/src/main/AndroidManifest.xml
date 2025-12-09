@@ -104,6 +104,24 @@
             android:value="true" />
 
         <service
+            android:name=".wearable.PhoneChannelReceiverService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/stream/sensors/v1" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/state/watch" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".wearable.PhoneWearableService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- Legacy listener disabled -->
+        <!--
+        <service
             android:name=".wearable.WearableReceiverService"
             android:exported="true">
             <intent-filter>
@@ -114,6 +132,7 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/handshake_response" />
             </intent-filter>
         </service>
+        -->
     </application>
 
 </manifest>

@@ -3,6 +3,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.repository
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.RefreshRequest
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -12,6 +13,19 @@ class AuthRepository {
     
     private val apiService = RetrofitClient.authApiService
     
+    suspend fun logout() {
+        try {
+            val refresh = TokenManager.getRefreshToken()
+            if (!refresh.isNullOrEmpty()) {
+                apiService.logout(RefreshRequest(refresh))
+            }
+        } catch (e: Exception) {
+            // Best effort - ignore network errors
+        } finally {
+            TokenManager.clearToken()
+        }
+    }
+
     suspend fun login(request: LoginRequest): Result<LoginResponse> {
         return try {
             val response = apiService.login(request)

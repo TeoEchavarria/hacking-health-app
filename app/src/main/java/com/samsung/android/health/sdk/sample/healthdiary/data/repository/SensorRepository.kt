@@ -57,18 +57,7 @@ class SensorRepository(private val context: Context) {
     }
 
     fun scheduleUpload() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val uploadWork = OneTimeWorkRequestBuilder<UploadWorker>()
-            .setConstraints(constraints)
-            .build()
-
-        workManager.enqueueUniqueWork(
-            "UploadSensorData",
-            ExistingWorkPolicy.KEEP, // Don't replace if already scheduled
-            uploadWork
-        )
+        // Use centralized scheduler to enforce 10s/5min interval
+        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler.scheduleNext(context)
     }
 }

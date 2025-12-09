@@ -41,6 +41,13 @@ object RetrofitClient {
     
     private val authInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
+        
+        // Proactive refresh: Check if token is expired or expires in < 5 minutes
+        if (tokenManager?.isTokenExpired(bufferMinutes = 5) == true) {
+            Log.i("AUTH", "Token expired or expiring soon. Initiating proactive refresh...")
+            performTokenRefresh()
+        }
+
         val token = tokenManager?.getToken()
         
         val newRequest = if (token != null) {
@@ -61,40 +68,21 @@ object RetrofitClient {
         override fun authenticate(route: Route?, response: Response): Request? {
             // If we've failed 3 times, give up
             if (responseCount(response) >= 3) {
+                Log.e("AUTH", "Authentication failed 3 times. Giving up.")
                 return null
             }
 
-            val refreshToken = tokenManager?.getRefreshToken() ?: return null
+            Log.i("AUTH", "Received 401 Unauthorized. Attempting to refresh token...")
+            val newToken = performTokenRefresh()
 
-            // Create a separate Retrofit instance to avoid circular dependency and interceptors
-            val refreshRetrofit = Retrofit.Builder()
-                .baseUrl(DeviceConfig.getApiBaseUrl())
-                .addConverterFactory(GsonConverterFactory.create(gson))
-                .build()
-
-            val refreshService = refreshRetrofit.create(AuthApiService::class.java)
-
-            try {
-                val refreshResponse = refreshService.refresh(RefreshRequest(refreshToken)).execute()
-
-                if (refreshResponse.isSuccessful) {
-                    val newTokens = refreshResponse.body()
-                    if (newTokens != null) {
-                        tokenManager?.saveAuthInfo(newTokens.token, newTokens.refresh, newTokens.expiry)
-                        
-                        return response.request.newBuilder()
-                            .header(ApiConstants.HEADER_AUTHORIZATION, "${ApiConstants.BEARER_PREFIX}${newTokens.token}")
-                            .build()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("API_AUTH", "Refresh token failed: ${e.message}")
+            return if (newToken != null) {
+                response.request.newBuilder()
+                    .header(ApiConstants.HEADER_AUTHORIZATION, "${ApiConstants.BEARER_PREFIX}$newToken")
+                    .build()
+            } else {
+                Log.e("AUTH", "Refresh failed during authentication. Aborting.")
+                null
             }
-
-            // If we reach here, refresh failed
-            // Don't clear token immediately to allow retry logic elsewhere if needed, 
-            // OR clear it to force login. For now, we just return null to stop retrying.
-            return null
         }
 
         private fun responseCount(response: Response): Int {
@@ -105,6 +93,48 @@ object RetrofitClient {
                 prior = prior.priorResponse
             }
             return result
+        }
+    }
+
+    @Synchronized
+    private fun performTokenRefresh(): String? {
+        val refreshToken = tokenManager?.getRefreshToken()
+        if (refreshToken == null) {
+            Log.e("AUTH", "Cannot refresh: No refresh token available.")
+            return null
+        }
+
+        Log.d("AUTH", "token refresh attempt") // Requested log
+        
+        return try {
+            // Create a separate Retrofit instance to avoid circular dependency and interceptors
+            val refreshRetrofit = Retrofit.Builder()
+                .baseUrl(DeviceConfig.getApiBaseUrl())
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build()
+
+            val refreshService = refreshRetrofit.create(AuthApiService::class.java)
+            val refreshResponse = refreshService.refresh(RefreshRequest(refreshToken)).execute()
+
+            if (refreshResponse.isSuccessful) {
+                val newTokens = refreshResponse.body()
+                if (newTokens != null) {
+                    tokenManager?.saveAuthInfo(newTokens.token, newTokens.refresh, newTokens.expiry)
+                    Log.i("AUTH", "token refreshed") // Requested log
+                    Log.i("AUTH", "token issued") // Requested log (implied)
+                    return newTokens.token
+                }
+            }
+            
+            Log.e("AUTH", "refresh failed: API returned ${refreshResponse.code()}") // Requested log
+            if (refreshResponse.code() == 403 || refreshResponse.code() == 401) {
+                Log.e("AUTH", "Refresh token invalid/expired. User must login again.")
+                // Optional: clear tokens to force login UI if we had access to UI events
+            }
+            null
+        } catch (e: Exception) {
+            Log.e("AUTH", "refresh failed: ${e.message}") // Requested log
+            null
         }
     }
     

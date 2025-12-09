@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.time.LocalDateTime
 
 object TokenManager {
     private const val PREFS_NAME = "auth_prefs"
@@ -65,6 +66,22 @@ object TokenManager {
     
     fun hasToken(): Boolean {
         return !getToken().isNullOrBlank()
+    }
+
+    fun isTokenExpired(bufferMinutes: Long = 0): Boolean {
+        val expiryStr = encryptedPrefs?.getString(KEY_EXPIRY, null) ?: return true
+        return try {
+            // Backend sends Python datetime.isoformat() (e.g., "2023-12-07T12:00:00.123456")
+            // LocalDateTime.parse() handles standard ISO-8601 formats correctly.
+            val expiry = LocalDateTime.parse(expiryStr)
+            val now = LocalDateTime.now()
+            
+            // Check if (Now + Buffer) > Expiry
+            now.plusMinutes(bufferMinutes).isAfter(expiry)
+        } catch (e: Exception) {
+            // If parsing fails, assume expired to force safe refresh
+            true
+        }
     }
 }
 

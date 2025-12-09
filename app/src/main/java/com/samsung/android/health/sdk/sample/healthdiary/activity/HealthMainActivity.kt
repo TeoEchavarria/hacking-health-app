@@ -5,6 +5,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -62,6 +63,11 @@ class HealthMainActivity : AppCompatActivity() {
         // Trigger flush of offline sensor data
         com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository(applicationContext).scheduleUpload()
 
+        // Start PhoneWearableService for persistent watch communication
+        val serviceIntent = Intent(this, com.samsung.android.health.sdk.sample.healthdiary.wearable.PhoneWearableService::class.java)
+        startForegroundService(serviceIntent)
+        Log.d("HealthMainActivity", "PhoneWearableService started from MainActivity")
+
         // Set Compose Content
         setContent {
             NavGraph()
@@ -96,6 +102,20 @@ class HealthMainActivity : AppCompatActivity() {
         // observeTodaySteps()
         // observeTodaySleep()
         observeSyncState()
+    }
+
+    private fun checkBatteryOptimizations() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val packageName = packageName
+            val pm = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                val intent = Intent().apply {
+                    action = android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                    data = android.net.Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
     }
 
     override fun onResume() {

@@ -17,5 +17,10 @@ interface AuthApiService {
     fun refresh(
         @Body request: RefreshRequest
     ): retrofit2.Call<LoginResponse>
+
+    @POST("/auth/logout")
+    suspend fun logout(
+        @Body request: RefreshRequest
+    ): Response<Map<String, Boolean>>
 }
 

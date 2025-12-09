@@ -8,6 +8,8 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.UserProfileD
 import com.samsung.android.health.sdk.sample.healthdiary.repository.AuthRepository
 import com.samsung.android.health.sdk.sample.healthdiary.utils.AppConstants
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
+import com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler
+import android.content.Context
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,19 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _authState.emit(AuthState.Error(exception.message ?: "Unknown error"))
             _errorMessage.emit(exception.message ?: "Unknown error occurred")
+        }
+    }
+    
+    fun logout(context: Context) {
+        viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {
+            // Cancel background sync
+            UploadScheduler.cancelAllWork(context)
+            
+            // Logout from API and clear local tokens
+            authRepository.logout()
+            
+            // Reset state
+            resetState()
         }
     }
     

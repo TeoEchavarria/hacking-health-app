@@ -45,6 +45,7 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
         val path = messageEvent.path
         val nodeId = messageEvent.sourceNodeId
         Log.d(TAG, "📨 Message received: $path from $nodeId")
+        Log.d("ACCEL_PHONE_RECEIVER", "PHONE_MESSAGE_RECEIVED: path=$path")
 
         when (path) {
             "/sensor_data" -> {
@@ -126,6 +127,7 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                     val batch = Json.decodeFromString<List<SensorData>>(jsonString)
                     Log.d(TAG, "  ✅ Received batch of ${batch.size} items")
                     ConnectionLogManager.log(LogType.SUCCESS, TAG, "Received batch of ${batch.size} items")
+                    Log.d("ACCEL_PHONE_RECEIVER", "PHONE_ACCEL_PACKET_ACCEPTED: count=${batch.size}")
                     
                     sensorRepository.saveBatch(batch)
                     Log.d(TAG, "  💾 Batch saved to database")

@@ -8,8 +8,6 @@ data class SensorBatchRequest(
 )
 
 data class SensorRecordDto(
-    @SerializedName("deviceId")
-    val deviceId: String,
     @SerializedName("timestamp")
     val timestamp: Long,
     @SerializedName("x")
@@ -17,7 +15,5 @@ data class SensorRecordDto(
     @SerializedName("y")
     val y: Float,
     @SerializedName("z")
-    val z: Float,
-    @SerializedName("source")
-    val source: String = "watch"
+    val z: Float
 )
