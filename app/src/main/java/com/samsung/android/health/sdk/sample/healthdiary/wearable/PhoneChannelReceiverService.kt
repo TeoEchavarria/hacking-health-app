@@ -16,6 +16,10 @@ import kotlinx.coroutines.tasks.await
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.EOFException
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PhoneChannelReceiverService : WearableListenerService() {
 
@@ -24,6 +28,11 @@ class PhoneChannelReceiverService : WearableListenerService() {
         SensorIngestDatabase.getDatabase(applicationContext).ingestDao() 
     }
     private val dataClient by lazy { Wearable.getDataClient(applicationContext) }
+    
+    private fun getTimestamp(): String {
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -33,6 +42,12 @@ class PhoneChannelReceiverService : WearableListenerService() {
     override fun onChannelOpened(channel: ChannelClient.Channel) {
         super.onChannelOpened(channel)
         Log.d(TAG, "Channel opened: ${channel.path}")
+        
+        TelemetryLogger.log(
+            "WATCH",
+            "Channel Opened",
+            "[${getTimestamp()}] Channel opened: ${channel.path}"
+        )
 
         if (channel.path == Protocol.PATH_SENSOR_STREAM) {
             handleSensorStream(channel)
@@ -77,19 +92,43 @@ class PhoneChannelReceiverService : WearableListenerService() {
                             )
                         )
                         
+                        // Log to UI periodically (every 10 frames to avoid spam)
+                        if (seq % 10 == 0L) {
+                            TelemetryLogger.log(
+                                "WATCH",
+                                "Stream Data",
+                                "[${getTimestamp()}] Received frame seq=$seq, type=$type, size=${payloadSize}B"
+                            )
+                        }
+                        
                         // Ack periodically
                         publishAck(seq)
                         
                     } catch (e: EOFException) {
                         Log.d(TAG, "End of stream")
+                        TelemetryLogger.log(
+                            "WATCH",
+                            "Stream Ended",
+                            "[${getTimestamp()}] Channel stream ended normally."
+                        )
                         break
                     } catch (e: Exception) {
                         Log.e(TAG, "Error reading frame", e)
+                        TelemetryLogger.log(
+                            "PHONE",
+                            "Stream Error",
+                            "[${getTimestamp()}] Error reading channel frame: ${e.message}"
+                        )
                         break
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to open input stream", e)
+                TelemetryLogger.log(
+                    "PHONE",
+                    "Channel Error",
+                    "[${getTimestamp()}] Failed to open channel input stream: ${e.message}"
+                )
             } finally {
                 channelClient.close(channel)
             }
@@ -132,6 +171,12 @@ class PhoneChannelReceiverService : WearableListenerService() {
                 val state = item.dataMap.getString(Protocol.KEY_STATE)
                 val backlog = item.dataMap.getInt(Protocol.KEY_BACKLOG_COUNT)
                 Log.d(TAG, "Watch State: $state, Backlog: $backlog")
+                
+                TelemetryLogger.log(
+                    "WATCH",
+                    "Watch State",
+                    "[${getTimestamp()}] Watch state: $state, Backlog: $backlog items"
+                )
             }
         }
     }

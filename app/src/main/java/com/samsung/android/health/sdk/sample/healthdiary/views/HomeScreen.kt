@@ -26,6 +26,7 @@ fun HomeScreen(
     onNavigateToLogs: () -> Unit,
     onNavigateToTxAgent: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToTraining: () -> Unit,
     onUploadPdf: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -62,6 +63,14 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // Action Buttons
+        MenuButton(
+            text = "Daily Training Session",
+            icon = Icons.Default.PlayArrow,
+            onClick = onNavigateToTraining
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
         MenuButton(
             text = "Logs / Docs",
             icon = Icons.Default.List,

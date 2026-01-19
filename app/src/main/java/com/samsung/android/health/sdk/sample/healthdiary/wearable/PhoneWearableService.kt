@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
@@ -38,12 +39,21 @@ class PhoneWearableService : LifecycleService(),
     MessageClient.OnMessageReceivedListener {
 
     private lateinit var sensorRepository: SensorRepository
+    private var wakeLock: PowerManager.WakeLock? = null
     
+    private fun getTimestamp(): String {
+        val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date())
+    }
+
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "PHONE_FOREGROUND_STARTED")
         
         sensorRepository = SensorRepository(applicationContext)
+        
+        // Acquire partial wake lock to keep CPU running for data reception
+        acquireWakeLock()
         
         startForegroundService()
         
@@ -52,15 +62,50 @@ class PhoneWearableService : LifecycleService(),
         Wearable.getDataClient(this).addListener(this)
         Wearable.getMessageClient(this).addListener(this)
         
-        TelemetryLogger.log("PHONE", "Service", "PhoneWearableService started")
+        TelemetryLogger.log(
+            "PHONE", 
+            "Service Started", 
+            "[${getTimestamp()}] PhoneWearableService started. Listening for watch data on /sensor_batch."
+        )
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "PHONE_FOREGROUND_KILLED")
         
+        releaseWakeLock()
         Wearable.getDataClient(this).removeListener(this)
         Wearable.getMessageClient(this).removeListener(this)
+        
+        TelemetryLogger.log(
+            "PHONE",
+            "Service Stopped",
+            "[${getTimestamp()}] PhoneWearableService destroyed."
+        )
+    }
+    
+    private fun acquireWakeLock() {
+        if (wakeLock == null) {
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "HealthDiary::WearableServiceWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(6 * 60 * 60 * 1000L) // 6 hours max
+            }
+            Log.d(TAG, "Wake lock acquired")
+        }
+    }
+    
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+                Log.d(TAG, "Wake lock released")
+            }
+        }
+        wakeLock = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -116,6 +161,12 @@ class PhoneWearableService : LifecycleService(),
     override fun onDataChanged(dataEvents: DataEventBuffer) {
         Log.d(TAG, "📥 onDataChanged: Received ${dataEvents.count} event(s)")
         
+        TelemetryLogger.log(
+            "WATCH",
+            "Data Event",
+            "[${getTimestamp()}] Received ${dataEvents.count} data event(s) from watch."
+        )
+        
         for (event in dataEvents) {
             if (event.type == DataEvent.TYPE_CHANGED) {
                 val path = event.dataItem.uri.path
@@ -129,10 +180,22 @@ class PhoneWearableService : LifecycleService(),
                     }
                     "/ping" -> {
                         Log.d(TAG, "  🏓 PING received from Watch!")
+                        TelemetryLogger.log(
+                            "WATCH",
+                            "Ping Received",
+                            "[${getTimestamp()}] Ping received from watch node: $nodeId"
+                        )
                         sendPong(nodeId)
                     }
                     "/handshake_response" -> {
                         handleHandshakeResponse(event, nodeId)
+                    }
+                    else -> {
+                        TelemetryLogger.log(
+                            "WATCH",
+                            "Unknown Path",
+                            "[${getTimestamp()}] Received data on unknown path: $path"
+                        )
                     }
                 }
             }
@@ -185,12 +248,30 @@ class PhoneWearableService : LifecycleService(),
                         val logMsg = "Received batch: $summary, success=true, queue_size=$queueSize"
                         Log.d("ACCEL_WATCH_TO_PHONE", logMsg)
                         ConnectionLogManager.log(LogType.TRAFFIC, "ACCEL_WATCH_TO_PHONE", logMsg)
+                        
+                        // Log to UI TelemetryLogger
+                        TelemetryLogger.log(
+                            "WATCH",
+                            "Data Received",
+                            "Received ${batch.size} sensor samples from watch. Queue: $queueSize pending."
+                        )
                     }
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing batch", e)
+                    TelemetryLogger.log(
+                        "PHONE",
+                        "Error",
+                        "Failed to parse sensor batch: ${e.message}"
+                    )
                 }
             }
+        } else {
+            TelemetryLogger.log(
+                "PHONE",
+                "Warning",
+                "Received sensor_batch event but batch_data was null"
+            )
         }
     }
 
@@ -236,15 +317,18 @@ class PhoneWearableService : LifecycleService(),
     private fun sendPong(nodeId: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val dataClient = Wearable.getDataClient(applicationContext)
-                val putDataMapReq = PutDataMapRequest.create("/pong")
-                putDataMapReq.dataMap.putLong("timestamp", System.currentTimeMillis())
-                val putDataReq = putDataMapReq.asPutDataRequest()
-                putDataReq.setUrgent()
-                dataClient.putDataItem(putDataReq).await()
-                Log.d(TAG, "✅ PONG sent successfully")
+                // Use MessageClient to send PONG (same as how watch sends PING)
+                val messageClient = Wearable.getMessageClient(applicationContext)
+                messageClient.sendMessage(nodeId, "/pong", "pong".toByteArray()).await()
+                Log.d(TAG, "✅ PONG Message sent successfully to $nodeId")
+                
+                TelemetryLogger.log(
+                    "PHONE",
+                    "Pong Sent",
+                    "[${getTimestamp()}] Sent PONG response to watch node: $nodeId"
+                )
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error sending pong", e)
+                Log.e(TAG, "❌ Error sending pong message", e)
             }
         }
     }

@@ -24,7 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.MedicalDocumentEntity
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.SensorBatchEntity
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.UploadLogEntity
+import com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogsViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogsUiState
 import com.samsung.android.health.sdk.sample.healthdiary.worker.UploadHealthMonitor
 import com.samsung.android.health.sdk.sample.healthdiary.worker.UploadHealthState
 import com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler
@@ -80,9 +82,9 @@ fun LogsScreen(
             HorizontalPager(state = pagerState) { page ->
                 when (page) {
                     0 -> UploadHealthPanel(uploadHealthState, context)
-                    1 -> SystemLogList(uiState.systemLogs)
-                    2 -> SensorBatchList(uiState.sensorBatches)
-                    3 -> UploadLogList(uiState.uploadLogs)
+                    1 -> SystemLogList(uiState.phoneLogs) // Phone system logs
+                    2 -> SensorDataTab(uiState) // Watch sensor data logs + stats
+                    3 -> UploadLogsTab(uiState.apiLogs) // API upload logs
                     4 -> DocumentList(uiState.medicalDocuments)
                 }
             }
@@ -91,101 +93,214 @@ fun LogsScreen(
 }
 
 @Composable
-fun SystemLogList(logs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry>) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(logs) { log ->
-            ListItem(
-                headlineContent = { Text("[${log.source}] ${log.event}") },
-                supportingContent = { 
-                    Text(log.details) 
-                },
-                trailingContent = {
-                    Text(log.getFormattedTime(), style = MaterialTheme.typography.bodySmall)
-                },
-                colors = ListItemDefaults.colors(
-                    containerColor = when (log.source) {
-                        "WATCH" -> Color(0xFFE3F2FD)
-                        "PHONE" -> Color(0xFFE8F5E9)
-                        "API" -> Color(0xFFFFF3E0)
-                        else -> Color.Transparent
-                    }
+fun SystemLogList(logs: List<LogEntry>) {
+    if (logs.isEmpty()) {
+        EmptyTabContent("No system logs yet", "Phone system events will appear here")
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(logs) { log ->
+                ListItem(
+                    headlineContent = { Text(log.event, fontWeight = FontWeight.Medium) },
+                    supportingContent = { 
+                        Text(log.details) 
+                    },
+                    trailingContent = {
+                        Text(log.getFormattedTime(), style = MaterialTheme.typography.bodySmall)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color(0xFFE8F5E9) // Green for phone
+                    )
                 )
-            )
-            HorizontalDivider()
+                HorizontalDivider()
+            }
         }
     }
 }
 
 @Composable
-fun SensorBatchList(batches: List<SensorBatchEntity>) {
+fun SensorDataTab(uiState: LogsUiState) {
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(batches) { batch ->
-            ListItem(
-                headlineContent = { Text("Sensor: ${batch.sensorType}") },
-                supportingContent = { 
-                    Text("Samples: ${batch.sampleCount} | Time: ${formatTime(batch.timestamp)}") 
-                },
-                trailingContent = {
-                    if (batch.uploaded) {
-                        Text("Uploaded", color = Color.Green)
-                    } else {
-                        Text("Pending", color = Color.Red)
+        // Stats Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFE3F2FD)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Sensor Data Queue",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${uiState.pendingSensorCount}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (uiState.pendingSensorCount > 0) Color(0xFFFF5722) else Color(0xFF4CAF50)
+                            )
+                            Text("Pending", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${uiState.totalSensorCount}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text("Total", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
+            }
+        }
+        
+        // Watch logs header
+        item {
+            Text(
+                text = "Watch → Phone Events",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 8.dp)
             )
-            HorizontalDivider()
+        }
+        
+        // Watch logs
+        if (uiState.watchLogs.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                ) {
+                    Text(
+                        text = "No sensor data received from watch yet",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
+        } else {
+            items(uiState.watchLogs) { log ->
+                ListItem(
+                    headlineContent = { Text(log.event, fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(log.details) },
+                    trailingContent = {
+                        Text(log.getFormattedTime(), style = MaterialTheme.typography.bodySmall)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = Color(0xFFE3F2FD) // Blue for watch
+                    )
+                )
+                HorizontalDivider()
+            }
         }
     }
 }
 
 @Composable
-fun UploadLogList(logs: List<UploadLogEntity>) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+fun UploadLogsTab(apiLogs: List<LogEntry>) {
+    if (apiLogs.isEmpty()) {
+        EmptyTabContent("No upload logs yet", "API upload attempts will appear here")
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(apiLogs) { log ->
+                val isSuccess = log.event.contains("Success", ignoreCase = true)
+                val isError = log.event.contains("Error", ignoreCase = true) || 
+                              log.event.contains("Failed", ignoreCase = true)
+                
+                ListItem(
+                    headlineContent = { 
+                        Text(
+                            log.event, 
+                            fontWeight = FontWeight.Medium,
+                            color = when {
+                                isSuccess -> Color(0xFF4CAF50)
+                                isError -> Color(0xFFF44336)
+                                else -> Color.Unspecified
+                            }
+                        ) 
+                    },
+                    supportingContent = { Text(log.details) },
+                    trailingContent = {
+                        Text(log.getFormattedTime(), style = MaterialTheme.typography.bodySmall)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = when {
+                            isSuccess -> Color(0xFFE8F5E9) // Green
+                            isError -> Color(0xFFFFEBEE) // Red
+                            else -> Color(0xFFFFF3E0) // Orange
+                        }
+                    )
+                )
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyTabContent(title: String, subtitle: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        items(logs) { log ->
-            ListItem(
-                headlineContent = { Text("Status: ${log.status}") },
-                supportingContent = { 
-                    Text("Entity: ${log.entityType} | Time: ${formatTime(log.timestamp)}") 
-                },
-                trailingContent = {
-                    Text("${log.responseCode ?: "N/A"}")
-                }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Gray
             )
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.LightGray
+            )
         }
     }
 }
 
 @Composable
 fun DocumentList(documents: List<MedicalDocumentEntity>) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(documents) { doc ->
-            ListItem(
-                headlineContent = { Text(doc.filename) },
-                supportingContent = { 
-                    Text("Size: ${doc.fileSize / 1024} KB | Uploaded: ${formatTime(doc.uploadTimestamp)}") 
-                },
-                trailingContent = {
-                    if (doc.processed) {
-                        Text("Processed", color = Color.Green)
-                    } else {
-                        Text("Unprocessed", color = Color.Gray)
+    if (documents.isEmpty()) {
+        EmptyTabContent("No documents yet", "Medical documents will appear here")
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(documents) { doc ->
+                ListItem(
+                    headlineContent = { Text(doc.filename) },
+                    supportingContent = { 
+                        Text("Size: ${doc.fileSize / 1024} KB | Uploaded: ${formatTime(doc.uploadTimestamp)}") 
+                    },
+                    trailingContent = {
+                        if (doc.processed) {
+                            Text("Processed", color = Color.Green)
+                        } else {
+                            Text("Unprocessed", color = Color.Gray)
+                        }
                     }
-                }
-            )
-            HorizontalDivider()
+                )
+                HorizontalDivider()
+            }
         }
     }
 }

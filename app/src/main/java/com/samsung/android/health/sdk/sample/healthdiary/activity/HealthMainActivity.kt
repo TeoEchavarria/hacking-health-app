@@ -35,19 +35,55 @@ import com.samsung.android.sdk.health.data.permission.AccessType
 import com.samsung.android.sdk.health.data.permission.Permission
 import com.samsung.android.sdk.health.data.request.DataTypes
 import kotlinx.coroutines.launch
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import com.google.gson.Gson
+import java.io.File
 
 class HealthMainActivity : AppCompatActivity() {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
     private lateinit var syncViewModel: SyncViewModel
     // private lateinit var binding: HealthMainBinding // Removed DataBinding
+    private val debugGson = Gson()
+
+    // #region agent log
+    private fun debugLog(hypothesisId: String, message: String, data: Map<String, Any?> = emptyMap()) {
+        try {
+            val payload = mapOf(
+                "sessionId" to "debug-session",
+                "runId" to "pre-fix",
+                "hypothesisId" to hypothesisId,
+                "location" to "HealthMainActivity.kt",
+                "message" to message,
+                "data" to data,
+                "timestamp" to System.currentTimeMillis()
+            )
+            File("/Users/teoechavarria/Documents/hh/.cursor/debug.log")
+                .appendText(debugGson.toJson(payload) + "\n")
+        } catch (_: Exception) {
+            // best-effort logging only
+        }
+    }
+    // #endregion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Verificar autenticación antes de continuar
+        // #region agent log
+        debugLog("H1", "HealthMainActivity.onCreate entry")
+        // #endregion
         TokenManager.initialize(this)
+        // #region agent log
+        debugLog("H1", "TokenManager initialized")
+        // #endregion
         if (!TokenManager.hasToken()) {
+            // #region agent log
+            debugLog("H1", "Token missing, redirecting to LoginActivity")
+            // #endregion
             // No hay token, navegar a LoginActivity
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -56,27 +92,99 @@ class HealthMainActivity : AppCompatActivity() {
             return
         }
 
-        val factory = HealthViewModelFactory(this)
-        healthMainViewModel = ViewModelProvider(this, factory)[HealthMainViewModel::class.java]
-        syncViewModel = ViewModelProvider(this, factory)[SyncViewModel::class.java]
+        try {
+            val factory = HealthViewModelFactory(this)
+            healthMainViewModel = ViewModelProvider(this, factory)[HealthMainViewModel::class.java]
+            syncViewModel = ViewModelProvider(this, factory)[SyncViewModel::class.java]
+            // #region agent log
+            debugLog("H2", "ViewModels initialized")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H2", "ViewModel init failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            throw e
+        }
 
         // Trigger flush of offline sensor data
-        com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository(applicationContext).scheduleUpload()
+        try {
+            com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository(applicationContext).scheduleUpload()
+            // #region agent log
+            debugLog("H3", "SensorRepository.scheduleUpload completed")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H3", "SensorRepository.scheduleUpload failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            throw e
+        }
         
         // Initialize upload resilience systems
-        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadHealthMonitor.initialize(applicationContext)
-        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler.ensurePeriodicSafetyNet(applicationContext)
-        com.samsung.android.health.sdk.sample.healthdiary.worker.UploadWatchdog.start(applicationContext)
-        Log.d("HealthMainActivity", "Upload resilience systems initialized")
+        try {
+            com.samsung.android.health.sdk.sample.healthdiary.worker.UploadHealthMonitor.initialize(applicationContext)
+            com.samsung.android.health.sdk.sample.healthdiary.worker.UploadScheduler.ensurePeriodicSafetyNet(applicationContext)
+            com.samsung.android.health.sdk.sample.healthdiary.worker.UploadWatchdog.start(applicationContext)
+            Log.d("HealthMainActivity", "Upload resilience systems initialized")
+            // #region agent log
+            debugLog("H3", "Upload resilience systems initialized")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H3", "Upload resilience systems init failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            throw e
+        }
+        
+        // Initialize training reminder scheduler
+        try {
+            com.samsung.android.health.sdk.sample.healthdiary.training.TrainingReminderScheduler(applicationContext).scheduleAllReminders()
+            Log.d("HealthMainActivity", "Training reminders scheduled")
+            // #region agent log
+            debugLog("H4", "Training reminders scheduled")
+            // #endregion
+        } catch (e: Exception) {
+            // Do not crash the app if scheduling fails (e.g., missing exact alarm permission).
+            debugLog("H4", "Training reminders scheduling failed", mapOf("error" to e.javaClass.simpleName))
+            showToast(this, getString(R.string.training_reminder_permission_required))
+        }
 
         // Start PhoneWearableService for persistent watch communication
-        val serviceIntent = Intent(this, com.samsung.android.health.sdk.sample.healthdiary.wearable.PhoneWearableService::class.java)
-        startForegroundService(serviceIntent)
-        Log.d("HealthMainActivity", "PhoneWearableService started from MainActivity")
+        try {
+            val serviceIntent = Intent(this, com.samsung.android.health.sdk.sample.healthdiary.wearable.PhoneWearableService::class.java)
+            startForegroundService(serviceIntent)
+            Log.d("HealthMainActivity", "PhoneWearableService started from MainActivity")
+            // #region agent log
+            debugLog("H4", "PhoneWearableService started")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H4", "PhoneWearableService start failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            throw e
+        }
+        
+        // Log app startup to TelemetryLogger
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val timestamp = sdf.format(Date())
+        TelemetryLogger.log(
+            "PHONE",
+            "App Started",
+            "[$timestamp] Health Diary app initialized. Waiting for watch data. Upload interval: 3 minutes."
+        )
 
         // Set Compose Content
-        setContent {
-            NavGraph()
+        try {
+            setContent {
+                NavGraph()
+            }
+            // #region agent log
+            debugLog("H5", "setContent completed")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H5", "setContent failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            throw e
         }
 
         /*

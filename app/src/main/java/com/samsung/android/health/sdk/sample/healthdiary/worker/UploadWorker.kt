@@ -12,10 +12,15 @@ import kotlinx.coroutines.withContext
 
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorBatchRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorRecordDto
-import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionLogManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
 import java.io.IOException
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class UploadWorker(
     context: Context,
@@ -24,6 +29,19 @@ class UploadWorker(
 
     private val sensorDataDao = AppDatabase.getDatabase(context).sensorDataDao()
 
+    private fun getTimestamp(): String {
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
+    
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = applicationContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         // Initialize health monitor
         UploadHealthMonitor.initialize(applicationContext)
@@ -31,7 +49,6 @@ class UploadWorker(
         
         try {
             Log.d(TAG, "UPLOAD_WORK_EXECUTED attempt=$runAttemptCount")
-            TokenManager.initialize(applicationContext)
             
             // Update pending count for diagnostics
             val pendingCount = try { sensorDataDao.getUnsyncedCount() } catch (e: Exception) { -1 }
@@ -39,14 +56,27 @@ class UploadWorker(
                 UploadHealthMonitor.updatePendingCount(pendingCount)
             }
             
-            // Check token validity before starting
-            if (!TokenManager.hasToken()) {
-                 Log.e(TAG, "Upload skipped: No token available. Pending records: $pendingCount")
-                 UploadHealthMonitor.recordFailure("NO_TOKEN")
-                 // CRITICAL: Always schedule next even on retry to prevent chain break
-                 UploadScheduler.scheduleNext(applicationContext)
-                 return@withContext Result.retry()
+            // Log upload attempt to UI
+            TelemetryLogger.log(
+                "PHONE",
+                "Upload Started",
+                "[${getTimestamp()}] Starting upload attempt #$runAttemptCount. Pending: $pendingCount records."
+            )
+            
+            // Check network connectivity first
+            if (!isNetworkAvailable()) {
+                Log.w(TAG, "Upload skipped: No internet connectivity. Pending records: $pendingCount")
+                UploadHealthMonitor.recordFailure("NO_INTERNET")
+                TelemetryLogger.log(
+                    "PHONE",
+                    "No Internet",
+                    "[${getTimestamp()}] No internet connection. $pendingCount records stored for later retry."
+                )
+                UploadScheduler.scheduleNext(applicationContext)
+                return@withContext Result.retry()
             }
+            
+            // No token check - auth disabled for dev/testing
 
             val batchSize = 250
             var totalUploaded = 0
@@ -74,10 +104,9 @@ class UploadWorker(
                 val request = SensorBatchRequest(records)
 
                 try {
-                    // 3. Call Backend
+                    // 3. Call Backend (no auth required - dev/testing mode)
                     Log.d(TAG, "Uploading batch of ${dataToUpload.size} items... (Attempt $runAttemptCount)")
                     
-                    // Note: RetrofitClient.authInterceptor will handle proactive refresh if needed
                     val response = RetrofitClient.syncApiService.uploadSensorData(request)
                     val latency = System.currentTimeMillis() - startTime
 
@@ -95,11 +124,18 @@ class UploadWorker(
                         Log.d("ACCEL_PHONE_TO_API", logMsg)
                         Log.d(TAG, "Batch upload success, remaining unsent: $remaining")
                         ConnectionLogManager.log(LogType.SUCCESS, "ACCEL_PHONE_TO_API", logMsg)
+                        
+                        // Log success to UI
+                        TelemetryLogger.log(
+                            "API",
+                            "Upload Success",
+                            "[${getTimestamp()}] Uploaded ${dataToUpload.size} records. Response: ${response.code()}. Latency: ${latency}ms. Remaining: $remaining"
+                        )
                     } else {
                         val remaining = sensorDataDao.getUnsyncedCount()
                         
+                        // Simplified error handling - only retry on server errors (5xx)
                         val errorReason = when (response.code()) {
-                            401, 403 -> "TOKEN_INVALID"
                             in 500..599 -> "SERVER_ERROR"
                             else -> "API_ERROR_${response.code()}"
                         }
@@ -109,6 +145,13 @@ class UploadWorker(
                         Log.e(TAG, "Upload failed: $errorReason")
                         ConnectionLogManager.log(LogType.ERROR, "ACCEL_PHONE_TO_API", logMsg)
                         UploadHealthMonitor.recordFailure(errorReason)
+                        
+                        // Log failure to UI
+                        TelemetryLogger.log(
+                            "API",
+                            "Upload Failed",
+                            "[${getTimestamp()}] API error: $errorReason (HTTP ${response.code()}). $remaining records pending. Will retry."
+                        )
                         
                         // CRITICAL: Always schedule next even on retry to prevent chain break
                         UploadScheduler.scheduleNext(applicationContext)
@@ -126,6 +169,18 @@ class UploadWorker(
                     ConnectionLogManager.log(LogType.ERROR, "ACCEL_PHONE_TO_API", logMsg)
                     UploadHealthMonitor.recordFailure(errorReason)
                     
+                    // Log network error to UI
+                    val errorMsg = if (e is IOException) {
+                        "Network error: ${e.message}. $remaining records stored for later retry."
+                    } else {
+                        "Exception: ${e.javaClass.simpleName} - ${e.message}. $remaining records pending."
+                    }
+                    TelemetryLogger.log(
+                        "API",
+                        "Upload Error",
+                        "[${getTimestamp()}] $errorMsg"
+                    )
+                    
                     // CRITICAL: Always schedule next even on retry to prevent chain break
                     UploadScheduler.scheduleNext(applicationContext)
                     return@withContext Result.retry()
@@ -135,6 +190,20 @@ class UploadWorker(
             // Log total uploaded in this run
             if (totalUploaded > 0) {
                 Log.d(TAG, "UPLOAD_RUN_COMPLETE: uploaded $totalUploaded records total")
+                TelemetryLogger.log(
+                    "API",
+                    "Upload Complete",
+                    "[${getTimestamp()}] Successfully uploaded $totalUploaded records in this run."
+                )
+            } else {
+                val pendingNow = try { sensorDataDao.getUnsyncedCount() } catch (e: Exception) { 0 }
+                if (pendingNow == 0) {
+                    TelemetryLogger.log(
+                        "PHONE",
+                        "No Data",
+                        "[${getTimestamp()}] No pending records to upload."
+                    )
+                }
             }
             
             // Schedule next run (loop)
@@ -145,6 +214,11 @@ class UploadWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Worker critical failure", e)
             UploadHealthMonitor.recordFailure("CRITICAL: ${e.javaClass.simpleName}")
+            TelemetryLogger.log(
+                "PHONE",
+                "Critical Error",
+                "[${getTimestamp()}] Worker critical failure: ${e.javaClass.simpleName} - ${e.message}"
+            )
             // CRITICAL: Always schedule next even on critical failure
             UploadScheduler.scheduleNext(applicationContext)
             Result.retry()

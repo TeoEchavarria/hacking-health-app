@@ -17,6 +17,13 @@ data class LogsUiState(
     val uploadLogs: List<UploadLogEntity> = emptyList(),
     val medicalDocuments: List<MedicalDocumentEntity> = emptyList(),
     val systemLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
+    // Filtered logs by source
+    val watchLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
+    val phoneLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
+    val apiLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
+    // Sensor data stats
+    val pendingSensorCount: Int = 0,
+    val totalSensorCount: Int = 0,
     val isLoading: Boolean = false
 )
 
@@ -34,7 +41,17 @@ class LogsViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeTelemetry() {
         viewModelScope.launch {
             com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger.logs.collect { logs ->
-                _uiState.value = _uiState.value.copy(systemLogs = logs)
+                // Filter logs by source for different tabs
+                val watchLogs = logs.filter { it.source == "WATCH" }
+                val phoneLogs = logs.filter { it.source == "PHONE" }
+                val apiLogs = logs.filter { it.source == "API" }
+                
+                _uiState.value = _uiState.value.copy(
+                    systemLogs = logs,
+                    watchLogs = watchLogs,
+                    phoneLogs = phoneLogs,
+                    apiLogs = apiLogs
+                )
             }
         }
     }
@@ -43,14 +60,20 @@ class LogsViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
-            val batches = database.sensorBatchDao().getAll() // Assuming getAll() exists and is suspend
-            val logs = database.uploadLogDao().getAll() // Assuming getAll() exists
+            val batches = database.sensorBatchDao().getAll()
+            val logs = database.uploadLogDao().getAll()
             val docs = database.medicalDocumentDao().getAll()
+            
+            // Get sensor data stats
+            val pendingCount = database.sensorDataDao().getUnsyncedCount()
+            val totalCount = database.sensorDataDao().getCount()
 
             _uiState.value = _uiState.value.copy(
                 sensorBatches = batches,
                 uploadLogs = logs,
                 medicalDocuments = docs,
+                pendingSensorCount = pendingCount,
+                totalSensorCount = totalCount,
                 isLoading = false
             )
         }

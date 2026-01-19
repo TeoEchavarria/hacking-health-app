@@ -173,7 +173,6 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
                 Log.d(TAG, "Creando SyncViewModel")
                 // Initialize TokenManager and RetrofitClient if not already done
                 TokenManager.initialize(context)
-                RetrofitClient.setTokenManager(TokenManager)
                 SyncViewModel(SyncRepository())
             }
 
@@ -181,7 +180,6 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
                 Log.d(TAG, "Creando AuthViewModel")
                 // Initialize TokenManager and RetrofitClient if not already done
                 TokenManager.initialize(context)
-                RetrofitClient.setTokenManager(TokenManager)
                 AuthViewModel(AuthRepository())
             }
 

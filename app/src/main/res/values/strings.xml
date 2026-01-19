@@ -123,5 +123,6 @@
     <string name="login_failed">Login failed</string>
     <string name="auth_loading">Processing request...</string>
     <string name="auth_success_generic">Operation completed</string>
+    <string name="training_reminder_permission_required">Exact alarm permission required to schedule training reminders. Enable it in system settings.</string>
 
 </resources>

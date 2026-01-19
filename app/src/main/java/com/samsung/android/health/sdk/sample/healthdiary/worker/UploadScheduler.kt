@@ -14,6 +14,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
 
 import androidx.work.BackoffPolicy
 import android.util.Log
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Manages upload scheduling with resilience against silent stalls.
@@ -28,6 +32,11 @@ object UploadScheduler {
     private const val PERIODIC_WORK_NAME = "ACCEL_UPLOAD_PERIODIC_SAFETY"
     private const val TAG = "UploadScheduler"
 
+    private fun getTimestamp(): String {
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
+
     /**
      * Schedule the next upload attempt.
      * Called after receiving data or after successful upload.
@@ -35,9 +44,8 @@ object UploadScheduler {
     fun scheduleNext(context: Context) {
         val workManager = WorkManager.getInstance(context)
 
-        // Dev: 10 seconds, Prod: 5 minutes
-        val isDev = BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "debug"
-        val delaySeconds = if (isDev) 10L else 5L * 60L
+        // 3 minutes for all builds
+        val delaySeconds = 3L * 60L
 
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -55,6 +63,13 @@ object UploadScheduler {
             
         Log.d(TAG, "UPLOAD_WORK_SCHEDULED delay=${delaySeconds}s")
         UploadHealthMonitor.recordScheduled()
+        
+        // Log scheduling to UI
+        TelemetryLogger.log(
+            "PHONE",
+            "Upload Scheduled",
+            "[${getTimestamp()}] Next upload scheduled in 3 minutes."
+        )
 
         // KEEP ensures that if a job is already scheduled (waiting out its delay), 
         // we don't reset the timer. We just let the existing one run.
@@ -129,6 +144,11 @@ object UploadScheduler {
         )
         
         Log.d(TAG, "UPLOAD_FORCED_IMMEDIATE")
+        TelemetryLogger.log(
+            "PHONE",
+            "Force Upload",
+            "[${getTimestamp()}] Forced immediate upload triggered."
+        )
     }
 
     fun cancelAllWork(context: Context) {

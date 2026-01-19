@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.samsung.android.health.sdk.sample.healthdiary.repository.DocumentRepository
@@ -17,6 +19,7 @@ sealed class Screen(val route: String) {
     object Logs : Screen("logs")
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
+    object Training : Screen("training")
 }
 
 @Composable
@@ -25,6 +28,18 @@ fun NavGraph() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val documentRepository = DocumentRepository(context)
+    
+    // Check for deep-link intent (e.g., from notification)
+    val activity = remember { 
+        (context as? androidx.activity.ComponentActivity)
+    }
+    LaunchedEffect(Unit) {
+        activity?.intent?.let { intent ->
+            if (intent.getBooleanExtra("open_training", false)) {
+                navController.navigate(Screen.Training.route)
+            }
+        }
+    }
 
     val pdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -44,6 +59,7 @@ fun NavGraph() {
                 onNavigateToLogs = { navController.navigate(Screen.Logs.route) },
                 onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onUploadPdf = { pdfLauncher.launch("application/pdf") }
             )
         }
@@ -62,6 +78,12 @@ fun NavGraph() {
 
         composable(Screen.Settings.route) {
             SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Training.route) {
+            TrainingSessionScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

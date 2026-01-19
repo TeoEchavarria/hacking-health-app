@@ -17,11 +17,34 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.ActivityLoginBinding
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.AuthViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
+import com.google.gson.Gson
+import java.io.File
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var authViewModel: AuthViewModel
+    private val debugGson = Gson()
+
+    // #region agent log
+    private fun debugLog(hypothesisId: String, message: String, data: Map<String, Any?> = emptyMap()) {
+        try {
+            val payload = mapOf(
+                "sessionId" to "debug-session",
+                "runId" to "pre-fix",
+                "hypothesisId" to hypothesisId,
+                "location" to "LoginActivity.kt",
+                "message" to message,
+                "data" to data,
+                "timestamp" to System.currentTimeMillis()
+            )
+            File("/Users/teoechavarria/Documents/hh/.cursor/debug.log")
+                .appendText(debugGson.toJson(payload) + "\n")
+        } catch (_: Exception) {
+            // best-effort logging only
+        }
+    }
+    // #endregion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +114,14 @@ class LoginActivity : AppCompatActivity() {
                             showLoading(false)
                             Toast.makeText(this@LoginActivity, getString(R.string.login_success), Toast.LENGTH_SHORT).show()
                             showLoginError(null)
-                            
+                            // #region agent log
+                            debugLog(
+                                hypothesisId = "H1",
+                                message = "Auth success, launching HealthMainActivity",
+                                data = mapOf("activity" to "HealthMainActivity")
+                            )
+                            // #endregion
+
                             val intent = Intent(this@LoginActivity, HealthMainActivity::class.java)
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                             startActivity(intent)
