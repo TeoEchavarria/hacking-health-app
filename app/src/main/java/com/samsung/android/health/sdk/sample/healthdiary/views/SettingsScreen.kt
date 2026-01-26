@@ -2,9 +2,9 @@ package com.samsung.android.health.sdk.sample.healthdiary.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.PutDataMapRequest
@@ -222,17 +223,15 @@ fun SettingsScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Settings & Diagnostics") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            SandboxTopBar(
+                title = "Settings & Diagnostics",
+                onNavigationClick = onNavigateBack,
                 actions = {
-                    IconButton(onClick = { ConnectionLogManager.clearLogs() }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Clear Logs")
-                    }
+                    SandboxIconButton(
+                        icon = Icons.Default.Delete,
+                        onClick = { ConnectionLogManager.clearLogs() },
+                        contentDescription = "Clear Logs"
+                    )
                 }
             )
         },
@@ -246,11 +245,8 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // --- Connection Status Card ---
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+            SandboxCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -310,19 +306,17 @@ fun SettingsScreen(
                         }
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                             Button(
+                             SandboxButton(
+                                text = "Handshake",
                                 onClick = { initiateHandshake(connectedDevice!!.id) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                            ) {
-                                Text("Handshake")
-                            }
-                            OutlinedButton(
-                                onClick = { unbindDevice() },
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Unbind")
-                            }
+                            )
+                            SandboxButton(
+                                text = "Unbind",
+                                onClick = { unbindDevice() },
+                                modifier = Modifier.weight(1f),
+                                variant = ButtonVariant.Secondary
+                            )
                         }
                     } else {
                          Text("No device bound.", style = MaterialTheme.typography.bodyMedium)
@@ -332,7 +326,7 @@ fun SettingsScreen(
 
             // --- Discovery Section ---
             if (connectedDevice == null) {
-                Card(
+                SandboxCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -342,12 +336,14 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("Available Devices", style = MaterialTheme.typography.titleMedium)
-                            IconButton(onClick = { scanForDevices() }, enabled = !isScanning) {
-                                if (isScanning) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                                } else {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Scan")
-                                }
+                            if (isScanning) {
+                                SandboxLoader(variant = LoaderVariant.Small)
+                            } else {
+                                SandboxIconButton(
+                                    icon = Icons.Default.Refresh,
+                                    onClick = { scanForDevices() },
+                                    contentDescription = "Scan"
+                                )
                             }
                         }
                         
@@ -367,9 +363,10 @@ fun SettingsScreen(
                                     Text(node.displayName, style = MaterialTheme.typography.bodyMedium)
                                     Text(node.id, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                 }
-                                Button(onClick = { bindDevice(node) }) {
-                                    Text("Bind")
-                                }
+                                SandboxButton(
+                                    text = "Bind",
+                                    onClick = { bindDevice(node) }
+                                )
                             }
                             HorizontalDivider()
                         }
@@ -378,66 +375,66 @@ fun SettingsScreen(
             }
 
             // --- API Config Section ---
-            OutlinedTextField(
-                value = apiUrl,
-                onValueChange = { apiUrl = it },
-                label = { Text("Base API URL") },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                trailingIcon = {
-                    Button(
-                        onClick = {
-                            DeviceConfig.setApiBaseUrl(apiUrl)
-                            scope.launch { snackbarHostState.showSnackbar("Settings saved") }
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp)
-                    ) {
-                        Text("Save")
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SandboxInput(
+                    value = apiUrl,
+                    onValueChange = { apiUrl = it },
+                    label = "Base API URL",
+                    modifier = Modifier.weight(1f)
+                )
+                SandboxButton(
+                    text = "Save",
+                    onClick = {
+                        DeviceConfig.setApiBaseUrl(apiUrl)
+                        scope.launch { snackbarHostState.showSnackbar("Settings saved") }
                     }
-                }
-            )
+                )
+            }
 
             // --- Live Log Console ---
-            Text("Live Diagnostic Log", style = MaterialTheme.typography.titleMedium)
-            
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+            SandboxSection(
+                title = "Live Diagnostic Log",
+                modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxSize(),
-                    reverseLayout = false 
+                SandboxCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(logs) { log ->
-                        Row(modifier = Modifier.padding(vertical = 2.dp)) {
-                            Text(
-                                text = log.formattedTime,
-                                color = Color.Gray,
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(60.dp)
-                            )
-                            Text(
-                                text = "[${log.tag}] ",
-                                color = Color(0xFFBB86FC),
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(
-                                text = log.message,
-                                color = when(log.type) {
-                                    LogType.ERROR -> Color(0xFFFF5252)
-                                    LogType.SUCCESS -> Color(0xFF4CAF50)
-                                    LogType.TRAFFIC -> Color(0xFF64B5F6)
-                                    else -> Color.White
-                                },
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxSize(),
+                        reverseLayout = false 
+                    ) {
+                        items(logs) { log ->
+                            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text(
+                                    text = log.formattedTime,
+                                    color = Color.Gray,
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.width(60.dp)
+                                )
+                                Text(
+                                    text = "[${log.tag}] ",
+                                    color = Color(0xFFBB86FC),
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = log.message,
+                                    color = when(log.type) {
+                                        LogType.ERROR -> Color(0xFFFF5252)
+                                        LogType.SUCCESS -> Color(0xFF4CAF50)
+                                        LogType.TRAFFIC -> Color(0xFF64B5F6)
+                                        else -> Color.White
+                                    },
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
                         }
                     }
                 }

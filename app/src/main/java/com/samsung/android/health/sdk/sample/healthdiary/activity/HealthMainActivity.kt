@@ -175,7 +175,9 @@ class HealthMainActivity : AppCompatActivity() {
         // Set Compose Content
         try {
             setContent {
-                NavGraph()
+                com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme {
+                    NavGraph()
+                }
             }
             // #region agent log
             debugLog("H5", "setContent completed")

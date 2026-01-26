@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
     object Training : Screen("training")
+    object SandboxGallery : Screen("sandbox_gallery")
 }
 
 @Composable
@@ -60,7 +61,10 @@ fun NavGraph() {
                 onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
-                onUploadPdf = { pdfLauncher.launch("application/pdf") }
+                onUploadPdf = { pdfLauncher.launch("application/pdf") },
+                onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
+                    { navController.navigate(Screen.SandboxGallery.route) }
+                } else null
             )
         }
         
@@ -86,6 +90,15 @@ fun NavGraph() {
             TrainingSessionScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+        
+        // Sandbox Gallery - Debug only
+        if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
+            composable(Screen.SandboxGallery.route) {
+                SandboxGalleryScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

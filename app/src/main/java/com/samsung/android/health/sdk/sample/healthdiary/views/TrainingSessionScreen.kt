@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.training.*
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -59,17 +60,15 @@ fun TrainingSessionScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Daily Training Session") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            SandboxTopBar(
+                title = "Daily Training Session",
+                onNavigationClick = onNavigateBack,
                 actions = {
-                    IconButton(onClick = { showReminderSettings = true }) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Reminder Settings")
-                    }
+                    SandboxIconButton(
+                        icon = Icons.Default.Notifications,
+                        onClick = { showReminderSettings = true },
+                        contentDescription = "Reminder Settings"
+                    )
                 }
             )
         }

@@ -2,7 +2,6 @@ package com.samsung.android.health.sdk.sample.healthdiary.views
 
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.MedicalDocumentEntity
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.SensorBatchEntity
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.UploadLogEntity
@@ -51,33 +51,27 @@ fun LogsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Logs & Documents") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            SandboxTopBar(
+                title = "Logs & Documents",
+                onNavigationClick = onNavigateBack,
                 actions = {
-                    IconButton(onClick = { viewModel.syncPendingData() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
-                    }
+                    SandboxIconButton(
+                        icon = Icons.Default.Refresh,
+                        onClick = { viewModel.syncPendingData() },
+                        contentDescription = "Sync"
+                    )
                 }
             )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
-                titles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        text = { Text(title) }
-                    )
+            SandboxTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                tabs = titles,
+                onTabSelected = { index ->
+                    scope.launch { pagerState.animateScrollToPage(index) }
                 }
-            }
+            )
 
             HorizontalPager(state = pagerState) { page ->
                 when (page) {
@@ -128,40 +122,35 @@ fun SensorDataTab(uiState: LogsUiState) {
     ) {
         // Stats Card
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFE3F2FD)
-                )
+            SandboxCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Sensor Data Queue",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${uiState.pendingSensorCount}",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (uiState.pendingSensorCount > 0) Color(0xFFFF5722) else Color(0xFF4CAF50)
-                            )
-                            Text("Pending", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${uiState.totalSensorCount}",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text("Total", style = MaterialTheme.typography.bodySmall)
-                        }
+                Text(
+                    text = "Sensor Data Queue",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${uiState.pendingSensorCount}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (uiState.pendingSensorCount > 0) Color(0xFFFF5722) else Color(0xFF4CAF50)
+                        )
+                        Text("Pending", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${uiState.totalSensorCount}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text("Total", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -180,17 +169,10 @@ fun SensorDataTab(uiState: LogsUiState) {
         // Watch logs
         if (uiState.watchLogs.isEmpty()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                ) {
-                    Text(
-                        text = "No sensor data received from watch yet",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                }
+                SandboxEmptyState(
+                    title = "No sensor data received from watch yet",
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         } else {
             items(uiState.watchLogs) { log ->
@@ -260,19 +242,10 @@ fun EmptyTabContent(title: String, subtitle: String) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.LightGray
-            )
-        }
+        SandboxEmptyState(
+            title = title,
+            message = subtitle
+        )
     }
 }
 
@@ -322,149 +295,131 @@ fun UploadHealthPanel(state: UploadHealthState, context: Context) {
     ) {
         // Status Card
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        isCircuitOpen -> Color(0xFFFFCDD2) // Red
-                        isStalled -> Color(0xFFFFF9C4) // Yellow
-                        else -> Color(0xFFC8E6C9) // Green
-                    }
-                )
+            SandboxCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isCircuitOpen || isStalled) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = "Warning",
-                                tint = if (isCircuitOpen) Color.Red else Color(0xFFF57C00)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = when {
-                                isCircuitOpen -> "⚠️ Circuit Breaker OPEN"
-                                isStalled -> "⚠️ Upload Pipeline STALLED"
-                                else -> "✅ Upload Pipeline HEALTHY"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isCircuitOpen || isStalled) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = if (isCircuitOpen) Color.Red else Color(0xFFF57C00)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    if (isCircuitOpen) {
-                        Text(
-                            text = "Too many consecutive failures. Manual intervention may be required.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Red
-                        )
-                    }
-                    if (isStalled) {
-                        Text(
-                            text = "No upload attempts detected recently. Watchdog will attempt recovery.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFF57C00)
-                        )
-                    }
+                    Text(
+                        text = when {
+                            isCircuitOpen -> "⚠️ Circuit Breaker OPEN"
+                            isStalled -> "⚠️ Upload Pipeline STALLED"
+                            else -> "✅ Upload Pipeline HEALTHY"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                if (isCircuitOpen) {
+                    Text(
+                        text = "Too many consecutive failures. Manual intervention may be required.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Red
+                    )
+                }
+                if (isStalled) {
+                    Text(
+                        text = "No upload attempts detected recently. Watchdog will attempt recovery.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFF57C00)
+                    )
                 }
             }
         }
         
         // Metrics Card
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Upload Metrics",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    MetricRow("Pending Records", "${state.pendingRecordCount}")
-                    MetricRow("Total Sent", "${state.totalRecordsSent}")
-                    MetricRow("Consecutive Failures", "${state.consecutiveFailures}")
-                    
-                    if (state.lastAttemptTime > 0) {
-                        MetricRow("Last Attempt", formatTimeAgo(now - state.lastAttemptTime))
+            SandboxCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Upload Metrics",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                MetricRow("Pending Records", "${state.pendingRecordCount}")
+                MetricRow("Total Sent", "${state.totalRecordsSent}")
+                MetricRow("Consecutive Failures", "${state.consecutiveFailures}")
+                
+                if (state.lastAttemptTime > 0) {
+                    MetricRow("Last Attempt", formatTimeAgo(now - state.lastAttemptTime))
+                }
+                if (state.lastSuccessTime > 0) {
+                    MetricRow("Last Success", formatTimeAgo(now - state.lastSuccessTime))
+                }
+                if (state.lastFailureTime > 0) {
+                    MetricRow("Last Failure", formatTimeAgo(now - state.lastFailureTime))
+                    if (state.lastFailureReason.isNotEmpty()) {
+                        MetricRow("Failure Reason", state.lastFailureReason)
                     }
-                    if (state.lastSuccessTime > 0) {
-                        MetricRow("Last Success", formatTimeAgo(now - state.lastSuccessTime))
-                    }
-                    if (state.lastFailureTime > 0) {
-                        MetricRow("Last Failure", formatTimeAgo(now - state.lastFailureTime))
-                        if (state.lastFailureReason.isNotEmpty()) {
-                            MetricRow("Failure Reason", state.lastFailureReason)
-                        }
-                    }
-                    if (state.lastScheduledTime > 0) {
-                        MetricRow("Last Scheduled", formatTimeAgo(now - state.lastScheduledTime))
-                    }
+                }
+                if (state.lastScheduledTime > 0) {
+                    MetricRow("Last Scheduled", formatTimeAgo(now - state.lastScheduledTime))
                 }
             }
         }
         
         // Actions Card
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Actions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+            SandboxCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SandboxButton(
+                        text = "Force Upload",
+                        onClick = { UploadScheduler.forceImmediateUpload(context) },
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     
-                    Row(
+                    SandboxButton(
+                        text = "Force Check",
+                        onClick = { UploadWatchdog.forceCheck() },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (isCircuitOpen) {
+                    SandboxButton(
+                        text = "Reset Circuit Breaker",
+                        onClick = { UploadHealthMonitor.resetCircuitBreaker() },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { UploadScheduler.forceImmediateUpload(context) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Force Upload")
-                        }
-                        
-                        Button(
-                            onClick = { UploadWatchdog.forceCheck() },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Force Check")
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    if (isCircuitOpen) {
-                        Button(
-                            onClick = { UploadHealthMonitor.resetCircuitBreaker() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
-                        ) {
-                            Text("Reset Circuit Breaker")
-                        }
-                    }
+                        variant = ButtonVariant.Secondary
+                    )
                 }
             }
         }
         
         // Health Summary
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Diagnostic Summary",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = UploadHealthMonitor.getHealthSummary(),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
-                }
+            SandboxCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Diagnostic Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = UploadHealthMonitor.getHealthSummary(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
             }
         }
     }
