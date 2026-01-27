@@ -1,68 +1,74 @@
 package com.samsung.android.health.sdk.sample.healthdiary.components
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 
-/**
- * Sandbox Tab Row Component
- * 
- * A reusable tab row component following Sandbox design system.
- * Wrapper around Material3 ScrollableTabRow with consistent styling.
- * 
- * @param selectedTabIndex Currently selected tab index
- * @param tabs List of tab labels
- * @param onTabSelected Callback when tab is selected
- * @param modifier Modifier for styling
- */
 @Composable
 fun SandboxTabRow(
     selectedTabIndex: Int,
     tabs: List<String>,
     onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
+    if (tabs.isEmpty()) return
+
+    val safeSelectedIndex = selectedTabIndex.coerceIn(0, tabs.lastIndex)
+
     ScrollableTabRow(
-        selectedTabIndex = selectedTabIndex,
-        modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primary,
+        selectedTabIndex = safeSelectedIndex,
+        modifier = modifier.fillMaxWidth(),
+
+        // Fondo neutro para evitar “todo azul”
+        containerColor = Color.White,
+        contentColor = Color.Black,
         indicator = { tabPositions ->
-            val currentTabPosition = tabPositions[selectedTabIndex]
-            TabRowDefaults.Indicator(
+            val current = tabPositions.getOrNull(safeSelectedIndex) ?: return@ScrollableTabRow
+            Box(
                 modifier = Modifier
-                    .width(currentTabPosition.width)
-                    .offset(x = currentTabPosition.left),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.Bottom)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(current.width)
+                        .offset(x = current.left)
+                        .height(2.dp)
+                        .background(Color(0xFF007AFF))
+                )
+            }
+        },
+        divider = {}
     ) {
         tabs.forEachIndexed { index, title ->
             Tab(
-                selected = selectedTabIndex == index,
+                selected = safeSelectedIndex == index,
                 onClick = { onTabSelected(index) },
-                text = { Text(title) }
+                selectedContentColor = Color.Black,
+                unselectedContentColor = Color.Black,
+                text = {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SandboxTabRowPreview() {
-    SandboxTheme {
-        var selectedTab by remember { mutableStateOf(0) }
-        SandboxTabRow(
-            selectedTabIndex = selectedTab,
-            tabs = listOf("Tab 1", "Tab 2", "Tab 3", "Tab 4"),
-            onTabSelected = { selectedTab = it }
-        )
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
 
 /**
@@ -58,7 +59,7 @@ private val SandboxLightColorScheme = lightColorScheme(
 
 @Composable
 fun SandboxTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false, // Disabled for consistent design
     content: @Composable () -> Unit
@@ -79,8 +80,11 @@ fun SandboxTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            val statusBarColor = colorScheme.background
+            window.statusBarColor = statusBarColor.toArgb()
+
+            val useDarkIcons = statusBarColor.luminance() > 0.5f
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = useDarkIcons
         }
     }
 

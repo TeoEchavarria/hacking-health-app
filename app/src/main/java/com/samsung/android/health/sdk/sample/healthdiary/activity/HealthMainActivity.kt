@@ -11,6 +11,10 @@ import android.view.MenuItem
 import android.view.View
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -176,7 +180,12 @@ class HealthMainActivity : AppCompatActivity() {
         try {
             setContent {
                 com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme {
-                    NavGraph()
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.White
+                    ) {
+                        NavGraph()
+                    }
                 }
             }
             // #region agent log

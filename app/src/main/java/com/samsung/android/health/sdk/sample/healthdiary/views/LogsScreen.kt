@@ -1,7 +1,9 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,8 +50,18 @@ fun LogsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val titles = listOf("Health", "System", "Sensor Data", "Upload Logs", "Documents")
+    val colors = MaterialTheme.colorScheme
+
+    SideEffect {
+        Log.d(
+            "THEME",
+            "surface=${colors.surface} surfaceVariant=${colors.surfaceVariant} primary=${colors.primary} " +
+                "onSurface=${colors.onSurface} onSurfaceVariant=${colors.onSurfaceVariant} background=${colors.background}"
+        )
+    }
 
     Scaffold(
+        containerColor = Color.White,
         topBar = {
             SandboxTopBar(
                 title = "Logs & Documents",
@@ -64,7 +76,12 @@ fun LogsScreen(
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
             SandboxTabRow(
                 selectedTabIndex = pagerState.currentPage,
                 tabs = titles,

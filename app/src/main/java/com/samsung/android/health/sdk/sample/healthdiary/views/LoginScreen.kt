@@ -122,23 +122,26 @@ fun LoginScreen(
         )
         
         // Password Input
-        SandboxInput(
+        SandboxPasswordField(
             value = password,
             onValueChange = { 
                 password = it
                 errorMessage = null
             },
             label = context.getString(R.string.login_password_label),
-            placeholder = context.getString(R.string.login_password_hint),
-            keyboardType = KeyboardType.Password,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 8.dp),
-            isError = errorMessage != null && password.isEmpty(),
-            errorMessage = if (password.isEmpty() && errorMessage != null) {
-                context.getString(R.string.login_password_required)
-            } else null
         )
+
+        if (errorMessage != null && password.isEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = context.getString(R.string.login_password_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
         
         // Error Message
         if (errorMessage != null && username.isNotEmpty() && password.isNotEmpty()) {
