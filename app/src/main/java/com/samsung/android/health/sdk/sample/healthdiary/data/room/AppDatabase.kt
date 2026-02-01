@@ -9,6 +9,9 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.dao.*
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
+import com.samsung.android.health.sdk.sample.healthdiary.workout.data.BlockEntity
+import com.samsung.android.health.sdk.sample.healthdiary.workout.data.RoutineDao
+import com.samsung.android.health.sdk.sample.healthdiary.workout.data.RoutineEntity
 
 /**
  * Main Room database for the Health Diary application
@@ -21,9 +24,11 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
         UploadLogEntity::class,
         MedicalDocumentEntity::class,
         TxAgentQueryEntity::class,
-        TxAgentResponseEntity::class
+        TxAgentResponseEntity::class,
+        RoutineEntity::class,
+        BlockEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -36,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun medicalDocumentDao(): MedicalDocumentDao
     abstract fun txAgentQueryDao(): TxAgentQueryDao
     abstract fun txAgentResponseDao(): TxAgentResponseDao
+    abstract fun routineDao(): RoutineDao
 
     companion object {
         @Volatile
@@ -196,6 +202,55 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS routines (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        routineId TEXT NOT NULL,
+                        name TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_routines_routineId ON routines(routineId)")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS blocks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        blockId TEXT NOT NULL,
+                        routineId TEXT NOT NULL,
+                        exerciseName TEXT NOT NULL,
+                        sets INTEGER NOT NULL,
+                        targetWeight REAL NOT NULL,
+                        targetReps INTEGER,
+                        restSec INTEGER NOT NULL,
+                        orderIndex INTEGER NOT NULL,
+                        FOREIGN KEY(routineId) REFERENCES routines(routineId) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_blocks_routineId ON blocks(routineId)")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_blocks_blockId ON blocks(blockId)")
+                // Seed one routine with 2 blocks for end-to-end validation
+                val rid = "00000000-0000-0000-0000-000000000001"
+                val bid1 = "00000000-0000-0000-0000-000000000002"
+                val bid2 = "00000000-0000-0000-0000-000000000003"
+                database.execSQL("INSERT OR IGNORE INTO routines (routineId, name) VALUES ('$rid', 'Sample Routine')")
+                database.execSQL("INSERT OR IGNORE INTO blocks (blockId, routineId, exerciseName, sets, targetWeight, targetReps, restSec, orderIndex) VALUES ('$bid1', '$rid', 'Push-ups', 4, 0, 12, 60, 0)")
+                database.execSQL("INSERT OR IGNORE INTO blocks (blockId, routineId, exerciseName, sets, targetWeight, targetReps, restSec, orderIndex) VALUES ('$bid2', '$rid', 'Squats', 4, 40, 10, 60, 1)")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                val rid = "00000000-0000-0000-0000-000000000001"
+                val bid1 = "00000000-0000-0000-0000-000000000002"
+                val bid2 = "00000000-0000-0000-0000-000000000003"
+                database.execSQL("UPDATE routines SET name = 'Test Routine' WHERE routineId = '$rid'")
+                database.execSQL("UPDATE blocks SET sets = 3, restSec = 30 WHERE routineId = '$rid'")
+                database.execSQL("INSERT OR IGNORE INTO routines (routineId, name) VALUES ('$rid', 'Test Routine')")
+                database.execSQL("INSERT OR IGNORE INTO blocks (blockId, routineId, exerciseName, sets, targetWeight, targetReps, restSec, orderIndex) VALUES ('$bid1', '$rid', 'Push-ups', 3, 0, 12, 30, 0)")
+                database.execSQL("INSERT OR IGNORE INTO blocks (blockId, routineId, exerciseName, sets, targetWeight, targetReps, restSec, orderIndex) VALUES ('$bid2', '$rid', 'Squats', 3, 40, 10, 30, 1)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -203,7 +258,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

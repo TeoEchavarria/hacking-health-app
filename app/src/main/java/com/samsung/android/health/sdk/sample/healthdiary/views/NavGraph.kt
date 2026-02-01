@@ -20,6 +20,7 @@ sealed class Screen(val route: String) {
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
     object Training : Screen("training")
+    data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
 }
 
@@ -87,7 +88,17 @@ fun NavGraph() {
         }
 
         composable(Screen.Training.route) {
-            TrainingSessionScreen(
+            RoutineListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEditor = { routineId ->
+                    navController.navigate(Screen.RoutineEditor(routineId).route)
+                }
+            )
+        }
+        composable("routine_editor/{routineId}") { backStackEntry ->
+            val rid = backStackEntry.arguments?.getString("routineId")
+            RoutineEditorScreen(
+                routineId = if (rid == "new") null else rid,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

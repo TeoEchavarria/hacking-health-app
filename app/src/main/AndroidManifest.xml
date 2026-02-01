@@ -105,6 +105,9 @@
             android:screenOrientation="portrait" />
         <activity android:name=".activity.BodyTemperatureActivity"
             android:screenOrientation="portrait" />
+        <activity android:name=".workout.ui.WorkoutDebugActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
         <!-- Enable Wear OS Data Layer sync -->
         <meta-data
