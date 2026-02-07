@@ -182,21 +182,5 @@ fun LoginScreen(
             isLoading = isLoading,
             enabled = !isLoading
         )
-        
-        // Status Message / Loading
-        if (isLoading || statusMessage != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            if (isLoading) {
-                SandboxLoader(
-                    variant = LoaderVariant.Medium,
-                    message = statusMessage
-                )
-            } else if (statusMessage != null) {
-                Text(
-                    text = statusMessage ?: "",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
     }
 }
