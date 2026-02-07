@@ -40,6 +40,7 @@
         <activity
             android:name=".activity.LoginActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
         <activity
             android:name=".activity.HealthMainActivity"

@@ -84,7 +84,7 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(32.dp),
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -92,14 +92,14 @@ fun LoginScreen(
         SandboxHeader(
             title = context.getString(R.string.login_title),
             variant = HeaderVariant.Large,
-            modifier = Modifier.padding(top = 48.dp, bottom = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
         )
         
         // Subtitle
         Text(
             text = context.getString(R.string.login_subtitle),
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(bottom = 48.dp)
+            modifier = Modifier.padding(bottom = 18.dp)
         )
         
         // Username Input
@@ -114,7 +114,7 @@ fun LoginScreen(
             keyboardType = KeyboardType.Email,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp),
+                .padding(bottom = 16.dp),
             isError = errorMessage != null && username.isEmpty(),
             errorMessage = if (username.isEmpty() && errorMessage != null) {
                 context.getString(R.string.login_username_required)
@@ -131,7 +131,7 @@ fun LoginScreen(
             label = context.getString(R.string.login_password_label),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp),
+                .padding(bottom = 16.dp),
         )
 
         if (errorMessage != null && password.isEmpty()) {
@@ -151,9 +151,11 @@ fun LoginScreen(
                 variant = BadgeVariant.Error,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 16.dp)
             )
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
         
         // Login Button
         SandboxButton(
@@ -182,5 +184,7 @@ fun LoginScreen(
             isLoading = isLoading,
             enabled = !isLoading
         )
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
