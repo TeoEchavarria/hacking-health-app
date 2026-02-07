@@ -11,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.samsung.android.health.sdk.sample.healthdiary.repository.DocumentRepository
 import kotlinx.coroutines.launch
 
@@ -20,6 +22,7 @@ sealed class Screen(val route: String) {
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
     object Training : Screen("training")
+    data class WorkoutPlayer(val routineId: String? = null) : Screen("workout_player?routineId={routineId}")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
 }
@@ -92,7 +95,23 @@ fun NavGraph() {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEditor = { routineId ->
                     navController.navigate(Screen.RoutineEditor(routineId).route)
+                },
+                onNavigateToPlayer = { routineId ->
+                    navController.navigate("workout_player?routineId=$routineId")
                 }
+            )
+        }
+        composable(
+            route = "workout_player?routineId={routineId}",
+            arguments = listOf(navArgument("routineId") { 
+                type = NavType.StringType
+                nullable = true 
+            })
+        ) { backStackEntry ->
+            val rid = backStackEntry.arguments?.getString("routineId")
+            WorkoutPlayerScreen(
+                routineId = rid,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("routine_editor/{routineId}") { backStackEntry ->

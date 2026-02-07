@@ -12,6 +12,8 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
 import com.samsung.android.health.sdk.sample.healthdiary.workout.data.BlockEntity
 import com.samsung.android.health.sdk.sample.healthdiary.workout.data.RoutineDao
 import com.samsung.android.health.sdk.sample.healthdiary.workout.data.RoutineEntity
+import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSessionDao
+import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSessionEntity
 
 /**
  * Main Room database for the Health Diary application
@@ -26,9 +28,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.RoutineEnt
         TxAgentQueryEntity::class,
         TxAgentResponseEntity::class,
         RoutineEntity::class,
-        BlockEntity::class
+        BlockEntity::class,
+        WorkoutSessionEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun txAgentQueryDao(): TxAgentQueryDao
     abstract fun txAgentResponseDao(): TxAgentResponseDao
     abstract fun routineDao(): RoutineDao
+    abstract fun workoutSessionDao(): WorkoutSessionDao
 
     companion object {
         @Volatile
@@ -251,6 +255,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS workout_sessions (
+                        sessionId TEXT NOT NULL,
+                        routineId TEXT NOT NULL,
+                        routineName TEXT NOT NULL,
+                        startedAt INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        blocksSnapshotJson TEXT NOT NULL,
+                        completionStateJson TEXT NOT NULL,
+                        activeBlockIndex INTEGER NOT NULL,
+                        activeSetIndex INTEGER NOT NULL,
+                        PRIMARY KEY(sessionId)
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -258,7 +281,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

@@ -25,3 +25,49 @@ data class RoutineBlockPayload(
     @SerialName("targetReps") val targetReps: Int? = null,
     @SerialName("restSec") val restSec: Int
 )
+
+@Serializable
+data class WorkoutStateRequestPayload(
+    @SerialName("sessionId") val sessionId: String = ""
+)
+
+/**
+ * ACK received from watch via /workout/ack.
+ */
+@Serializable
+data class WorkoutAckPayload(
+    @SerialName("sessionId") val sessionId: String,
+    @SerialName("routineId") val routineId: String,
+    @SerialName("status") val status: String, // "STARTED" | "REJECTED"
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("at") val at: String
+)
+
+/**
+ * Event sent between phone and watch via /workout/event.
+ */
+@Serializable
+data class WorkoutEventPayload(
+    @SerialName("sessionId") val sessionId: String,
+    @SerialName("type") val type: String, // "DONE_SET" | "UNDO_SET" | "FINISH_WORKOUT"
+    @SerialName("blockId") val blockId: String?,
+    @SerialName("setIndex") val setIndex: Int?,
+    @SerialName("source") val source: String, // "PHONE" | "WATCH"
+    @SerialName("at") val at: String
+)
+
+/**
+ * State snapshot received from watch via /workout/state.
+ * Phone mirrors this state; watch is source of truth.
+ */
+@Serializable
+data class WorkoutStatePayload(
+    @SerialName("sessionId") val sessionId: String,
+    @SerialName("routineId") val routineId: String,
+    @SerialName("exerciseName") val exerciseName: String,
+    @SerialName("currentSet") val currentSet: Int, // 1-based
+    @SerialName("totalSets") val totalSets: Int,
+    @SerialName("mode") val mode: String, // "WORK", "REST", "FINISHED", "IDLE"
+    @SerialName("progress") val progress: Float,
+    @SerialName("updatedAt") val updatedAt: String
+)
