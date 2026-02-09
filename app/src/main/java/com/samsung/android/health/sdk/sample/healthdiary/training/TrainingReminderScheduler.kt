@@ -10,17 +10,29 @@ import com.google.gson.Gson
 import java.io.File
 
 /**
- * Schedules daily reminders for training blocks
+ * Schedules reminders for training blocks based on day of week.
+ * Each block is only scheduled on days it appears in the weekly schedule.
  */
 class TrainingReminderScheduler(private val context: Context) {
-    
+
     private val alarmManager: AlarmManager by lazy {
         context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     }
-    
+
     companion object {
         private const val REQUEST_CODE_BASE = 1000
         private const val ACTION_REMINDER = "com.samsung.android.health.sdk.sample.healthdiary.training.REMINDER"
+
+        /** Default weekly schedule: day of week (Calendar.SUNDAY=1 .. SATURDAY=7) -> blocks to remind. */
+        private val DEFAULT_WEEKLY_SCHEDULE: Map<Int, Set<BlockType>> = mapOf(
+            Calendar.MONDAY to setOf(BlockType.A, BlockType.B),
+            Calendar.TUESDAY to setOf(BlockType.C, BlockType.D),
+            Calendar.WEDNESDAY to setOf(BlockType.A, BlockType.B),
+            Calendar.THURSDAY to setOf(BlockType.C, BlockType.D),
+            Calendar.FRIDAY to setOf(BlockType.A, BlockType.B),
+            Calendar.SATURDAY to setOf(BlockType.C, BlockType.D),
+            Calendar.SUNDAY to setOf(BlockType.D)
+        )
     }
 
     private val debugGson = Gson()
@@ -60,23 +72,29 @@ class TrainingReminderScheduler(private val context: Context) {
     }
     
     /**
-     * Schedule a reminder for a specific block
+     * Schedule a reminder for a specific block. Uses the weekly schedule to find the next valid day
+     * for this block (e.g. Block A only on Mon/Wed/Fri), then sets the alarm for that day at the given time.
      */
     fun scheduleReminder(blockType: BlockType, timeString: String) {
         val (hour, minute) = parseTime(timeString)
         // #region agent log
         debugLog("H4", "scheduleReminder parsed time", mapOf("block" to blockType.name, "time" to timeString, "hour" to hour, "minute" to minute))
         // #endregion
-        
+
         // Cancel existing reminder
         cancelReminder(blockType)
-        
+
+        val calendar = nextScheduledDayAndTime(blockType, hour, minute) ?: return
+        // #region agent log
+        debugLog("H4", "scheduleReminder next valid day", mapOf("block" to blockType.name, "triggerAt" to calendar.timeInMillis, "dayOfWeek" to calendar.get(Calendar.DAY_OF_WEEK)))
+        // #endregion
+
         // Create intent
         val intent = Intent(context, TrainingReminderReceiver::class.java).apply {
             action = ACTION_REMINDER
             putExtra("block_type", blockType.name)
         }
-        
+
         val requestCode = REQUEST_CODE_BASE + blockType.ordinal
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -84,19 +102,6 @@ class TrainingReminderScheduler(private val context: Context) {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        
-        // Set calendar for today
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            
-            // If time has passed today, schedule for tomorrow
-            if (timeInMillis < System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-        }
         // #region agent log
         debugLog("H4", "scheduleReminder computed time", mapOf("block" to blockType.name, "triggerAt" to calendar.timeInMillis, "now" to System.currentTimeMillis(), "sdk" to Build.VERSION.SDK_INT))
         // #endregion
@@ -188,6 +193,31 @@ class TrainingReminderScheduler(private val context: Context) {
         scheduleAllReminders()
     }
     
+    /**
+     * Find the next calendar instance (today or a future day) when this block is scheduled according to the weekly schedule.
+     * If today is valid but the time has passed, the next valid day (e.g. next week) is used.
+     * Returns null if the block is not scheduled on any day.
+     */
+    private fun nextScheduledDayAndTime(blockType: BlockType, hour: Int, minute: Int): Calendar? {
+        val now = System.currentTimeMillis()
+        // Check up to 14 days ahead so we always find the next occurrence (e.g. block only on Mondays)
+        for (dayOffset in 0..13) {
+            val candidate = Calendar.getInstance().apply {
+                add(Calendar.DAY_OF_YEAR, dayOffset)
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val dayOfWeek = candidate.get(Calendar.DAY_OF_WEEK)
+            val blocksOnDay = DEFAULT_WEEKLY_SCHEDULE[dayOfWeek] ?: emptySet()
+            if (blockType in blocksOnDay && candidate.timeInMillis >= now) {
+                return candidate
+            }
+        }
+        return null
+    }
+
     private fun parseTime(timeString: String): Pair<Int, Int> {
         val parts = timeString.split(":")
         return if (parts.size == 2) {
