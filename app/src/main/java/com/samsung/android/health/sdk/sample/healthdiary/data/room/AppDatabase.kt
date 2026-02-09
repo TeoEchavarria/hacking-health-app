@@ -29,9 +29,11 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         TxAgentResponseEntity::class,
         RoutineEntity::class,
         BlockEntity::class,
-        WorkoutSessionEntity::class
+        WorkoutSessionEntity::class,
+        HabitEntity::class,
+        HabitReminderTimeEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -46,6 +48,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun txAgentResponseDao(): TxAgentResponseDao
     abstract fun routineDao(): RoutineDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
+    abstract fun habitDao(): HabitDao
+    abstract fun habitReminderTimeDao(): HabitReminderTimeDao
 
     companion object {
         @Volatile
@@ -274,6 +278,52 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS habits (
+                        habitId TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        triggerTime TEXT NOT NULL,
+                        isEnabled INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_habits_habitId ON habits(habitId)")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS habit_reminder_times (
+                        reminderId TEXT NOT NULL PRIMARY KEY,
+                        habitId TEXT NOT NULL,
+                        triggerTime TEXT NOT NULL,
+                        FOREIGN KEY(habitId) REFERENCES habits(habitId) ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_habit_reminder_times_habitId ON habit_reminder_times(habitId)")
+
+                database.execSQL("""
+                    INSERT INTO habit_reminder_times (reminderId, habitId, triggerTime)
+                    SELECT 'mig-' || habitId || '-' || rowid, habitId, triggerTime FROM habits
+                    WHERE triggerTime IS NOT NULL AND trim(triggerTime) != ''
+                """.trimIndent())
+
+                database.execSQL("""
+                    CREATE TABLE habits_new (
+                        habitId TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        isEnabled INTEGER NOT NULL DEFAULT 1
+                    )
+                """.trimIndent())
+                database.execSQL("INSERT INTO habits_new (habitId, title, isEnabled) SELECT habitId, title, isEnabled FROM habits")
+                database.execSQL("DROP TABLE habits")
+                database.execSQL("ALTER TABLE habits_new RENAME TO habits")
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_habits_habitId ON habits(habitId)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -281,7 +331,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

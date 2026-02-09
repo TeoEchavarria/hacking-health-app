@@ -21,6 +21,7 @@ fun HomeScreen(
     onNavigateToTxAgent: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToTraining: () -> Unit,
+    onNavigateToHabits: () -> Unit,
     onUploadPdf: () -> Unit,
     onNavigateToSandboxGallery: (() -> Unit)? = null,
     viewModel: HomeViewModel = viewModel()
@@ -59,6 +60,15 @@ fun HomeScreen(
             text = "Daily Training Session",
             onClick = onNavigateToTraining,
             icon = Icons.Default.PlayArrow,
+            fullWidth = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SandboxButton(
+            text = "Habit Reminders",
+            onClick = onNavigateToHabits,
+            icon = Icons.Default.Notifications,
             fullWidth = true
         )
         

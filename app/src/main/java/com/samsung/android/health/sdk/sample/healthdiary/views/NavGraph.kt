@@ -22,8 +22,10 @@ sealed class Screen(val route: String) {
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
     object Training : Screen("training")
+    object Habits : Screen("habits")
     data class WorkoutPlayer(val routineId: String? = null) : Screen("workout_player?routineId={routineId}")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
+    data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
 }
 
@@ -65,6 +67,7 @@ fun NavGraph() {
                 onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
+                onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
                 onUploadPdf = { pdfLauncher.launch("application/pdf") },
                 onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
                     { navController.navigate(Screen.SandboxGallery.route) }
@@ -99,6 +102,21 @@ fun NavGraph() {
                 onNavigateToPlayer = { routineId ->
                     navController.navigate("workout_player?routineId=$routineId")
                 }
+            )
+        }
+        composable(Screen.Habits.route) {
+            HabitListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEditor = { habitId ->
+                    navController.navigate(Screen.HabitEditor(habitId).route)
+                }
+            )
+        }
+        composable("habit_editor/{habitId}") { backStackEntry ->
+            val hid = backStackEntry.arguments?.getString("habitId")
+            HabitEditorScreen(
+                habitId = if (hid == "new") null else hid,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(

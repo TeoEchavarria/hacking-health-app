@@ -24,7 +24,11 @@ object TelemetryLogger {
     val logs: StateFlow<List<LogEntry>> = _logs.asStateFlow()
 
     fun log(source: String, event: String, details: String) {
-        val newEntry = LogEntry(source = source, event = event, details = details)
+        log(source, event, details, System.currentTimeMillis())
+    }
+
+    fun log(source: String, event: String, details: String, timestamp: Long) {
+        val newEntry = LogEntry(timestamp = timestamp, source = source, event = event, details = details)
         val currentList = _logs.value.toMutableList()
         currentList.add(0, newEntry) // Add to top
         // Keep only last 100 logs to avoid memory issues

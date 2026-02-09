@@ -20,6 +20,7 @@ data class LogsUiState(
     // Filtered logs by source
     val watchLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
     val phoneLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
+    val habitLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
     val apiLogs: List<com.samsung.android.health.sdk.sample.healthdiary.utils.LogEntry> = emptyList(),
     // Sensor data stats
     val pendingSensorCount: Int = 0,
@@ -44,12 +45,14 @@ class LogsViewModel(application: Application) : AndroidViewModel(application) {
                 // Filter logs by source for different tabs
                 val watchLogs = logs.filter { it.source == "WATCH" }
                 val phoneLogs = logs.filter { it.source == "PHONE" }
+                val habitLogs = logs.filter { it.source == "HABIT" }
                 val apiLogs = logs.filter { it.source == "API" }
                 
                 _uiState.value = _uiState.value.copy(
                     systemLogs = logs,
                     watchLogs = watchLogs,
                     phoneLogs = phoneLogs,
+                    habitLogs = habitLogs,
                     apiLogs = apiLogs
                 )
             }

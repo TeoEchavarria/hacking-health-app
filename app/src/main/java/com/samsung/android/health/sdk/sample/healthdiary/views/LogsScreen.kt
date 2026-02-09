@@ -93,7 +93,10 @@ fun LogsScreen(
             HorizontalPager(state = pagerState) { page ->
                 when (page) {
                     0 -> UploadHealthPanel(uploadHealthState, context)
-                    1 -> SystemLogList(uiState.phoneLogs) // Phone system logs
+                    1 -> SystemLogList(
+                        (uiState.phoneLogs + uiState.habitLogs)
+                            .sortedByDescending { it.timestamp }
+                    ) // Phone + habit reminder logs
                     2 -> SensorDataTab(uiState) // Watch sensor data logs + stats
                     3 -> UploadLogsTab(uiState.apiLogs) // API upload logs
                     4 -> DocumentList(uiState.medicalDocuments)
