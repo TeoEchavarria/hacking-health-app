@@ -43,7 +43,13 @@ fun NavGraph() {
     LaunchedEffect(Unit) {
         activity?.intent?.let { intent ->
             if (intent.getBooleanExtra("open_training", false)) {
-                navController.navigate(Screen.Training.route)
+                // If a specific routine ID is provided, navigate directly to player
+                val routineId = intent.getStringExtra("open_routine_id")
+                if (!routineId.isNullOrBlank()) {
+                    navController.navigate("workout_player?routineId=$routineId")
+                } else {
+                    navController.navigate(Screen.Training.route)
+                }
             }
         }
     }
@@ -94,14 +100,8 @@ fun NavGraph() {
         }
 
         composable(Screen.Training.route) {
-            RoutineListScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToEditor = { routineId ->
-                    navController.navigate(Screen.RoutineEditor(routineId).route)
-                },
-                onNavigateToPlayer = { routineId ->
-                    navController.navigate("workout_player?routineId=$routineId")
-                }
+            TrainingSessionScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Habits.route) {

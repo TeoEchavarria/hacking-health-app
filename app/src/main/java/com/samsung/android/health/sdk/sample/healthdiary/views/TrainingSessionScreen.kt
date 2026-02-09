@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,41 +20,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.training.*
-import com.samsung.android.health.sdk.sample.healthdiary.workout.model.Routine
-import com.samsung.android.health.sdk.sample.healthdiary.workout.model.Segment
-import com.samsung.android.health.sdk.sample.healthdiary.workout.model.SegmentType
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutAckMessage
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutProtocol
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutStartMessage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
-import java.text.SimpleDateFormat
-import java.time.Instant
+import kotlinx.serialization.json.Json
 import java.util.*
 
 private const val WORKOUT_PROTOCOL_PHONE_TAG = "WorkoutProtocolPhone"
-private const val WORKOUT_START_PATH = "/workout/start"
-private const val WORKOUT_ACK_PATH = "/workout/ack"
-private const val ACK_TIMEOUT_MS = 2000L
+private const val WEAR_CONN_TAG = "WearConn"
+private const val WEAR_HANDSHAKE_TAG = "WearHandshake"
+private const val ACK_TIMEOUT_MS = 3000L
+private val BACKOFF_MS = listOf(500L, 1000L, 2000L)
 
 private enum class WorkoutStartState { Idle, Connecting, Started, Error }
 
-/** ACK payload from watch: { routineId, status, reason?, at } — status is STARTED | REJECTED */
-private data class WorkoutAckPayload(
-    @SerializedName("routineId") val routineId: String?,
-    @SerializedName("status") val status: String?,
-    @SerializedName("reason") val reason: String?,
-    @SerializedName("at") val at: String?
-)
+private val json = Json { ignoreUnknownKeys = true }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,29 +61,26 @@ fun TrainingSessionScreen(
     var state by remember { mutableStateOf(stateManager.getTodayState()) }
     var showReminderSettings by remember { mutableStateOf(false) }
     
-    // Workout start: UI state and ACK handling (phone trusts only ACK; no assumption from notification/service)
+    // Protocol v2: ACK by attemptId
     var workoutStartState by remember { mutableStateOf(WorkoutStartState.Idle) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val ackReceivedFlow = remember { MutableSharedFlow<Pair<String, String?>>() } // status to (reason?)
-    val pendingAckRoutineId = remember { MutableStateFlow<String?>(null) }
-    
-    // Register MessageClient listener for /workout/ack only
+    val ackReceivedFlow = remember { MutableSharedFlow<WorkoutAckMessage>() }
+    val pendingAttemptId = remember { MutableStateFlow<String?>(null) }
+
+    // Register MessageClient listener for /workout/ack (V2 WorkoutAckMessage)
     DisposableEffect(context) {
         val messageClient = Wearable.getMessageClient(context)
         val listener = MessageClient.OnMessageReceivedListener { event: MessageEvent ->
-            if (event.path != WORKOUT_ACK_PATH) return@OnMessageReceivedListener
+            if (event.path != WorkoutProtocol.PATH_ACK) return@OnMessageReceivedListener
             try {
-                val json = String(event.data, Charsets.UTF_8)
-                val ack = Gson().fromJson(json, WorkoutAckPayload::class.java)
-                val routineId = ack.routineId
-                val status = ack.status
-                if (routineId != null && status != null && routineId == pendingAckRoutineId.value) {
-                    Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "RX /workout/ack status=$status routineId=$routineId")
-                    pendingAckRoutineId.value = null
-                    ackReceivedFlow.tryEmit(status to ack.reason)
+                val ack = json.decodeFromString<WorkoutAckMessage>(String(event.data, Charsets.UTF_8))
+                if (ack.attemptId == pendingAttemptId.value) {
+                    Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "event=ack_rx attemptId=${ack.attemptId} success=${ack.success} reasonCode=${ack.reasonCode}")
+                    pendingAttemptId.value = null
+                    ackReceivedFlow.tryEmit(ack)
                 }
             } catch (e: Exception) {
-                Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Failed to parse workout ack", e)
+                Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Failed to parse workout ack V2", e)
             }
         }
         messageClient.addListener(listener)
@@ -118,79 +108,105 @@ fun TrainingSessionScreen(
     fun refreshState() {
         state = stateManager.getTodayState()
     }
-    
-    fun buildDefaultRoutine(): Routine = Routine(
-        routineId = UUID.randomUUID().toString(),
-        startAt = Instant.now().toString(),
-        segments = listOf(
-            Segment(SegmentType.WORK, "Push-ups", 30),
-            Segment(SegmentType.REST, "Rest", 15),
-            Segment(SegmentType.WORK, "Squats", 30),
-            Segment(SegmentType.REST, "Rest", 15)
-        )
-    )
-    
-    fun startWorkoutNow() {
+
+    /** Protocol v2: map block type to routineId and display name for watch repository. */
+    fun getRoutineIdAndName(blockType: BlockType): Pair<String, String> = when (blockType) {
+        BlockType.A -> {
+            val id = when (state.blockA.selectedMode) {
+                CardioMode.CYCLING -> "daily_block_a_cycling"
+                CardioMode.RUNNING -> "daily_block_a_running"
+                CardioMode.SWIMMING -> "daily_block_a_swimming"
+            }
+            id to "Block A - Cardio Base"
+        }
+        BlockType.B -> {
+            val rest = state.blockB.restDurationSeconds
+            val id = if (rest == 45) "daily_block_b_45" else "daily_block_b_30"
+            id to "Block B - Lower Body + Core"
+        }
+        BlockType.C -> "daily_block_c" to "Block C - Calisthenics"
+        BlockType.D -> "daily_block_d" to "Block D - Mobility + Recovery"
+    }
+
+    fun startBlockWorkout(blockType: BlockType) {
         scope.launch {
             workoutStartState = WorkoutStartState.Connecting
             val nodeClient = Wearable.getNodeClient(context)
             val nodes = nodeClient.connectedNodes.await()
-            Log.d(WORKOUT_PROTOCOL_PHONE_TAG, "Connected nodes: ${nodes.size}")
+            Log.i(WEAR_CONN_TAG, "event=node_discovery result=${nodes.size} nodeIds=${nodes.map { it.id.take(8) }}")
+
             if (nodes.isEmpty()) {
                 workoutStartState = WorkoutStartState.Error
-                snackbarHostState.showSnackbar(
-                    "No watch connected. Make sure Bluetooth is on and the watch is paired.",
-                    duration = SnackbarDuration.Long
-                )
+                Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "event=no_nodes result=Watch not reachable")
+                snackbarHostState.showSnackbar("Watch not reachable", duration = SnackbarDuration.Long)
                 return@launch
             }
-            val routine = buildDefaultRoutine()
-            val jsonPayload = Gson().toJson(routine)
-            pendingAckRoutineId.value = routine.routineId
-            Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "TX /workout/start routineId=${routine.routineId}")
+
+            val (routineId, routineName) = getRoutineIdAndName(blockType)
+            val sessionId = UUID.randomUUID().toString()
             val messageClient = Wearable.getMessageClient(context)
-            var sendOk = false
-            for (node in nodes) {
-                try {
-                    messageClient.sendMessage(node.id, WORKOUT_START_PATH, jsonPayload.toByteArray(Charsets.UTF_8)).await()
-                    sendOk = true
-                } catch (e: Exception) {
-                    Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Send failed to node ${node.displayName}", e)
-                }
-            }
-            if (!sendOk) {
-                workoutStartState = WorkoutStartState.Error
-                pendingAckRoutineId.value = null
-                snackbarHostState.showSnackbar("Failed to send to watch.", duration = SnackbarDuration.Short)
-                return@launch
-            }
-            val ackResult = withTimeoutOrNull(ACK_TIMEOUT_MS) { ackReceivedFlow.first() }
-            if (ackResult != null) {
-                val (status, reason) = ackResult
-                when (status) {
-                    "STARTED" -> {
-                        workoutStartState = WorkoutStartState.Started
-                    }
-                    "REJECTED" -> {
-                        workoutStartState = WorkoutStartState.Error
-                        snackbarHostState.showSnackbar(
-                            reason?.takeIf { it.isNotBlank() } ?: "Watch rejected the workout.",
-                            duration = SnackbarDuration.Long
-                        )
-                    }
-                    else -> {
-                        workoutStartState = WorkoutStartState.Error
-                    }
-                }
-            } else {
-                workoutStartState = WorkoutStartState.Error
-                pendingAckRoutineId.value = null
-                Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "ACK timeout routineId=${routine.routineId}")
-                snackbarHostState.showSnackbar(
-                    "Watch started but did not confirm. Open watch to continue.",
-                    duration = SnackbarDuration.Long
+            val startTime = System.currentTimeMillis()
+
+            for (attempt in 0..2) {
+                val attemptId = UUID.randomUUID().toString()
+                pendingAttemptId.value = attemptId
+                val sentAt = System.currentTimeMillis()
+                val msg = WorkoutStartMessage(
+                    protocolVersion = WorkoutProtocol.PROTOCOL_VERSION,
+                    type = WorkoutProtocol.TYPE_WORKOUT_START,
+                    sessionId = sessionId,
+                    attemptId = attemptId,
+                    routineId = routineId,
+                    routineName = routineName,
+                    blockId = null,
+                    sentAt = sentAt
                 )
+                val payloadBytes = json.encodeToString(WorkoutStartMessage.serializer(), msg).toByteArray(Charsets.UTF_8)
+                Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "event=send_attempt attemptId=$attemptId sessionId=$sessionId routineId=$routineId blockId=null retry=$attempt timeoutMs=$ACK_TIMEOUT_MS payloadSize=${payloadBytes.size}")
+
+                var sendOk = false
+                for (node in nodes) {
+                    try {
+                        messageClient.sendMessage(node.id, WorkoutProtocol.PATH_START, payloadBytes).await()
+                        sendOk = true
+                        Log.d(WEAR_CONN_TAG, "event=send_ok node=${node.displayName}")
+                        break
+                    } catch (e: Exception) {
+                        Log.e(WEAR_CONN_TAG, "event=send_failed node=${node.displayName}", e)
+                    }
+                }
+                if (!sendOk) {
+                    Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "event=send_failed attemptId=$attemptId result=${WorkoutProtocol.ReasonCode.SEND_FAILED}")
+                    if (attempt < 2) delay(BACKOFF_MS[attempt])
+                    continue
+                }
+
+                val ack = withTimeoutOrNull(ACK_TIMEOUT_MS) { ackReceivedFlow.first() }
+                val elapsedMs = System.currentTimeMillis() - startTime
+                if (ack != null) {
+                    Log.i(WEAR_HANDSHAKE_TAG, "event=ack_received attemptId=$attemptId sessionId=$sessionId routineId=$routineId retry=$attempt result=${ack.success} reason=${ack.reasonCode} elapsedMs=$elapsedMs")
+                    if (ack.success) {
+                        stateManager.setActiveBlock(blockType)
+                        refreshState()
+                        workoutStartState = WorkoutStartState.Started
+                        return@launch
+                    }
+                    // Watch rejected: do not retry
+                    workoutStartState = WorkoutStartState.Error
+                    val reasonCode = ack.reasonCode ?: "REJECTED"
+                    snackbarHostState.showSnackbar("Watch rejected request: $reasonCode", duration = SnackbarDuration.Long)
+                    Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "event=watch_rejected attemptId=$attemptId reasonCode=$reasonCode reasonMessage=${ack.reasonMessage}")
+                    return@launch
+                }
+                Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "event=ack_timeout attemptId=$attemptId retry=$attempt elapsedMs=$elapsedMs result=${WorkoutProtocol.ReasonCode.ACK_TIMEOUT}")
+                if (attempt < 2) delay(BACKOFF_MS[attempt])
             }
+
+            workoutStartState = WorkoutStartState.Error
+            pendingAttemptId.value = null
+            val elapsedMs = System.currentTimeMillis() - startTime
+            Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "event=failed_after_retries sessionId=$sessionId routineId=$routineId result=${WorkoutProtocol.ReasonCode.ACK_TIMEOUT} elapsedMs=$elapsedMs")
+            snackbarHostState.showSnackbar("Watch did not respond", duration = SnackbarDuration.Short)
         }
     }
     
@@ -221,38 +237,11 @@ fun TrainingSessionScreen(
             // Daily Progress Card
             DailyProgressCard(state, modifier = Modifier.fillMaxWidth())
             
-            // Start workout button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { startWorkoutNow() },
-                    enabled = workoutStartState == WorkoutStartState.Idle || workoutStartState == WorkoutStartState.Error,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (workoutStartState == WorkoutStartState.Connecting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(
-                        text = when (workoutStartState) {
-                            WorkoutStartState.Connecting -> "Connecting to watch…"
-                            WorkoutStartState.Started -> "Started"
-                            else -> "Start workout"
-                        }
-                    )
-                }
-            }
-            
             // Block A - Cardio Base
             BlockACard(
                 blockA = state.blockA,
+                isActive = state.activeBlock == BlockType.A,
+                onStart = { startBlockWorkout(BlockType.A) },
                 onModeChange = { mode ->
                     val newBlockA = state.blockA.copy(selectedMode = mode)
                     stateManager.updateBlockA(newBlockA)
@@ -287,6 +276,8 @@ fun TrainingSessionScreen(
             // Block B - Lower Body + Core
             BlockBCard(
                 blockB = state.blockB,
+                isActive = state.activeBlock == BlockType.B,
+                onStart = { startBlockWorkout(BlockType.B) },
                 onExerciseToggle = { exerciseId ->
                     stateManager.toggleExercise(BlockType.B, exerciseId)
                     refreshState()
@@ -306,6 +297,8 @@ fun TrainingSessionScreen(
             // Block C - Calisthenics
             BlockCCard(
                 blockC = state.blockC,
+                isActive = state.activeBlock == BlockType.C,
+                onStart = { startBlockWorkout(BlockType.C) },
                 onExerciseToggle = { exerciseId ->
                     stateManager.toggleExercise(BlockType.C, exerciseId)
                     refreshState()
@@ -320,6 +313,8 @@ fun TrainingSessionScreen(
             // Block D - Mobility + Recovery
             BlockDCard(
                 blockD = state.blockD,
+                isActive = state.activeBlock == BlockType.D,
+                onStart = { startBlockWorkout(BlockType.D) },
                 onExerciseToggle = { exerciseId ->
                     stateManager.toggleExercise(BlockType.D, exerciseId)
                     refreshState()
@@ -438,6 +433,8 @@ fun BlockStatusChip(label: String, isCompleted: Boolean) {
 @Composable
 fun BlockACard(
     blockA: BlockA,
+    isActive: Boolean,
+    onStart: () -> Unit,
     onModeChange: (CardioMode) -> Unit,
     onSegmentComplete: (String) -> Unit,
     onBlockComplete: (Boolean) -> Unit
@@ -453,10 +450,13 @@ fun BlockACard(
         colors = CardDefaults.cardColors(
             containerColor = if (blockA.isCompleted) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            } else if (isActive) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }
-        )
+        ),
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -472,10 +472,22 @@ fun BlockACard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Checkbox(
-                    checked = blockA.isCompleted,
-                    onCheckedChange = onBlockComplete
-                )
+                if (isActive) {
+                    Text("ACTIVE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                } else if (!blockA.isCompleted) {
+                    Button(
+                        onClick = onStart,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Start Block")
+                    }
+                } else {
+                    Checkbox(
+                        checked = blockA.isCompleted,
+                        onCheckedChange = onBlockComplete
+                    )
+                }
             }
             
             // Mode selector
@@ -542,6 +554,8 @@ fun SegmentRow(
 @Composable
 fun BlockBCard(
     blockB: BlockB,
+    isActive: Boolean,
+    onStart: () -> Unit,
     onExerciseToggle: (String) -> Unit,
     onRestDurationChange: (Int) -> Unit,
     onBlockComplete: (Boolean) -> Unit
@@ -551,10 +565,13 @@ fun BlockBCard(
         colors = CardDefaults.cardColors(
             containerColor = if (blockB.isCompleted) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            } else if (isActive) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }
-        )
+        ),
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -570,10 +587,22 @@ fun BlockBCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Checkbox(
-                    checked = blockB.isCompleted,
-                    onCheckedChange = onBlockComplete
-                )
+                if (isActive) {
+                    Text("ACTIVE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                } else if (!blockB.isCompleted) {
+                    Button(
+                        onClick = onStart,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Start Block")
+                    }
+                } else {
+                    Checkbox(
+                        checked = blockB.isCompleted,
+                        onCheckedChange = onBlockComplete
+                    )
+                }
             }
             
             Text(
@@ -622,6 +651,8 @@ fun BlockBCard(
 @Composable
 fun BlockCCard(
     blockC: BlockC,
+    isActive: Boolean,
+    onStart: () -> Unit,
     onExerciseToggle: (String) -> Unit,
     onBlockComplete: (Boolean) -> Unit
 ) {
@@ -630,10 +661,13 @@ fun BlockCCard(
         colors = CardDefaults.cardColors(
             containerColor = if (blockC.isCompleted) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            } else if (isActive) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }
-        )
+        ),
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -649,10 +683,22 @@ fun BlockCCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Checkbox(
-                    checked = blockC.isCompleted,
-                    onCheckedChange = onBlockComplete
-                )
+                if (isActive) {
+                    Text("ACTIVE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                } else if (!blockC.isCompleted) {
+                    Button(
+                        onClick = onStart,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Start Block")
+                    }
+                } else {
+                    Checkbox(
+                        checked = blockC.isCompleted,
+                        onCheckedChange = onBlockComplete
+                    )
+                }
             }
             
             Text(
@@ -675,6 +721,8 @@ fun BlockCCard(
 @Composable
 fun BlockDCard(
     blockD: BlockD,
+    isActive: Boolean,
+    onStart: () -> Unit,
     onExerciseToggle: (String) -> Unit,
     onWristRehabToggle: (Boolean) -> Unit,
     onBlockComplete: (Boolean) -> Unit
@@ -684,10 +732,13 @@ fun BlockDCard(
         colors = CardDefaults.cardColors(
             containerColor = if (blockD.isCompleted) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            } else if (isActive) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
             }
-        )
+        ),
+        border = if (isActive) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -703,10 +754,22 @@ fun BlockDCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Checkbox(
-                    checked = blockD.isCompleted,
-                    onCheckedChange = onBlockComplete
-                )
+                if (isActive) {
+                    Text("ACTIVE", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                } else if (!blockD.isCompleted) {
+                    Button(
+                        onClick = onStart,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Start Block")
+                    }
+                } else {
+                    Checkbox(
+                        checked = blockD.isCompleted,
+                        onCheckedChange = onBlockComplete
+                    )
+                }
             }
             
             Text("Mobility:", style = MaterialTheme.typography.labelLarge)

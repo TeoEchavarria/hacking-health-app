@@ -140,6 +140,7 @@ data class DailyTrainingState(
     val blockB: BlockB = BlockB(),
     val blockC: BlockC = BlockC(),
     val blockD: BlockD = BlockD(),
+    val activeBlock: BlockType? = null, // Track which block is currently active/running
     val reminderTimes: Map<BlockType, String> = mapOf(
         BlockType.A to "08:00",
         BlockType.B to "12:00",

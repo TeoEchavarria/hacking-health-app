@@ -20,5 +20,6 @@ import androidx.room.PrimaryKey
 data class HabitReminderTimeEntity(
     @PrimaryKey val reminderId: String,
     val habitId: String,
-    val triggerTime: String // "HH:mm"
+    val triggerTime: String, // "HH:mm"
+    val dayOfWeek: String? = null // "mon", "tue", "wed", "thu", "fri", "sat", "sun", or null for daily/all days
 )

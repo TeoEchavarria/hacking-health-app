@@ -25,6 +25,10 @@ object ConfigInitializer {
         EnvironmentConfig.initialize(appContext)
         DeviceConfig.initialize(appContext)
         TxAgentConfig.initialize(appContext)
+        YamlConfigManager.initialize(appContext)
+        
+        // Sync YAML habits to database after YAML config is loaded
+        YamlHabitSync.syncHabitsToDatabase(appContext)
         
         isInitialized = true
     }

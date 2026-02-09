@@ -139,4 +139,7 @@ dependencies {
     
     // Play Services Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
+
+    // YAML parsing
+    implementation 'org.yaml:snakeyaml:2.2'
 }

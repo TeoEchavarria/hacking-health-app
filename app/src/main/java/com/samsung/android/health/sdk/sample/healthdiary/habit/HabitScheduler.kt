@@ -11,6 +11,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.HabitE
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.HabitReminderTimeEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -39,7 +40,7 @@ object HabitScheduler {
         if (!habit.isEnabled) return
 
         val (hour, minute) = parseTriggerTime(reminder.triggerTime) ?: return
-        val triggerAt = nextTriggerTime(hour, minute)
+        val triggerAt = nextTriggerDateTime(hour, minute, reminder.dayOfWeek)
         val intent = Intent(context, HabitAlarmReceiver::class.java).apply {
             action = ACTION_HABIT_REMINDER
             putExtra(EXTRA_HABIT_ID, habit.habitId)
@@ -65,7 +66,8 @@ object HabitScheduler {
         } else {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
         }
-        Log.i(TAG, "Reminder scheduled habitId=${habit.habitId} reminderId=${reminder.reminderId} at ${reminder.triggerTime}")
+        val dayInfo = if (reminder.dayOfWeek != null) " on ${reminder.dayOfWeek}" else ""
+        Log.i(TAG, "Reminder scheduled habitId=${habit.habitId} reminderId=${reminder.reminderId} at ${reminder.triggerTime}$dayInfo")
     }
 
     fun cancelHabit(context: Context, habitId: String) {
@@ -109,12 +111,73 @@ object HabitScheduler {
         }
     }
 
-    private fun nextTriggerTime(hour: Int, minute: Int): LocalDateTime {
+    /**
+     * Calculates the next trigger DateTime for a habit reminder.
+     * @param hour Hour (0-23)
+     * @param minute Minute (0-59)
+     * @param dayOfWeek Day of week string ("mon", "tue", "wed", "thu", "fri", "sat", "sun") or null for daily/all days
+     * @return Next LocalDateTime when the reminder should trigger
+     */
+    private fun nextTriggerDateTime(hour: Int, minute: Int, dayOfWeek: String?): LocalDateTime {
         val now = LocalDateTime.now()
         var trigger = LocalDate.now().atTime(hour, minute)
-        if (trigger.isBefore(now) || trigger.isEqual(now)) {
-            trigger = trigger.plusDays(1)
+        
+        // If dayOfWeek is null or empty, use daily behavior (backward compatible)
+        if (dayOfWeek.isNullOrBlank()) {
+            if (trigger.isBefore(now) || trigger.isEqual(now)) {
+                trigger = trigger.plusDays(1)
+            }
+            return trigger
         }
+        
+        // Map YAML day strings to DayOfWeek enum
+        val targetDayOfWeek = mapDayOfWeekString(dayOfWeek) ?: run {
+            // If invalid day string, fall back to daily behavior
+            if (trigger.isBefore(now) || trigger.isEqual(now)) {
+                trigger = trigger.plusDays(1)
+            }
+            return trigger
+        }
+        
+        // Find next occurrence of the target day of week
+        val currentDayOfWeek = trigger.dayOfWeek
+        val daysUntilTarget = calculateDaysUntilTargetDay(currentDayOfWeek, targetDayOfWeek)
+        
+        trigger = trigger.plusDays(daysUntilTarget)
+        
+        // If the time has already passed today and we're scheduling for today, move to next week
+        if (daysUntilTarget == 0L && (trigger.isBefore(now) || trigger.isEqual(now))) {
+            trigger = trigger.plusWeeks(1)
+        }
+        
         return trigger
+    }
+    
+    /**
+     * Maps YAML day string to Java DayOfWeek enum.
+     * Returns null if the string is invalid.
+     */
+    private fun mapDayOfWeekString(dayString: String): DayOfWeek? {
+        return when (dayString.lowercase()) {
+            "mon", "monday" -> DayOfWeek.MONDAY
+            "tue", "tuesday" -> DayOfWeek.TUESDAY
+            "wed", "wednesday" -> DayOfWeek.WEDNESDAY
+            "thu", "thursday" -> DayOfWeek.THURSDAY
+            "fri", "friday" -> DayOfWeek.FRIDAY
+            "sat", "saturday" -> DayOfWeek.SATURDAY
+            "sun", "sunday" -> DayOfWeek.SUNDAY
+            else -> null
+        }
+    }
+    
+    /**
+     * Calculates the number of days until the target day of week.
+     * Returns 0 if today is the target day, or 1-6 days until the next occurrence.
+     */
+    private fun calculateDaysUntilTargetDay(current: DayOfWeek, target: DayOfWeek): Long {
+        val currentValue = current.value
+        val targetValue = target.value
+        val diff = targetValue - currentValue
+        return if (diff >= 0) diff.toLong() else (7 + diff).toLong()
     }
 }

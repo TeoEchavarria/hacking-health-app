@@ -1,0 +1,130 @@
+[
+  {
+    "habit_id": "wrist_daily_morning",
+    "title": "Rutina Diaria de Muñeca",
+    "routine_id": "wrist_reset_daily",
+    "schedule": {
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time": "07:20",
+      "timezone": "-05:00",
+      "window_min": 30
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "stretch_nightly",
+    "title": "Estiramientos Nocturnos",
+    "routine_id": "mobility_stretch_10",
+    "schedule": {
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time": "21:00",
+      "timezone": "-05:00",
+      "window_min": 30
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "calis_monday",
+    "title": "Calistenia Funcional (Lunes)",
+    "routine_id": "calis_base_functional",
+    "schedule": {
+      "days": ["mon"],
+      "time": "15:30",
+      "timezone": "-05:00",
+      "window_min": 45
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 3,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "fartlek_tuesday",
+    "title": "Sesión Fartlek (Martes)",
+    "routine_id": "fartlek_session",
+    "schedule": {
+      "days": ["tue"],
+      "time": "16:30",
+      "timezone": "-05:00",
+      "window_min": 60
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "power_wednesday",
+    "title": "Potencia y Saltos (Miércoles)",
+    "routine_id": "power_athletic_body",
+    "schedule": {
+      "days": ["wed"],
+      "time": "11:30",
+      "timezone": "-05:00",
+      "window_min": 45
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "active_recovery_thursday",
+    "title": "Recuperación Activa (Jueves)",
+    "routine_id": "mobility_stretch_10",
+    "schedule": {
+      "days": ["thu"],
+      "time": "17:00",
+      "timezone": "-05:00",
+      "window_min": 30
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 1,
+      "escalation_after_missed": "silent_notification"
+    }
+  },
+  {
+    "habit_id": "sprint_friday",
+    "title": "Sprints (Viernes)",
+    "routine_id": "sprint_session",
+    "schedule": {
+      "days": ["fri"],
+      "time": "10:30",
+      "timezone": "-05:00",
+      "window_min": 60
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "calis_saturday",
+    "title": "Calistenia Funcional (Sábado)",
+    "routine_id": "calis_base_functional",
+    "schedule": {
+      "days": ["sat"],
+      "time": "09:30",
+      "timezone": "-05:00",
+      "window_min": 45
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 3,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  }
+]

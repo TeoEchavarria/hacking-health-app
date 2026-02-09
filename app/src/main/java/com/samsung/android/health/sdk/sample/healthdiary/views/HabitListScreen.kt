@@ -16,8 +16,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.samsung.android.health.sdk.sample.healthdiary.components.SandboxTopBar
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.HabitEntity
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.HabitReminderTimeEntity
 import com.samsung.android.health.sdk.sample.healthdiary.habit.HabitRepository
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,6 +117,20 @@ fun HabitListScreen(
     }
 }
 
+/**
+ * Formats a reminder time for display, including day of week if specified.
+ */
+private fun formatReminderTime(reminder: HabitReminderTimeEntity): String {
+    val dayOfWeek = reminder.dayOfWeek
+    return if (dayOfWeek != null && dayOfWeek.isNotBlank()) {
+        val dayDisplay = dayOfWeek.lowercase(Locale.ROOT)
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+        "$dayDisplay ${reminder.triggerTime}"
+    } else {
+        reminder.triggerTime
+    }
+}
+
 @Composable
 private fun HabitItem(
     habit: HabitEntity,
@@ -146,7 +162,9 @@ private fun HabitItem(
                 Text(
                     text = when {
                         reminderTimes.isEmpty() -> "No reminders"
-                        else -> reminderTimes.joinToString(", ") { it.triggerTime }
+                        else -> reminderTimes.joinToString(", ") { reminder ->
+                            formatReminderTime(reminder)
+                        }
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

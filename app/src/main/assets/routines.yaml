@@ -1,0 +1,402 @@
+[
+  {
+    "routine_id": "wrist_reset_daily",
+    "name": "Muñeca + Reset",
+    "description": "Movilidad, fortalecimiento suave y respiración para recuperación de muñeca.",
+    "total_duration_min": 12,
+    "exercises": [
+      {
+        "name": "Flexión y Extensión Activa de Muñeca (Al aire)",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Movimiento suave sin carga, rango completo pero sin dolor.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Pronación y Supinación con Peso Ligero",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Usa una botella pequeña o control remoto. Codo pegado al cuerpo.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Extensión de Dedos con Banda Elástica",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Usa una goma elástica alrededor de los dedos y abre la mano.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Isométrico de Extensión de Muñeca",
+        "duration_sec": 45,
+        "rest_after_sec": 15,
+        "notes": "Dorso de la mano contra una mesa o pared, empuja suavemente sin mover.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Isométrico de Flexión de Muñeca",
+        "duration_sec": 45,
+        "rest_after_sec": 15,
+        "notes": "Palma o puño presionando suavemente contra resistencia fija.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Estiramiento Suave de Antebrazos",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Estira flexores y extensores con ayuda de la otra mano. Sin dolor.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Respiración Diafragmática Lenta",
+        "duration_sec": 120,
+        "rest_after_sec": 0,
+        "notes": "Enfócate en bajar el ritmo cardiaco y relajar tensión.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  },
+  {
+    "routine_id": "calis_base_functional",
+    "name": "Calistenia Base Funcional",
+    "description": "Enfoque en pierna, core y estabilidad sin carga en muñecas.",
+    "total_duration_min": 40,
+    "exercises": [
+      {
+        "name": "Movilidad Articular General",
+        "duration_sec": 120,
+        "rest_after_sec": 10,
+        "notes": "Rotaciones suaves de cuello, hombros, cadera.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Sentadillas Lentas (Tempo 3-1-3)",
+        "duration_sec": 180,
+        "rest_after_sec": 60,
+        "notes": "Baja en 3s, pausa 1s, sube en 3s.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Split Squat Estático (Izquierda)",
+        "duration_sec": 45,
+        "rest_after_sec": 15,
+        "notes": "Mantén posición baja sin tocar con la rodilla.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Split Squat Estático (Derecha)",
+        "duration_sec": 45,
+        "rest_after_sec": 60,
+        "notes": "Igual que la pierna izquierda.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Puente Glúteo Unilateral",
+        "duration_sec": 60,
+        "rest_after_sec": 30,
+        "notes": "30s por pierna, aprieta glúteo arriba.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Dead Bug",
+        "duration_sec": 90,
+        "rest_after_sec": 30,
+        "notes": "Espalda baja pegada al suelo. Movimiento lento.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Plancha en Antebrazos",
+        "duration_sec": 60,
+        "rest_after_sec": 45,
+        "notes": "Apoyo en codos/antebrazos, puños cerrados.",
+        "wrist_safe": true,
+        "alternatives": ["Plancha con rodillas en antebrazos"]
+      },
+      {
+        "name": "Elevación de Talones",
+        "duration_sec": 120,
+        "rest_after_sec": 30,
+        "notes": "Bipodal o unipodal según nivel.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Hollow Hold",
+        "duration_sec": 45,
+        "rest_after_sec": 45,
+        "notes": "Lumbares pegadas al suelo, brazos pegados al cuerpo si es necesario.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Sentadilla Profunda Isométrica",
+        "duration_sec": 60,
+        "rest_after_sec": 30,
+        "notes": "Talones apoyados, espalda recta.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Movilidad Final",
+        "duration_sec": 300,
+        "rest_after_sec": 0,
+        "notes": "Estiramientos suaves de piernas y cadera.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  },
+  {
+    "routine_id": "power_athletic_body",
+    "name": "Potencia / Atlético",
+    "description": "Saltos, elasticidad y potencia de tren inferior sin carga en muñecas.",
+    "total_duration_min": 40,
+    "exercises": [
+      {
+        "name": "Activación Dinámica",
+        "duration_sec": 180,
+        "rest_after_sec": 30,
+        "notes": "Jumping jacks, skipping o high knees.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Saltos Verticales",
+        "duration_sec": 60,
+        "rest_after_sec": 90,
+        "notes": "5-6 saltos máximos con descansos completos.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Pogos",
+        "duration_sec": 45,
+        "rest_after_sec": 45,
+        "notes": "Rebotes rápidos desde tobillos, rodillas casi rectas.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Step-Ups Explosivos",
+        "duration_sec": 90,
+        "rest_after_sec": 60,
+        "notes": "Subidas rápidas a una silla/banquito estable.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Depth Drops",
+        "duration_sec": 60,
+        "rest_after_sec": 60,
+        "notes": "Caída controlada desde un pequeño escalón, aterrizaje suave.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Wall Sit",
+        "duration_sec": 60,
+        "rest_after_sec": 60,
+        "notes": "Sentadilla estática contra la pared a 90°.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Anti-Rotación Isométrica",
+        "duration_sec": 60,
+        "rest_after_sec": 30,
+        "notes": "Empuje lateral contra pared con antebrazo o puño.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Balance Unilateral",
+        "duration_sec": 120,
+        "rest_after_sec": 30,
+        "notes": "60s por pierna, ojos abiertos o cerrados según dificultad.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Movilidad de Cadera 90/90",
+        "duration_sec": 180,
+        "rest_after_sec": 0,
+        "notes": "Rotación interna y externa de cadera.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  },
+  {
+    "routine_id": "mobility_stretch_10",
+    "name": "Estiramientos 10 min",
+    "description": "Cadera, tobillo, isquios, espalda torácica y respiración.",
+    "total_duration_min": 10,
+    "exercises": [
+      {
+        "name": "Gato-Vaca en Antebrazos",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Usa antebrazos en lugar de manos.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Estiramiento Flexor de Cadera",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "30s por lado en posición de caballero.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Estiramiento Isquios",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Mantén espalda neutra, evita redondear.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Rotación Torácica en Antebrazos",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Apoyo en antebrazo contrario, rota desde la espalda media.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Postura del Niño",
+        "duration_sec": 60,
+        "rest_after_sec": 10,
+        "notes": "Glúteos hacia talones, brazos al frente.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Respiración Profunda",
+        "duration_sec": 120,
+        "rest_after_sec": 0,
+        "notes": "Respiración diafragmática lenta.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  },
+  {
+    "routine_id": "fartlek_session",
+    "name": "Fartlek",
+    "description": "2km suaves + bloques 400m rápido/600m suave + enfriamiento.",
+    "total_duration_min": 45,
+    "exercises": [
+      {
+        "name": "Calentamiento y Movilidad",
+        "duration_sec": 300,
+        "rest_after_sec": 0,
+        "notes": "Movilidad dinámica de articulaciones.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Carrera Suave 2km",
+        "duration_sec": 720,
+        "rest_after_sec": 60,
+        "notes": "Ritmo conversacional.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Bloques Fartlek 400m Rápido / 600m Suave",
+        "duration_sec": 1200,
+        "rest_after_sec": 0,
+        "notes": "Alterna 2min ~80% y 3min suave por 20min.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Carrera Enfriamiento 2km",
+        "duration_sec": 600,
+        "rest_after_sec": 0,
+        "notes": "Trote muy suave.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Estiramientos Post-Carrera",
+        "duration_sec": 300,
+        "rest_after_sec": 0,
+        "notes": "Enfasis en gemelos, cuádriceps e isquios.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  },
+  {
+    "routine_id": "sprint_session",
+    "name": "Sprint",
+    "description": "Calentamiento, técnica y series de sprint.",
+    "total_duration_min": 45,
+    "exercises": [
+      {
+        "name": "Trote de Calentamiento",
+        "duration_sec": 600,
+        "rest_after_sec": 0,
+        "notes": "10min trote suave.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Técnica de Carrera",
+        "duration_sec": 300,
+        "rest_after_sec": 60,
+        "notes": "Drills como skipping, talones al glúteo.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "3x60m al 80%",
+        "duration_sec": 180,
+        "rest_after_sec": 60,
+        "notes": "Trabajo de técnica con intensidad moderada.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "3x60m al 100%",
+        "duration_sec": 180,
+        "rest_after_sec": 120,
+        "notes": "Velocidad máxima, descanso completo.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "2x100m al 90%",
+        "duration_sec": 120,
+        "rest_after_sec": 60,
+        "notes": "Mantener velocidad y técnica.",
+        "wrist_safe": true,
+        "alternatives": []
+      },
+      {
+        "name": "Caminata y Estiramientos",
+        "duration_sec": 300,
+        "rest_after_sec": 0,
+        "notes": "Vuelta a la calma con estiramientos.",
+        "wrist_safe": true,
+        "alternatives": []
+      }
+    ]
+  }
+]

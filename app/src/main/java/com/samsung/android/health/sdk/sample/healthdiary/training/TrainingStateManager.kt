@@ -126,6 +126,14 @@ class TrainingStateManager(private val context: Context) {
     }
     
     /**
+     * Set the currently active block
+     */
+    fun setActiveBlock(blockType: BlockType?) {
+        val state = getTodayState()
+        saveState(state.copy(activeBlock = blockType))
+    }
+    
+    /**
      * Update block A completion
      */
     fun updateBlockA(blockA: BlockA) {
