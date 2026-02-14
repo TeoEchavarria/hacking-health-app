@@ -1,7 +1,7 @@
 [
   {
-    "habit_id": "wrist_daily_morning",
-    "title": "Rutina Diaria de Muñeca",
+    "habit_id": "wrist_reset_daily_morning",
+    "title": "Rutina Diaria de Muñeca (Mañana)",
     "routine_id": "wrist_reset_daily",
     "schedule": {
       "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
@@ -16,7 +16,23 @@
     }
   },
   {
-    "habit_id": "stretch_nightly",
+    "habit_id": "wrist_reset_daily_afternoon",
+    "title": "Rutina Diaria de Muñeca (Tarde)",
+    "routine_id": "wrist_reset_daily",
+    "schedule": {
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "time": "17:00",
+      "timezone": "-05:00",
+      "window_min": 30
+    },
+    "reminders": {
+      "snooze_min": 10,
+      "max_snoozes": 2,
+      "escalation_after_missed": "remind_again_in_10_min"
+    }
+  },
+  {
+    "habit_id": "mobility_stretch_10_nightly",
     "title": "Estiramientos Nocturnos",
     "routine_id": "mobility_stretch_10",
     "schedule": {
@@ -32,7 +48,7 @@
     }
   },
   {
-    "habit_id": "calis_monday",
+    "habit_id": "calis_base_functional_monday",
     "title": "Calistenia Funcional (Lunes)",
     "routine_id": "calis_base_functional",
     "schedule": {
@@ -48,7 +64,7 @@
     }
   },
   {
-    "habit_id": "fartlek_tuesday",
+    "habit_id": "fartlek_session_tuesday",
     "title": "Sesión Fartlek (Martes)",
     "routine_id": "fartlek_session",
     "schedule": {
@@ -64,7 +80,7 @@
     }
   },
   {
-    "habit_id": "power_wednesday",
+    "habit_id": "power_athletic_body_wednesday",
     "title": "Potencia y Saltos (Miércoles)",
     "routine_id": "power_athletic_body",
     "schedule": {
@@ -80,7 +96,7 @@
     }
   },
   {
-    "habit_id": "active_recovery_thursday",
+    "habit_id": "mobility_stretch_10_thursday",
     "title": "Recuperación Activa (Jueves)",
     "routine_id": "mobility_stretch_10",
     "schedule": {
@@ -96,7 +112,7 @@
     }
   },
   {
-    "habit_id": "sprint_friday",
+    "habit_id": "sprint_session_friday",
     "title": "Sprints (Viernes)",
     "routine_id": "sprint_session",
     "schedule": {
@@ -112,7 +128,7 @@
     }
   },
   {
-    "habit_id": "calis_saturday",
+    "habit_id": "calis_base_functional_saturday",
     "title": "Calistenia Funcional (Sábado)",
     "routine_id": "calis_base_functional",
     "schedule": {
