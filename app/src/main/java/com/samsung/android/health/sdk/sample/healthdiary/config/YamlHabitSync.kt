@@ -46,7 +46,8 @@ object YamlHabitSync {
                         val habitEntity = HabitEntity(
                             habitId = yamlHabit.habit_id,
                             title = yamlHabit.title,
-                            isEnabled = true // Enable by default
+                            isEnabled = true, // Enable by default
+                            routineId = yamlHabit.routine_id
                         )
 
                         // Create reminder time entities for each scheduled day/time

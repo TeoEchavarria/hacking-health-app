@@ -11,5 +11,6 @@ import androidx.room.PrimaryKey
 data class HabitEntity(
     @PrimaryKey val habitId: String,
     val title: String,
-    val isEnabled: Boolean = true
+    val isEnabled: Boolean = true,
+    val routineId: String? = null
 )

@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import android.view.LayoutInflater
 import com.samsung.android.health.sdk.sample.healthdiary.R
+import com.samsung.android.health.sdk.sample.healthdiary.config.ConfigInitializer
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.HealthMainBinding
 import com.samsung.android.health.sdk.sample.healthdiary.databinding.ItemHealthMetricCardBinding
 import com.samsung.android.health.sdk.sample.healthdiary.entries.HealthMetricCardUiState
@@ -75,6 +76,9 @@ class HealthMainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize app configuration (habits, routines, etc.)
+        ConfigInitializer.initialize(this)
 
         // Verificar autenticación antes de continuar
         // #region agent log
