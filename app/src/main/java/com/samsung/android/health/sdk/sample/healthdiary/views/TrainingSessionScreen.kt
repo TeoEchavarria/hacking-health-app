@@ -28,14 +28,18 @@ import com.samsung.android.health.sdk.sample.healthdiary.training.*
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutAckMessage
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutProtocol
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.WorkoutStartMessage
+import com.samsung.android.health.sdk.sample.healthdiary.workout.model.WorkoutEventPayload
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import java.time.Instant
 import java.util.*
 
 private const val WORKOUT_PROTOCOL_PHONE_TAG = "WorkoutProtocolPhone"
@@ -51,7 +55,8 @@ private val json = Json { ignoreUnknownKeys = true }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrainingSessionScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToPlayer: (String) -> Unit // sessionId
 ) {
     val context = LocalContext.current
     val stateManager = remember { TrainingStateManager(context) }
@@ -64,8 +69,7 @@ fun TrainingSessionScreen(
     // Protocol v2: ACK by attemptId
     var workoutStartState by remember { mutableStateOf(WorkoutStartState.Idle) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val ackReceivedFlow = remember { MutableSharedFlow<WorkoutAckMessage>() }
-    val pendingAttemptId = remember { MutableStateFlow<String?>(null) }
+    val ackReceivedFlow = remember { MutableSharedFlow<WorkoutAckMessage>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST) }
 
     // Register MessageClient listener for /workout/ack (V2 WorkoutAckMessage)
     DisposableEffect(context) {
@@ -74,11 +78,8 @@ fun TrainingSessionScreen(
             if (event.path != WorkoutProtocol.PATH_ACK) return@OnMessageReceivedListener
             try {
                 val ack = json.decodeFromString<WorkoutAckMessage>(String(event.data, Charsets.UTF_8))
-                if (ack.attemptId == pendingAttemptId.value) {
-                    Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "event=ack_rx attemptId=${ack.attemptId} success=${ack.success} reasonCode=${ack.reasonCode}")
-                    pendingAttemptId.value = null
-                    ackReceivedFlow.tryEmit(ack)
-                }
+                Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "event=ack_rx attemptId=${ack.attemptId} success=${ack.success} reasonCode=${ack.reasonCode}")
+                ackReceivedFlow.tryEmit(ack)
             } catch (e: Exception) {
                 Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Failed to parse workout ack V2", e)
             }
@@ -97,6 +98,9 @@ fun TrainingSessionScreen(
     }
     
     LaunchedEffect(Unit) {
+        // Seed daily routines in Room (so WorkoutPlayer can load them)
+        com.samsung.android.health.sdk.sample.healthdiary.workout.data.DailyRoutinesSeeder.seed(context)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
@@ -130,6 +134,11 @@ fun TrainingSessionScreen(
 
     fun startBlockWorkout(blockType: BlockType) {
         scope.launch {
+            if (state.activeBlock != null) {
+                snackbarHostState.showSnackbar("Please finish or cancel the current block first", duration = SnackbarDuration.Short)
+                return@launch
+            }
+
             workoutStartState = WorkoutStartState.Connecting
             val nodeClient = Wearable.getNodeClient(context)
             val nodes = nodeClient.connectedNodes.await()
@@ -149,7 +158,6 @@ fun TrainingSessionScreen(
 
             for (attempt in 0..2) {
                 val attemptId = UUID.randomUUID().toString()
-                pendingAttemptId.value = attemptId
                 val sentAt = System.currentTimeMillis()
                 val msg = WorkoutStartMessage(
                     protocolVersion = WorkoutProtocol.PROTOCOL_VERSION,
@@ -181,20 +189,99 @@ fun TrainingSessionScreen(
                     continue
                 }
 
-                val ack = withTimeoutOrNull(ACK_TIMEOUT_MS) { ackReceivedFlow.first() }
+                val ack = withTimeoutOrNull(ACK_TIMEOUT_MS) { 
+                    ackReceivedFlow.filter { it.attemptId == attemptId }.first() 
+                }
                 val elapsedMs = System.currentTimeMillis() - startTime
                 if (ack != null) {
                     Log.i(WEAR_HANDSHAKE_TAG, "event=ack_received attemptId=$attemptId sessionId=$sessionId routineId=$routineId retry=$attempt result=${ack.success} reason=${ack.reasonCode} elapsedMs=$elapsedMs")
                     if (ack.success) {
                         stateManager.setActiveBlock(blockType)
+                        stateManager.setActiveWorkoutSession(sessionId)
                         refreshState()
                         workoutStartState = WorkoutStartState.Started
+
+                        // Create session in Room and navigate to player
+                        val db = com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase.getDatabase(context)
+                        val routineDao = db.routineDao()
+                        val sessionDao = db.workoutSessionDao()
+                        val gson = com.google.gson.Gson()
+
+                        val routine = routineDao.getRoutineByRoutineId(routineId)
+                        if (routine != null) {
+                            val blocks = routineDao.getBlocksForRoutineSync(routineId)
+                            val blockSnapshots = blocks.map {
+                                com.samsung.android.health.sdk.sample.healthdiary.workout.data.BlockSnapshot(
+                                    blockId = it.blockId,
+                                    exerciseName = it.exerciseName,
+                                    sets = it.sets,
+                                    targetWeight = it.targetWeight,
+                                    targetReps = it.targetReps,
+                                    restSec = it.restSec,
+                                    orderIndex = it.orderIndex
+                                )
+                            }.sortedBy { it.orderIndex }
+
+                            val completionMap = blockSnapshots.associate { block ->
+                                block.blockId to List(block.sets) { false }
+                            }
+
+                            val session = com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSessionEntity(
+                                sessionId = sessionId,
+                                routineId = routineId,
+                                routineName = routine.name,
+                                startedAt = System.currentTimeMillis(),
+                                status = "RUNNING",
+                                blocksSnapshotJson = gson.toJson(blockSnapshots),
+                                completionStateJson = gson.toJson(completionMap),
+                                activeBlockIndex = 0,
+                                activeSetIndex = 0
+                            )
+                            sessionDao.insertSession(session)
+                            onNavigateToPlayer(sessionId)
+                        } else {
+                            Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Routine not found in Room: $routineId. Seeding issue?")
+                            snackbarHostState.showSnackbar("Error: Routine definition not found. Try restarting app.", duration = SnackbarDuration.Long)
+                        }
+
                         return@launch
                     }
                     // Watch rejected: do not retry
                     workoutStartState = WorkoutStartState.Error
                     val reasonCode = ack.reasonCode ?: "REJECTED"
-                    snackbarHostState.showSnackbar("Watch rejected request: $reasonCode", duration = SnackbarDuration.Long)
+                    
+                    if (reasonCode == "SESSION_ALREADY_ACTIVE") {
+                        val activeId = ack.reasonMessage
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Watch has active session. Stop it?",
+                            actionLabel = "Stop",
+                            duration = SnackbarDuration.Long
+                        )
+                        if (result == SnackbarResult.ActionPerformed && activeId != null) {
+                            // Force stop the remote session
+                            try {
+                                val payload = WorkoutEventPayload(
+                                    sessionId = activeId,
+                                    type = "FINISH_WORKOUT",
+                                    source = "PHONE",
+                                    at = Instant.now().toString(),
+                                    blockId = null,
+                                    setIndex = null
+                                )
+                                val jsonPayload = json.encodeToString(WorkoutEventPayload.serializer(), payload)
+                                val nodes = Wearable.getNodeClient(context).connectedNodes.await()
+                                nodes.forEach { node ->
+                                    Wearable.getMessageClient(context).sendMessage(node.id, WorkoutProtocol.PATH_EVENT, jsonPayload.toByteArray()).await()
+                                }
+                                Log.i(WORKOUT_PROTOCOL_PHONE_TAG, "Sent FINISH_WORKOUT for stale session $activeId")
+                            } catch (e: Exception) {
+                                Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Failed to stop remote session", e)
+                            }
+                        }
+                    } else {
+                        snackbarHostState.showSnackbar("Watch rejected request: $reasonCode", duration = SnackbarDuration.Long)
+                    }
+                    
                     Log.w(WORKOUT_PROTOCOL_PHONE_TAG, "event=watch_rejected attemptId=$attemptId reasonCode=$reasonCode reasonMessage=${ack.reasonMessage}")
                     return@launch
                 }
@@ -203,10 +290,44 @@ fun TrainingSessionScreen(
             }
 
             workoutStartState = WorkoutStartState.Error
-            pendingAttemptId.value = null
             val elapsedMs = System.currentTimeMillis() - startTime
             Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "event=failed_after_retries sessionId=$sessionId routineId=$routineId result=${WorkoutProtocol.ReasonCode.ACK_TIMEOUT} elapsedMs=$elapsedMs")
             snackbarHostState.showSnackbar("Watch did not respond", duration = SnackbarDuration.Short)
+        }
+    }
+    
+    fun cancelActiveBlock() {
+        val activeSessionId = state.activeSessionId
+        scope.launch {
+            if (activeSessionId != null) {
+                try {
+                    val messageClient = Wearable.getMessageClient(context)
+                    val nodeClient = Wearable.getNodeClient(context)
+                    val nodes = nodeClient.connectedNodes.await()
+                    
+                    val payload = WorkoutEventPayload(
+                        sessionId = activeSessionId,
+                        type = "FINISH_WORKOUT",
+                        source = "PHONE",
+                        at = Instant.now().toString(),
+                        blockId = null,
+                        setIndex = null
+                    )
+                    val jsonPayload = json.encodeToString(WorkoutEventPayload.serializer(), payload)
+                    
+                    nodes.forEach { node ->
+                        messageClient.sendMessage(node.id, WorkoutProtocol.PATH_EVENT, jsonPayload.toByteArray()).await()
+                    }
+                    
+                    val db = com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase.getDatabase(context)
+                    db.workoutSessionDao().finishSession(activeSessionId)
+                } catch (e: Exception) {
+                    Log.e(WORKOUT_PROTOCOL_PHONE_TAG, "Failed to cancel workout", e)
+                }
+            }
+            stateManager.setActiveBlock(null)
+            stateManager.setActiveWorkoutSession(null)
+            refreshState()
         }
     }
     
@@ -236,6 +357,17 @@ fun TrainingSessionScreen(
         ) {
             // Daily Progress Card
             DailyProgressCard(state, modifier = Modifier.fillMaxWidth())
+            
+            // Cancel active block button
+            if (state.activeBlock != null) {
+                Button(
+                    onClick = { cancelActiveBlock() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Stop Active Workout")
+                }
+            }
             
             // Block A - Cardio Base
             BlockACard(

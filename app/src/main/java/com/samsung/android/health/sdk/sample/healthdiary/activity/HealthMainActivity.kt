@@ -45,8 +45,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.google.gson.Gson
-import java.io.File
+import androidx.work.ExistingPeriodicWorkPolicy
+import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.samsung.android.health.sdk.sample.healthdiary.update.worker.UpdateWorker
+import java.util.concurrent.TimeUnit
+import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateDialog
+import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class HealthMainActivity : AppCompatActivity() {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
@@ -56,20 +65,22 @@ class HealthMainActivity : AppCompatActivity() {
 
     // #region agent log
     private fun debugLog(hypothesisId: String, message: String, data: Map<String, Any?> = emptyMap()) {
-        try {
-            val payload = mapOf(
-                "sessionId" to "debug-session",
-                "runId" to "pre-fix",
-                "hypothesisId" to hypothesisId,
-                "location" to "HealthMainActivity.kt",
-                "message" to message,
-                "data" to data,
-                "timestamp" to System.currentTimeMillis()
-            )
-            File("/Users/teoechavarria/Documents/hh/.cursor/debug.log")
-                .appendText(debugGson.toJson(payload) + "\n")
-        } catch (_: Exception) {
-            // best-effort logging only
+        // Debug logging - only outputs to Logcat in debug builds
+        if (BuildConfig.DEBUG) {
+            try {
+                val payload = mapOf(
+                    "sessionId" to "debug-session",
+                    "runId" to "pre-fix",
+                    "hypothesisId" to hypothesisId,
+                    "location" to "HealthMainActivity.kt",
+                    "message" to message,
+                    "data" to data,
+                    "timestamp" to System.currentTimeMillis()
+                )
+                Log.d("DebugLog", debugGson.toJson(payload))
+            } catch (_: Exception) {
+                // best-effort logging only
+            }
         }
     }
     // #endregion
@@ -79,6 +90,15 @@ class HealthMainActivity : AppCompatActivity() {
         
         // Initialize app configuration (habits, routines, etc.)
         ConfigInitializer.initialize(this)
+        
+        // Schedule background update check
+        val updateRequest = PeriodicWorkRequestBuilder<UpdateWorker>(24, TimeUnit.HOURS)
+            .build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "UpdateCheck",
+            ExistingPeriodicWorkPolicy.KEEP,
+            updateRequest
+        )
 
         // Verificar autenticación antes de continuar
         // #region agent log
@@ -189,6 +209,13 @@ class HealthMainActivity : AppCompatActivity() {
                         color = Color.White
                     ) {
                         NavGraph()
+                        
+                        // Update Dialog
+                        val updateViewModel: UpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                        UpdateDialog(
+                            viewModel = updateViewModel,
+                            onDismiss = { /* Dialog handles dismiss internally or we can do something here */ }
+                        )
                     }
                 }
             }

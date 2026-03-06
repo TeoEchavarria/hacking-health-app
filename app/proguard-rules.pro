@@ -14,8 +14,111 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ===== Samsung Health SDK =====
+-keep class com.samsung.android.sdk.health.** { *; }
+-keep interface com.samsung.android.sdk.health.** { *; }
+
+# ===== Hilt / Dagger =====
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keepclasseswithmembers class * {
+    @dagger.hilt.* <fields>;
+}
+-keepclasseswithmembers class * {
+    @dagger.hilt.* <methods>;
+}
+-keepclasseswithmembers class * {
+    @javax.inject.* <fields>;
+}
+
+# ===== Room Database =====
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keepclassmembers @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface *
+
+# ===== Retrofit / OkHttp =====
+-keepattributes Signature
+-keepattributes Exceptions
+-keepattributes *Annotation*
+
+-keep class retrofit2.** { *; }
+-keepclasseswithmembers class * {
+    @retrofit2.http.* <methods>;
+}
+
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# ===== Gson =====
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# ===== Kotlinx Serialization =====
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+-keepclassmembers @kotlinx.serialization.Serializable class ** {
+    *** Companion;
+    *** INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+-if @kotlinx.serialization.Serializable class **
+-keepclassmembers class <1> {
+    static <1> INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+-keepclasseswithmembers class **$$serializer {
+    *** childSerializers();
+}
+
+-keep,includedescriptorclasses class com.samsung.android.health.sdk.sample.healthdiary.**$$serializer { *; }
+-keepclassmembers class com.samsung.android.health.sdk.sample.healthdiary.** {
+    *** Companion;
+}
+
+# ===== API Models =====
+-keep class com.samsung.android.health.sdk.sample.healthdiary.api.models.** { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.wearable.model.** { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.config.Yaml** { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.update.data.model.** { *; }
+
+# ===== SnakeYAML =====
+-keep class org.yaml.snakeyaml.** { *; }
+-dontwarn org.yaml.snakeyaml.**
+
+# ===== Google Play Services Wearable =====
+-keep class com.google.android.gms.wearable.** { *; }
+-keep interface com.google.android.gms.wearable.** { *; }
+
+# ===== Data Binding =====
+-keep class androidx.databinding.** { *; }
+
+# ===== WorkManager =====
+-keep class * extends androidx.work.Worker
+-keep class * extends androidx.work.CoroutineWorker
+-keep class * extends androidx.work.ListenableWorker
+
+# ===== Compose =====
+-keep class androidx.compose.** { *; }
+
+# ===== Keep entity classes for Room =====
+-keep class com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.** { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.data.room.SensorDataEntity { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.data.ingest.** { *; }
+-keep class com.samsung.android.health.sdk.sample.healthdiary.workout.data.** { *; }

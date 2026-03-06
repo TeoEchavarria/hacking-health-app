@@ -23,7 +23,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Training : Screen("training")
     object Habits : Screen("habits")
-    data class WorkoutPlayer(val routineId: String? = null) : Screen("workout_player?routineId={routineId}")
+    data class WorkoutPlayer(val routineId: String? = null, val sessionId: String? = null) : Screen("workout_player?routineId=$routineId&sessionId=$sessionId")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
@@ -101,7 +101,10 @@ fun NavGraph() {
 
         composable(Screen.Training.route) {
             TrainingSessionScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPlayer = { sessionId ->
+                    navController.navigate("workout_player?sessionId=$sessionId")
+                }
             )
         }
         composable(Screen.Habits.route) {
@@ -120,16 +123,33 @@ fun NavGraph() {
             )
         }
         composable(
-            route = "workout_player?routineId={routineId}",
-            arguments = listOf(navArgument("routineId") { 
-                type = NavType.StringType
-                nullable = true 
-            })
+            route = "workout_player?routineId={routineId}&sessionId={sessionId}",
+            arguments = listOf(
+                navArgument("routineId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("sessionId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
             val rid = backStackEntry.arguments?.getString("routineId")
+            val sid = backStackEntry.arguments?.getString("sessionId")
+            val context = LocalContext.current
             WorkoutPlayerScreen(
                 routineId = rid,
-                onNavigateBack = { navController.popBackStack() }
+                sessionId = sid,
+                onNavigateBack = { navController.popBackStack() },
+                onFinishSession = {
+                    com.samsung.android.health.sdk.sample.healthdiary.training.TrainingStateManager(context).apply {
+                        setActiveBlock(null)
+                        setActiveWorkoutSession(null)
+                    }
+                }
             )
         }
         composable("routine_editor/{routineId}") { backStackEntry ->
@@ -140,12 +160,17 @@ fun NavGraph() {
             )
         }
         
-        // Sandbox Gallery - Debug only
-        if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
-            composable(Screen.SandboxGallery.route) {
+        // Sandbox Gallery - Debug only (route always registered for navigation stability)
+        composable(Screen.SandboxGallery.route) {
+            if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
                 SandboxGalleryScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
+            } else {
+                // In release builds, navigate back if someone somehow reaches this route
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    navController.popBackStack()
+                }
             }
         }
     }

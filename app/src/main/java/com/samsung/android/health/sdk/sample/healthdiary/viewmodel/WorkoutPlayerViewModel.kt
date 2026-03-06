@@ -28,11 +28,15 @@ private const val TAG = "WorkoutPhonePlayer"
 private const val WORKOUT_START_PATH = "/workout/start"
 private const val WORKOUT_EVENT_PATH = "/workout/event"
 private const val WORKOUT_ACK_PATH = "/workout/ack"
+private const val WORKOUT_REP_PATH = "/workout/rep"
 
 data class WorkoutPlayerUiState(
     val session: WorkoutSessionEntity? = null,
     val blocks: List<BlockSnapshot> = emptyList(),
     val completionState: Map<String, List<Boolean>> = emptyMap(),
+    val liveReps: Map<String, Int> = emptyMap(), // blockId -> current rep count (for active block)
+    val activeBlockId: String? = null,
+    val activeSetIndex: Int? = null,
     val connectionStatus: String = "Connecting to watch...", // Connecting, Connected, Not confirmed
     val isFinished: Boolean = false
 )
@@ -73,6 +77,14 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
                         handleWatchEvent(payload)
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to parse event", e)
+                    }
+                }
+                WORKOUT_REP_PATH -> {
+                    try {
+                        val payload = json.decodeFromString<WorkoutEventPayload>(String(event.data, Charsets.UTF_8))
+                        handleRepUpdate(payload)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to parse rep update", e)
                     }
                 }
             }
@@ -136,6 +148,22 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
             
             // Send to watch
             sendStartToWatch(session, blockSnapshots)
+        }
+    }
+
+    fun joinSession(sessionId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            sessionDao.getSession(sessionId).collect { session ->
+                if (session != null) {
+                    loadSessionIntoState(session)
+                    if (session.status == "RUNNING") {
+                        _uiState.value = _uiState.value.copy(connectionStatus = "Connected")
+                    }
+                } else {
+                    Log.w(TAG, "Session not found (yet) for join: $sessionId")
+                    _uiState.value = _uiState.value.copy(connectionStatus = "Waiting for session data...")
+                }
+            }
         }
     }
 
@@ -204,6 +232,10 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
         currentList[setIndex] = newState
         currentMap[blockId] = currentList
 
+        // Update UI state immediately
+        _uiState.value = _uiState.value.copy(completionState = currentMap)
+        
+        // Persist to database
         updateSessionState(currentSession, currentMap)
 
         Log.d(TAG, "Set toggled blockId=$blockId setIndex=$setIndex newState=$newState")
@@ -242,6 +274,10 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
                 currentList[payload.setIndex] = true
                 currentMap[payload.blockId] = currentList
                 
+                // Update UI state immediately
+                _uiState.value = _uiState.value.copy(completionState = currentMap)
+                
+                // Persist to database
                 updateSessionState(currentSession, currentMap)
             }
             "UNDO_SET" -> {
@@ -264,6 +300,10 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
                 currentList[payload.setIndex] = false
                 currentMap[payload.blockId] = currentList
                 
+                // Update UI state immediately
+                _uiState.value = _uiState.value.copy(completionState = currentMap)
+                
+                // Persist to database
                 updateSessionState(currentSession, currentMap)
             }
             "FINISH_WORKOUT" -> {
@@ -271,6 +311,29 @@ class WorkoutPlayerViewModel(application: Application) : AndroidViewModel(applic
                 finishWorkout(fromRemote = true)
             }
         }
+    }
+    
+    private fun handleRepUpdate(payload: WorkoutEventPayload) {
+        // Prevent loop
+        if (payload.source == "PHONE") return
+        
+        if (payload.type != "REP_UPDATE") return
+        if (payload.blockId == null || payload.setIndex == null || payload.repCount == null) return
+        
+        val currentSession = _uiState.value.session
+        if (currentSession == null || currentSession.sessionId != payload.sessionId) return
+        
+        Log.i(TAG, "RX REP_UPDATE from WATCH blockId=${payload.blockId} setIndex=${payload.setIndex} reps=${payload.repCount}")
+        
+        // Update live reps state
+        val currentReps = _uiState.value.liveReps.toMutableMap()
+        currentReps[payload.blockId] = payload.repCount
+        
+        _uiState.value = _uiState.value.copy(
+            liveReps = currentReps,
+            activeBlockId = payload.blockId,
+            activeSetIndex = payload.setIndex
+        )
     }
 
     private fun updateSessionState(session: WorkoutSessionEntity, completionMap: Map<String, List<Boolean>>) {

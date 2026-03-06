@@ -26,14 +26,20 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.BlockSnaps
 @Composable
 fun WorkoutPlayerScreen(
     routineId: String?,
+    sessionId: String? = null,
     onNavigateBack: () -> Unit,
+    onFinishSession: () -> Unit = {},
     viewModel: WorkoutPlayerViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(routineId) {
-        if (routineId != null && uiState.session == null) {
-            viewModel.startSession(routineId)
+    LaunchedEffect(routineId, sessionId) {
+        if (uiState.session == null) {
+            if (sessionId != null) {
+                viewModel.joinSession(sessionId)
+            } else if (routineId != null) {
+                viewModel.startSession(routineId)
+            }
         }
     }
 
@@ -46,14 +52,18 @@ fun WorkoutPlayerScreen(
         },
         bottomBar = {
             if (!uiState.isFinished && uiState.session != null) {
-                Button(
-                    onClick = { viewModel.finishWorkout() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Finish Workout")
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Button(
+                        onClick = {
+                            viewModel.finishWorkout()
+                            onFinishSession()
+                            onNavigateBack()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("End Workout")
+                    }
                 }
             }
         }
@@ -105,11 +115,15 @@ fun WorkoutPlayerScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(uiState.blocks) { block ->
+                    val isActiveBlock = block.blockId == uiState.activeBlockId
+                    val liveReps = if (isActiveBlock) uiState.liveReps[block.blockId] else null
                     ExerciseBlockItem(
                         block = block,
                         completedSets = uiState.completionState[block.blockId] ?: emptyList(),
                         onSetToggle = { setIndex -> viewModel.toggleSet(block.blockId, setIndex) },
-                        isSessionFinished = uiState.isFinished
+                        isSessionFinished = uiState.isFinished,
+                        isActive = isActiveBlock,
+                        liveReps = liveReps
                     )
                 }
             }
@@ -122,22 +136,56 @@ fun ExerciseBlockItem(
     block: BlockSnapshot,
     completedSets: List<Boolean>,
     onSetToggle: (Int) -> Unit,
-    isSessionFinished: Boolean
+    isSessionFinished: Boolean,
+    isActive: Boolean = false,
+    liveReps: Int? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isActive) 6.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isActive) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = block.exerciseName,
-                style = MaterialTheme.typography.titleMedium
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = block.exerciseName,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                // Live rep counter for active block
+                if (isActive && liveReps != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = if (block.targetReps != null && block.targetReps > 0) {
+                                "$liveReps/${block.targetReps}"
+                            } else {
+                                "$liveReps reps"
+                            },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "${block.sets} sets • ${block.targetReps ?: "N/A"} reps • ${block.restSec}s rest",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isActive) 
+                    MaterialTheme.colorScheme.onPrimaryContainer 
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (block.targetWeight > 0) {
                 Text(

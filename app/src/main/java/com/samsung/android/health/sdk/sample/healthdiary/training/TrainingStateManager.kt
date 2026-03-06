@@ -134,6 +134,14 @@ class TrainingStateManager(private val context: Context) {
     }
     
     /**
+     * Set the currently active session ID
+     */
+    fun setActiveWorkoutSession(sessionId: String?) {
+        val state = getTodayState()
+        saveState(state.copy(activeSessionId = sessionId))
+    }
+
+    /**
      * Update block A completion
      */
     fun updateBlockA(blockA: BlockA) {

@@ -13,25 +13,31 @@ object TokenManager {
     private const val KEY_EXPIRY = "token_expiry"
     private const val MASTER_KEY_ALIAS = "_androidx_security_crypto_encrypted_prefs_key_"
     
+    @Volatile
     private var encryptedPrefs: SharedPreferences? = null
+    private val lock = Any()
     
     fun initialize(context: Context) {
         if (encryptedPrefs == null) {
-            try {
-                val masterKey = MasterKey.Builder(context)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
-                
-                encryptedPrefs = EncryptedSharedPreferences.create(
-                    context,
-                    PREFS_NAME,
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
-            } catch (e: Exception) {
-                // Fallback to regular SharedPreferences if encryption fails
-                encryptedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            synchronized(lock) {
+                if (encryptedPrefs == null) {
+                    try {
+                        val masterKey = MasterKey.Builder(context.applicationContext)
+                            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                            .build()
+                        
+                        encryptedPrefs = EncryptedSharedPreferences.create(
+                            context.applicationContext,
+                            PREFS_NAME,
+                            masterKey,
+                            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                        )
+                    } catch (e: Exception) {
+                        // Fallback to regular SharedPreferences if encryption fails
+                        encryptedPrefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    }
+                }
             }
         }
     }

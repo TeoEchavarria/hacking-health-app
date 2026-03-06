@@ -25,8 +25,8 @@ import java.time.Instant
 /**
  * BroadcastReceiver triggered by AlarmManager at habit trigger time.
  * Sends /habit/reminder/start to connected watch nodes.
+ * Launches HabitConfirmationActivity on phone.
  * Reschedules the specific reminder for next day.
- * Also posts a local notification on the phone.
  */
 class HabitAlarmReceiver : BroadcastReceiver() {
 
@@ -63,11 +63,23 @@ class HabitAlarmReceiver : BroadcastReceiver() {
                     db.habitReminderTimeDao().getByHabitIdSync(habitId).find { it.reminderId == reminderId }
                 } else null
 
-                // 1. Send to Watch
+                // 1. Send to Watch (Start Alarm)
                 sendReminderToWatch(context, habit)
                 
-                // 2. Post Phone Notification
-                showHabitNotification(context, habit)
+                // 2. Launch Confirmation Activity (Phone)
+                // We launch a full-screen activity to ask for availability
+                val yamlHabit = YamlConfigManager.getHabitById(habit.habitId)
+                val routineId = yamlHabit?.routine_id
+                
+                val confirmIntent = Intent(context, HabitConfirmationActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra(HabitConfirmationActivity.EXTRA_HABIT_ID, habit.habitId)
+                    putExtra(HabitConfirmationActivity.EXTRA_TITLE, habit.title)
+                    if (routineId != null) {
+                        putExtra(HabitConfirmationActivity.EXTRA_ROUTINE_ID, routineId)
+                    }
+                }
+                context.startActivity(confirmIntent)
 
                 // 3. Reschedule
                 if (reminder != null) {

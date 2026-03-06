@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 object WorkoutProtocol {
     const val PATH_START = "/workout/start"
     const val PATH_ACK = "/workout/ack"
+    const val PATH_EVENT = "/workout/event"
     const val PROTOCOL_VERSION = 2
     const val TYPE_WORKOUT_START = "WORKOUT_START"
     const val TYPE_WORKOUT_ACK = "WORKOUT_ACK"

@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
 import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
 
+import com.samsung.android.health.sdk.sample.healthdiary.update.data.api.UpdateApi
+
 object RetrofitClient {
     private val gson: Gson = GsonBuilder()
         .setLenient()
@@ -198,9 +200,10 @@ object RetrofitClient {
             .addConverterFactory(omhJson.asConverterFactory("application/json".toMediaType()))
             .build()
     }
-    
+
     val syncApiService: SyncApiService by lazy { retrofit.create(SyncApiService::class.java) }
     val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
     val omhSyncApiService: OmhSyncApiService by lazy { omhRetrofit.create(OmhSyncApiService::class.java) }
+    val updateApi: UpdateApi by lazy { retrofit.create(UpdateApi::class.java) }
 }
 

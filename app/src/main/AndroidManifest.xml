@@ -21,6 +21,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Queries declaration para Android 11+ - Permite encontrar y comunicarse con Samsung Health -->
     <!-- Incluimos ambos package names posibles para compatibilidad con diferentes versiones -->
@@ -31,6 +32,7 @@
     </queries>
 
     <application
+        android:name=".HealthDiaryApp"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -52,6 +54,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".habit.HabitConfirmationActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
 
         <receiver
             android:name=".training.TrainingReminderReceiver"
@@ -148,6 +158,16 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/habit/log" />
             </intent-filter>
         </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- Legacy listener disabled -->
         <!--

@@ -141,6 +141,7 @@ data class DailyTrainingState(
     val blockC: BlockC = BlockC(),
     val blockD: BlockD = BlockD(),
     val activeBlock: BlockType? = null, // Track which block is currently active/running
+    val activeSessionId: String? = null, // Track the active session ID for cancellation/navigation
     val reminderTimes: Map<BlockType, String> = mapOf(
         BlockType.A to "08:00",
         BlockType.B to "12:00",
