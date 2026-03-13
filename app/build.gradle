@@ -7,6 +7,13 @@ plugins {
     id 'com.google.dagger.hilt.android'
 }
 
+// Load local.properties for OAuth configuration
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
 // Extract version from VERSION_TAG env var (e.g., "1.2.7") or use defaults
 def versionTag = System.getenv("VERSION_TAG") ?: "1.0.0"
 def versionParts = versionTag.tokenize('.')
@@ -31,9 +38,8 @@ android {
         ]
         
         // Google OAuth Client ID (from local.properties or env)
-        def googleClientId = project.hasProperty('GOOGLE_OAUTH_CLIENT_ID') 
-            ? project.property('GOOGLE_OAUTH_CLIENT_ID') 
-            : System.getenv('GOOGLE_OAUTH_CLIENT_ID') ?: ''
+        def googleClientId = localProperties.getProperty('GOOGLE_OAUTH_CLIENT_ID') 
+            ?: System.getenv('GOOGLE_OAUTH_CLIENT_ID') ?: ''
         buildConfigField "String", "GOOGLE_OAUTH_CLIENT_ID", "\"${googleClientId}\""
     }
 
