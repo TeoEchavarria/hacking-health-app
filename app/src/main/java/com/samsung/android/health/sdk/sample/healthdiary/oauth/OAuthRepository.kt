@@ -28,6 +28,7 @@ class OAuthRepository(private val context: Context) {
     
     companion object {
         private const val TAG = "OAuthRepository"
+        const val REQUEST_CODE_AUTH = 1001
     }
     
     // PKCE storage for code verifier (preserved across authorization request/response)
@@ -204,10 +205,6 @@ class OAuthRepository(private val context: Context) {
         val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(hash)
-    }
-    
-    companion object {
-        const val REQUEST_CODE_AUTH = 1001
     }
 }
 
