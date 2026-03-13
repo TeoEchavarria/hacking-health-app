@@ -34,6 +34,7 @@ android {
             buildConfigField "String", "API_BASE_URL", '""'
         }
         release {
+            signingConfig signingConfigs.debug  // Sign release with debug keystore for CI
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField "String", "API_BASE_URL", '""'
