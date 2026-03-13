@@ -59,7 +59,10 @@ fun UpdateDialog(
                 onInstall = {
                     viewModel.installUpdate(state.file)
                 },
-                onDismiss = onDismiss
+                onDismiss = {
+                    viewModel.dismissError()  // Reset state to Idle
+                    onDismiss()
+                }
             )
         }
         is UpdateUiState.Error -> {
