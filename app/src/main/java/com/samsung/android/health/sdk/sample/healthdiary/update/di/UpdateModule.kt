@@ -2,7 +2,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.update.di
 
 import android.content.Context
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
-import com.samsung.android.health.sdk.sample.healthdiary.update.data.api.UpdateApi
+import com.samsung.android.health.sdk.sample.healthdiary.update.data.api.GitHubReleaseApi
 import com.samsung.android.health.sdk.sample.healthdiary.update.data.repository.UpdateRepository
 import com.samsung.android.health.sdk.sample.healthdiary.update.data.repository.UpdateRepositoryImpl
 import com.samsung.android.health.sdk.sample.healthdiary.update.manager.AppUpdateManager
@@ -22,13 +22,13 @@ object UpdateModule {
 
     @Provides
     @Singleton
-    fun provideUpdateApi(): UpdateApi {
-        return RetrofitClient.updateApi
+    fun provideGitHubReleaseApi(): GitHubReleaseApi {
+        return RetrofitClient.gitHubReleaseApi
     }
 
     @Provides
     @Singleton
-    fun provideUpdateRepository(api: UpdateApi): UpdateRepository {
+    fun provideUpdateRepository(api: GitHubReleaseApi): UpdateRepository {
         return UpdateRepositoryImpl(api)
     }
 

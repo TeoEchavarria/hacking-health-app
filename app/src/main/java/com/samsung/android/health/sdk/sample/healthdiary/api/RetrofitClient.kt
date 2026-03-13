@@ -23,6 +23,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
 import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
 
 import com.samsung.android.health.sdk.sample.healthdiary.update.data.api.UpdateApi
+import com.samsung.android.health.sdk.sample.healthdiary.update.data.api.GitHubReleaseApi
 
 object RetrofitClient {
     private val gson: Gson = GsonBuilder()
@@ -205,5 +206,30 @@ object RetrofitClient {
     val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
     val omhSyncApiService: OmhSyncApiService by lazy { omhRetrofit.create(OmhSyncApiService::class.java) }
     val updateApi: UpdateApi by lazy { retrofit.create(UpdateApi::class.java) }
+    
+    // GitHub API client for releases (OTA updates)
+    private val githubOkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .build()
+            chain.proceed(request)
+        }
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+    
+    private val githubRetrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(GitHubReleaseApi.BASE_URL)
+            .client(githubOkHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+    
+    val gitHubReleaseApi: GitHubReleaseApi by lazy { 
+        githubRetrofit.create(GitHubReleaseApi::class.java) 
+    }
 }
 
