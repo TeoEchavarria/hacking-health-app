@@ -184,6 +184,10 @@ class UserProfileActivity : BaseHealthDataActivity<UserProfileViewModel>() {
                             showToast(this@UserProfileActivity, getString(R.string.login_success))
                             authViewModel.resetState()
                         }
+                        is AuthViewModel.AuthState.OAuthSuccess -> {
+                            showToast(this@UserProfileActivity, getString(R.string.login_success))
+                            authViewModel.resetState()
+                        }
                         is AuthViewModel.AuthState.Error -> {
                             // Show error only if it's not a silent error
                             if (!state.message.contains("Network", ignoreCase = true)) {
