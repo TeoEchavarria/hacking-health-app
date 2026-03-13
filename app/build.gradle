@@ -24,6 +24,17 @@ android {
         targetSdkVersion 34
         versionCode computedVersionCode
         versionName versionTag
+        
+        // OAuth redirect scheme configuration
+        manifestPlaceholders = [
+            'appAuthRedirectScheme': 'com.samsung.android.health.sdk.sample.healthdiary'
+        ]
+        
+        // Google OAuth Client ID (from local.properties or env)
+        def googleClientId = project.hasProperty('GOOGLE_OAUTH_CLIENT_ID') 
+            ? project.property('GOOGLE_OAUTH_CLIENT_ID') 
+            : System.getenv('GOOGLE_OAUTH_CLIENT_ID') ?: ''
+        buildConfigField "String", "GOOGLE_OAUTH_CLIENT_ID", "\"${googleClientId}\""
     }
 
     signingConfigs {
@@ -167,4 +178,13 @@ dependencies {
     implementation 'androidx.hilt:hilt-work:1.2.0'
     implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
     kapt 'androidx.hilt:hilt-compiler:1.2.0'
+    
+    // OAuth / AppAuth
+    implementation 'net.openid:appauth:0.11.1'
+    
+    // Google Identity Services (for One Tap Sign-In)
+    implementation 'com.google.android.gms:play-services-auth:21.0.0'
+    
+    // Chrome Custom Tabs (for OAuth browser)
+    implementation 'androidx.browser:browser:1.8.0'
 }

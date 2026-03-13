@@ -1,14 +1,20 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views
 
+import android.app.Activity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.R
@@ -20,12 +26,14 @@ import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewMod
 
 /**
  * Login Screen using Sandbox components
+ * Supports both username/password and OAuth (Google) authentication
  */
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel = viewModel(
         factory = HealthViewModelFactory(LocalContext.current)
-    )
+    ),
+    onGoogleSignInClick: (() -> Unit)? = null
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -34,6 +42,11 @@ fun LoginScreen(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     
     val context = LocalContext.current
+    
+    // Initialize OAuth on first composition
+    LaunchedEffect(Unit) {
+        viewModel.initOAuth(context)
+    }
     
     // Observe auth state
     LaunchedEffect(Unit) {
@@ -52,13 +65,14 @@ fun LoginScreen(
                     statusMessage = null
                     errorMessage = null
                     // Navigate to main activity
-                    val intent = android.content.Intent(context, HealthMainActivity::class.java)
-                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or 
-                                   android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
-                    if (context is androidx.activity.ComponentActivity) {
-                        context.finish()
-                    }
+                    navigateToMainActivity(context)
+                }
+                is AuthViewModel.AuthState.OAuthSuccess -> {
+                    isLoading = false
+                    statusMessage = null
+                    errorMessage = null
+                    // Navigate to main activity
+                    navigateToMainActivity(context)
                 }
                 is AuthViewModel.AuthState.Error -> {
                     isLoading = false
@@ -101,6 +115,56 @@ fun LoginScreen(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 18.dp)
         )
+        
+        // ==========================================================================
+        // Google Sign-In Button (OAuth)
+        // ==========================================================================
+        if (viewModel.isGoogleSignInAvailable()) {
+            GoogleSignInButton(
+                onClick = {
+                    if (onGoogleSignInClick != null) {
+                        onGoogleSignInClick()
+                    } else {
+                        // Try to get activity from context
+                        (context as? Activity)?.let { activity ->
+                            viewModel.launchGoogleSignIn(activity)
+                        }
+                    }
+                },
+                isLoading = isLoading,
+                enabled = !isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            )
+            
+            // Divider with "or"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                Text(
+                    text = "or",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        }
+        
+        // ==========================================================================
+        // Username/Password Login (Legacy)
+        // ==========================================================================
         
         // Username Input
         SandboxInput(
@@ -186,5 +250,63 @@ fun LoginScreen(
         )
         
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+/**
+ * Google Sign-In button following Google's branding guidelines.
+ */
+@Composable
+private fun GoogleSignInButton(
+    onClick: () -> Unit,
+    isLoading: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        enabled = enabled && !isLoading,
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White,
+            contentColor = Color(0xFF1F1F1F)
+        ),
+        border = ButtonDefaults.outlinedButtonBorder.copy(
+            brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFDADCE0))
+        )
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        } else {
+            // Google "G" icon (using material icon as placeholder)
+            Icon(
+                imageVector = Icons.Outlined.Email,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color(0xFF4285F4) // Google blue
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
+        Text(
+            text = "Continue with Google",
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+/**
+ * Navigate to the main activity and clear the back stack.
+ */
+private fun navigateToMainActivity(context: android.content.Context) {
+    val intent = android.content.Intent(context, HealthMainActivity::class.java)
+    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or 
+                   android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+    context.startActivity(intent)
+    if (context is androidx.activity.ComponentActivity) {
+        context.finish()
     }
 }

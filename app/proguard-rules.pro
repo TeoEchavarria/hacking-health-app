@@ -137,3 +137,15 @@
 -keep class com.samsung.android.health.sdk.sample.healthdiary.data.room.SensorDataEntity { *; }
 -keep class com.samsung.android.health.sdk.sample.healthdiary.data.ingest.** { *; }
 -keep class com.samsung.android.health.sdk.sample.healthdiary.workout.data.** { *; }
+
+# ===== AppAuth (OAuth) =====
+-keep class net.openid.appauth.** { *; }
+-dontwarn net.openid.appauth.**
+
+# ===== Google Sign-In =====
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-dontwarn com.google.android.gms.**
+
+# ===== OAuth Models =====
+-keep class com.samsung.android.health.sdk.sample.healthdiary.oauth.** { *; }
