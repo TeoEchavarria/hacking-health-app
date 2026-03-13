@@ -23,6 +23,10 @@ allprojects {
             url = uri("https://plugins.gradle.org/m2/")
         }
         maven { url 'https://jitpack.io' }
+        // Local AAR repository for Samsung Health SDK
+        flatDir {
+            dirs "${project(':app').projectDir}/libs"
+        }
     }
     
     tasks.withType(JavaCompile).configureEach {

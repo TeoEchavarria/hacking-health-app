@@ -1,8 +1,12 @@
 # Built application files
 *.apk
-*.aar
 *.ap_
 *.aab
+
+# AAR files (ignore all except explicitly tracked libraries)
+*.aar
+# Exception: Samsung Health SDK (required dependency)
+!app/libs/samsung-health-data-api-*.aar
 
 # Files for the ART/Dalvik VM
 *.dex
