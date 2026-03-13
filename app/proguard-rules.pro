@@ -53,6 +53,15 @@
     @retrofit2.http.* <methods>;
 }
 
+# Keep Retrofit service interfaces with generic signatures (fixes ParameterizedType errors)
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+
+# Keep all Retrofit API interfaces in this project
+-keep interface com.samsung.android.health.sdk.sample.healthdiary.update.data.api.** { *; }
+-keep interface com.samsung.android.health.sdk.sample.healthdiary.api.** { *; }
+
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
 -dontwarn okhttp3.**
