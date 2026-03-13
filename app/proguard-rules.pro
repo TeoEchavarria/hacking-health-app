@@ -67,6 +67,12 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
+# Keep TypeToken anonymous classes for Gson reflection (fixes ParameterizedType errors)
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+
 # ===== Kotlinx Serialization =====
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
