@@ -36,7 +36,7 @@ fun HomeScreen(
     ) {
         // Header
         SandboxHeader(
-            title = "Health Diary v1.2.9 ✓",
+            title = "Health Diary v1.2.10 ✓",
             variant = HeaderVariant.Medium,
             modifier = Modifier.padding(vertical = 24.dp)
         )
