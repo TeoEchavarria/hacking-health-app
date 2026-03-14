@@ -32,15 +32,19 @@ android {
         versionCode computedVersionCode
         versionName versionTag
         
-        // OAuth redirect scheme configuration
-        manifestPlaceholders = [
-            'appAuthRedirectScheme': 'com.samsung.android.health.sdk.sample.healthdiary'
-        ]
-        
         // Google OAuth Client ID (from local.properties or env)
         def googleClientId = localProperties.getProperty('GOOGLE_OAUTH_CLIENT_ID') 
             ?: System.getenv('GOOGLE_OAUTH_CLIENT_ID') ?: ''
         buildConfigField "String", "GOOGLE_OAUTH_CLIENT_ID", "\"${googleClientId}\""
+        
+        // OAuth redirect scheme: use reverse client ID format required by Google
+        // Client ID format: xxx.apps.googleusercontent.com
+        // Redirect scheme: com.googleusercontent.apps.xxx
+        def clientIdPrefix = googleClientId.replace('.apps.googleusercontent.com', '')
+        def reverseClientId = clientIdPrefix ? "com.googleusercontent.apps.${clientIdPrefix}" : 'com.samsung.android.health.sdk.sample.healthdiary'
+        manifestPlaceholders = [
+            'appAuthRedirectScheme': reverseClientId
+        ]
     }
 
     signingConfigs {

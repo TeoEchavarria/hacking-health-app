@@ -8,9 +8,29 @@ import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
  */
 object OAuthConfig {
     
-    // Redirect URI for OAuth callback (standard AppAuth format)
-    const val REDIRECT_SCHEME = "com.samsung.android.health.sdk.sample.healthdiary"
-    val REDIRECT_URI: Uri = Uri.parse("$REDIRECT_SCHEME:/oauth2redirect")
+    /**
+     * Generate redirect URI using reverse client ID format.
+     * Google requires this format for Android apps using AppAuth.
+     * 
+     * Client ID: xxx.apps.googleusercontent.com
+     * Redirect:  com.googleusercontent.apps.xxx:/oauth2redirect
+     */
+    val REDIRECT_URI: Uri
+        get() {
+            val clientId = Google.CLIENT_ID
+            // Extract the prefix before .apps.googleusercontent.com
+            val clientIdPrefix = clientId.replace(".apps.googleusercontent.com", "")
+            val reverseClientId = "com.googleusercontent.apps.$clientIdPrefix"
+            return Uri.parse("$reverseClientId:/oauth2redirect")
+        }
+    
+    // Also expose the scheme for AndroidManifest
+    val REDIRECT_SCHEME: String
+        get() {
+            val clientId = Google.CLIENT_ID
+            val clientIdPrefix = clientId.replace(".apps.googleusercontent.com", "")
+            return "com.googleusercontent.apps.$clientIdPrefix"
+        }
     
     /**
      * Google OAuth configuration.
