@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthRedirectActivity
+import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthRepository
 import com.samsung.android.health.sdk.sample.healthdiary.repository.AuthRepository
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme
 import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateDialog
@@ -38,6 +40,17 @@ class LoginActivity : AppCompatActivity() {
     
     private lateinit var authViewModel: AuthViewModel
     
+    /**
+     * Activity result launcher for Google Sign-In.
+     * Handles the result from the Google Sign-In intent.
+     */
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        Log.d(TAG, "Google Sign-In result: resultCode=${result.resultCode}")
+        authViewModel.handleGoogleSignInResult(result.data)
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -49,9 +62,6 @@ class LoginActivity : AppCompatActivity() {
         
         // Initialize OAuth
         authViewModel.initOAuth(this)
-        
-        // Handle OAuth callback if this is a redirect
-        handleOAuthCallback(intent)
         
         setContent {
             SandboxTheme {
@@ -95,7 +105,7 @@ class LoginActivity : AppCompatActivity() {
                         LoginScreen(
                             viewModel = authViewModel,
                             onGoogleSignInClick = {
-                                authViewModel.launchGoogleSignIn(this@LoginActivity)
+                                launchGoogleSignIn()
                             }
                         )
                         
@@ -120,29 +130,25 @@ class LoginActivity : AppCompatActivity() {
         }
     }
     
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleOAuthCallback(intent)
-    }
-    
     /**
-     * Handle OAuth redirect callback from OAuthRedirectActivity.
+     * Launch Google Sign-In using the activity result launcher.
      */
-    private fun handleOAuthCallback(intent: Intent?) {
-        intent ?: return
+    private fun launchGoogleSignIn() {
+        val oauthRepo = OAuthRepository(this)
+        val signInIntent = com.google.android.gms.auth.api.signin.GoogleSignIn
+            .getClient(this, 
+                com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+                    com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
+                )
+                .requestIdToken(com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthConfig.Google.WEB_CLIENT_ID)
+                .requestEmail()
+                .requestProfile()
+                .build()
+            )
+            .signInIntent
         
-        val oauthResponse = intent.getStringExtra(OAuthRedirectActivity.EXTRA_OAUTH_RESPONSE)
-        val oauthException = intent.getStringExtra(OAuthRedirectActivity.EXTRA_OAUTH_EXCEPTION)
-        
-        if (oauthResponse != null || oauthException != null) {
-            Log.d(TAG, "Received OAuth callback: response=${oauthResponse != null}, exception=${oauthException != null}")
-            authViewModel.handleOAuthCallback(oauthResponse, oauthException)
-            
-            // Clear the extras to prevent re-processing
-            intent.removeExtra(OAuthRedirectActivity.EXTRA_OAUTH_RESPONSE)
-            intent.removeExtra(OAuthRedirectActivity.EXTRA_OAUTH_EXCEPTION)
-        }
+        Log.d(TAG, "Launching Google Sign-In")
+        googleSignInLauncher.launch(signInIntent)
     }
 }
 

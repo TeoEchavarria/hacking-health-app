@@ -3,156 +3,143 @@ package com.samsung.android.health.sdk.sample.healthdiary.oauth
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.util.Log
-import androidx.browser.customtabs.CustomTabsIntent
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
+import com.google.android.gms.common.api.ApiException
 import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import net.openid.appauth.*
-import java.security.MessageDigest
-import java.security.SecureRandom
-import java.util.Base64
-import kotlin.coroutines.resume
 
 /**
  * Repository handling OAuth authentication flows.
  * 
- * Implements OAuth2 Authorization Code Flow with PKCE for secure
- * mobile authentication.
+ * Uses Google Sign-In SDK for Google authentication, which is the
+ * officially recommended approach for Android apps. This avoids
+ * the "Custom scheme URIs not allowed" error that occurs with
+ * AppAuth + Web client IDs.
+ * 
+ * Key benefits:
+ * - No custom redirect URI handling needed
+ * - ID token returned directly (no token exchange required)
+ * - Proper handling of Android client credentials
+ * - Native UI with account picker
  */
 class OAuthRepository(private val context: Context) {
     
     companion object {
         private const val TAG = "OAuthRepository"
-        const val REQUEST_CODE_AUTH = 1001
+        const val REQUEST_CODE_GOOGLE_SIGN_IN = 1001
     }
     
-    // PKCE storage for code verifier (preserved across authorization request/response)
-    private var codeVerifier: String? = null
-    
-    // Google Sign-In client for revoking credentials
+    /**
+     * Google Sign-In client configured for ID token authentication.
+     * 
+     * IMPORTANT: requestIdToken() requires the **Web Client ID** from Google Cloud Console,
+     * not the Android Client ID. The Android Client ID is used internally by the SDK
+     * based on package name and SHA-1 fingerprint.
+     */
     private val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(OAuthConfig.Google.CLIENT_ID)
+            .requestIdToken(OAuthConfig.Google.WEB_CLIENT_ID) // Must be Web Client ID for backend verification
             .requestEmail()
+            .requestProfile()
             .build()
         GoogleSignIn.getClient(context, gso)
     }
     
     /**
-     * Build Google OAuth authorization request with PKCE.
-     */
-    fun buildGoogleAuthRequest(): AuthorizationRequest {
-        // Generate PKCE code verifier
-        codeVerifier = generateCodeVerifier()
-        val codeChallenge = generateCodeChallenge(codeVerifier!!)
-        
-        val serviceConfig = AuthorizationServiceConfiguration(
-            OAuthConfig.Google.AUTHORIZATION_ENDPOINT,
-            OAuthConfig.Google.TOKEN_ENDPOINT
-        )
-        
-        return AuthorizationRequest.Builder(
-            serviceConfig,
-            OAuthConfig.Google.CLIENT_ID,
-            ResponseTypeValues.CODE,
-            OAuthConfig.REDIRECT_URI
-        )
-            .setScopes(OAuthConfig.Google.SCOPES)
-            .setCodeVerifier(codeVerifier, codeChallenge, "S256")
-            .setPrompt(OAuthConfig.Google.PROMPT)
-            .build()
-    }
-    
-    /**
-     * Launch OAuth authorization flow using Chrome Custom Tabs.
-     */
-    fun launchAuthFlow(activity: Activity, request: AuthorizationRequest) {
-        val authService = AuthorizationService(activity)
-        
-        // Build custom tabs intent for better UX
-        val customTabsIntent = CustomTabsIntent.Builder()
-            .setShowTitle(true)
-            .build()
-        
-        val authIntent = authService.getAuthorizationRequestIntent(request, customTabsIntent)
-        activity.startActivityForResult(authIntent, REQUEST_CODE_AUTH)
-    }
-    
-    /**
-     * Handle OAuth authorization response.
+     * Launch Google Sign-In flow.
      * 
-     * This extracts the ID token from Google's authorization response
-     * and sends it to our backend for verification and session creation.
+     * This opens the native Google account picker and handles
+     * all OAuth complexity internally. No custom URI scheme needed.
      */
-    suspend fun handleAuthorizationResponse(
-        response: AuthorizationResponse?,
-        exception: AuthorizationException?
-    ): Result<OAuthTokenResponse> = withContext(Dispatchers.IO) {
-        
-        if (exception != null) {
-            Log.e(TAG, "Authorization failed: ${exception.error} - ${exception.errorDescription}")
-            return@withContext Result.failure(
-                OAuthException("Authorization failed: ${exception.errorDescription ?: exception.error}")
-            )
-        }
-        
-        if (response == null) {
-            return@withContext Result.failure(OAuthException("No authorization response"))
-        }
-        
+    fun launchGoogleSignIn(activity: Activity) {
+        val signInIntent = googleSignInClient.signInIntent
+        activity.startActivityForResult(signInIntent, REQUEST_CODE_GOOGLE_SIGN_IN)
+    }
+    
+    /**
+     * Handle Google Sign-In result from onActivityResult.
+     * 
+     * @param data Intent data from onActivityResult
+     * @return Result containing OAuth tokens or error
+     */
+    suspend fun handleGoogleSignInResult(data: Intent?): Result<OAuthTokenResponse> = withContext(Dispatchers.IO) {
         try {
-            // Exchange authorization code for tokens
-            val tokenResponse = exchangeCodeForTokens(response)
+            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val account = task.getResult(ApiException::class.java)
             
-            // Get ID token from the token response
-            val idToken = tokenResponse?.idToken
-                ?: return@withContext Result.failure(OAuthException("No ID token received"))
+            // Get the ID token from the signed-in account
+            val idToken = account?.idToken
             
-            Log.d(TAG, "Received ID token from Google, sending to backend for verification")
+            if (idToken == null) {
+                Log.e(TAG, "Google Sign-In succeeded but no ID token received")
+                return@withContext Result.failure(
+                    OAuthException("No ID token received from Google")
+                )
+            }
             
-            // Send ID token to our backend for verification
-            val backendResponse = sendIdTokenToBackend(OAuthProvider.GOOGLE, idToken)
+            Log.d(TAG, "Google Sign-In successful, user: ${account.email}")
+            Log.d(TAG, "Sending ID token to backend for verification")
             
-            // Clear PKCE verifier
-            codeVerifier = null
+            // Send ID token to backend for verification and session creation
+            sendIdTokenToBackend(OAuthProvider.GOOGLE, idToken)
             
-            backendResponse
-            
+        } catch (e: ApiException) {
+            val errorMessage = when (e.statusCode) {
+                GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Sign-in cancelled by user"
+                GoogleSignInStatusCodes.SIGN_IN_FAILED -> "Sign-in failed"
+                GoogleSignInStatusCodes.SIGN_IN_CURRENTLY_IN_PROGRESS -> "Sign-in already in progress"
+                GoogleSignInStatusCodes.INVALID_ACCOUNT -> "Invalid account selected"
+                GoogleSignInStatusCodes.NETWORK_ERROR -> "Network error during sign-in"
+                12501 -> "Sign-in cancelled by user" // Common cancellation code
+                else -> "Google Sign-In error: ${e.statusCode} - ${e.message}"
+            }
+            Log.e(TAG, "Google Sign-In failed: $errorMessage", e)
+            Result.failure(OAuthException(errorMessage, e))
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling authorization response", e)
-            Result.failure(OAuthException("Failed to complete authentication: ${e.message}", e))
+            Log.e(TAG, "Unexpected error during Google Sign-In", e)
+            Result.failure(OAuthException("Authentication failed: ${e.message}", e))
         }
     }
     
     /**
-     * Exchange authorization code for tokens using PKCE.
+     * Check if the user is already signed in with Google.
      */
-    private suspend fun exchangeCodeForTokens(
-        authResponse: AuthorizationResponse
-    ): TokenResponse? = withContext(Dispatchers.IO) {
-        
-        val authService = AuthorizationService(context)
-        
-        val tokenRequest = authResponse.createTokenExchangeRequest()
-        
-        return@withContext suspendCancellableCoroutine { continuation ->
-            authService.performTokenRequest(tokenRequest) { response, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Token exchange failed: ${ex.error}")
-                    continuation.resume(null)
-                } else {
-                    continuation.resume(response)
-                }
+    fun getLastSignedInAccount(): GoogleSignInAccount? {
+        return GoogleSignIn.getLastSignedInAccount(context)
+    }
+    
+    /**
+     * Silent sign-in attempt using cached credentials.
+     * Useful for automatic re-authentication.
+     */
+    suspend fun silentSignIn(): Result<OAuthTokenResponse> = withContext(Dispatchers.IO) {
+        try {
+            val account = googleSignInClient.silentSignIn().await()
+            val idToken = account?.idToken
+            
+            if (idToken == null) {
+                return@withContext Result.failure(
+                    OAuthException("Silent sign-in succeeded but no ID token")
+                )
             }
+            
+            sendIdTokenToBackend(OAuthProvider.GOOGLE, idToken)
+            
+        } catch (e: ApiException) {
+            Log.d(TAG, "Silent sign-in failed, user interaction required: ${e.statusCode}")
+            Result.failure(OAuthException("Silent sign-in failed", e))
+        } catch (e: Exception) {
+            Log.e(TAG, "Silent sign-in error", e)
+            Result.failure(OAuthException("Silent sign-in error: ${e.message}", e))
         }
     }
     
@@ -198,26 +185,6 @@ class OAuthRepository(private val context: Context) {
             osVersion = "Android ${Build.VERSION.RELEASE}",
             appVersion = BuildConfig.VERSION_NAME
         )
-    }
-    
-    /**
-     * Generate a secure random PKCE code verifier.
-     */
-    private fun generateCodeVerifier(): String {
-        val random = SecureRandom()
-        val bytes = ByteArray(32)
-        random.nextBytes(bytes)
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
-    }
-    
-    /**
-     * Generate code challenge from verifier using SHA-256.
-     */
-    private fun generateCodeChallenge(verifier: String): String {
-        val bytes = verifier.toByteArray(Charsets.US_ASCII)
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(bytes)
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(hash)
     }
     
     /**

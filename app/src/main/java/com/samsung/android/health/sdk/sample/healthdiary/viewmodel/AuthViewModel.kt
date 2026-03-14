@@ -1,6 +1,7 @@
 package com.samsung.android.health.sdk.sample.healthdiary.viewmodel
 
 import android.app.Activity
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
@@ -20,8 +21,6 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import net.openid.appauth.AuthorizationException
-import net.openid.appauth.AuthorizationResponse
 
 class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     
@@ -124,7 +123,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     }
     
     // ==========================================================================
-    // OAuth Authentication
+    // OAuth Authentication (Google Sign-In SDK)
     // ==========================================================================
     
     /**
@@ -135,7 +134,8 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     }
     
     /**
-     * Launch Google Sign-In flow.
+     * Launch Google Sign-In flow using native Google Sign-In SDK.
+     * This opens the native Google account picker.
      */
     fun launchGoogleSignIn(activity: Activity) {
         val repo = oauthRepository ?: run {
@@ -152,9 +152,8 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         _errorMessage.value = null
         
         try {
-            val authRequest = repo.buildGoogleAuthRequest()
-            repo.launchAuthFlow(activity, authRequest)
-            Log.d(TAG, "Launched Google OAuth flow")
+            repo.launchGoogleSignIn(activity)
+            Log.d(TAG, "Launched Google Sign-In flow")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch Google Sign-In", e)
             _authState.value = AuthState.Error("Failed to start Google Sign-In: ${e.message}")
@@ -163,9 +162,11 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     }
     
     /**
-     * Handle OAuth redirect callback from OAuthRedirectActivity.
+     * Handle Google Sign-In result from onActivityResult.
+     * 
+     * @param data Intent data from onActivityResult
      */
-    fun handleOAuthCallback(responseJson: String?, exceptionJson: String?) {
+    fun handleGoogleSignInResult(data: Intent?) {
         viewModelScope.launch(AppConstants.SCOPE_IO_DISPATCHERS + exceptionHandler) {
             _authState.emit(AuthState.Loading)
             
@@ -174,27 +175,19 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
                 return@launch
             }
             
-            // Parse response and exception from JSON
-            val response = responseJson?.let { 
-                try { AuthorizationResponse.jsonDeserialize(it) } catch (e: Exception) { null }
-            }
-            val exception = exceptionJson?.let { 
-                try { AuthorizationException.fromJson(it) } catch (e: Exception) { null }
-            }
+            Log.d(TAG, "Handling Google Sign-In result")
             
-            Log.d(TAG, "Handling OAuth callback: response=${response != null}, exception=${exception?.error}")
-            
-            val result = repo.handleAuthorizationResponse(response, exception)
+            val result = repo.handleGoogleSignInResult(data)
             
             result.fold(
                 onSuccess = { oauthResponse ->
-                    Log.d(TAG, "OAuth authentication successful")
+                    Log.d(TAG, "Google Sign-In authentication successful")
                     _authState.emit(AuthState.OAuthSuccess(oauthResponse = oauthResponse))
                     _errorMessage.emit(null)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "OAuth authentication failed", error)
-                    val errorMsg = error.message ?: "OAuth authentication failed"
+                    Log.e(TAG, "Google Sign-In failed", error)
+                    val errorMsg = error.message ?: "Google Sign-In failed"
                     _authState.emit(AuthState.Error(errorMsg))
                     _errorMessage.emit(errorMsg)
                 }
@@ -215,5 +208,3 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         data class Error(val message: String) : AuthState()
     }
 }
-
-

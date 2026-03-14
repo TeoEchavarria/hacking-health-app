@@ -32,14 +32,18 @@ android {
         versionCode computedVersionCode
         versionName versionTag
         
-        // Google OAuth Client ID (from local.properties or env)
+        // Google OAuth Client IDs (from local.properties or env)
+        // Android Client ID: Used internally by Google Sign-In SDK
         def googleClientId = localProperties.getProperty('GOOGLE_OAUTH_CLIENT_ID') 
             ?: System.getenv('GOOGLE_OAUTH_CLIENT_ID') ?: ''
         buildConfigField "String", "GOOGLE_OAUTH_CLIENT_ID", "\"${googleClientId}\""
         
-        // OAuth redirect scheme: use reverse client ID format required by Google
-        // Client ID format: xxx.apps.googleusercontent.com
-        // Redirect scheme: com.googleusercontent.apps.xxx
+        // Web Client ID: Required for requestIdToken() - backend verifies tokens issued to this
+        def googleWebClientId = localProperties.getProperty('GOOGLE_OAUTH_WEB_CLIENT_ID') 
+            ?: System.getenv('GOOGLE_OAUTH_WEB_CLIENT_ID') ?: ''
+        buildConfigField "String", "GOOGLE_OAUTH_WEB_CLIENT_ID", "\"${googleWebClientId}\""
+        
+        // OAuth redirect scheme (kept for potential future AppAuth usage with other providers)
         def clientIdPrefix = googleClientId.replace('.apps.googleusercontent.com', '')
         def reverseClientId = clientIdPrefix ? "com.googleusercontent.apps.${clientIdPrefix}" : 'com.samsung.android.health.sdk.sample.healthdiary'
         manifestPlaceholders = [

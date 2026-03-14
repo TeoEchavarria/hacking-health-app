@@ -1,65 +1,51 @@
 package com.samsung.android.health.sdk.sample.healthdiary.oauth
 
-import android.net.Uri
 import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
 
 /**
  * OAuth configuration for supported providers.
+ * 
+ * IMPORTANT for Google Sign-In SDK:
+ * - The SDK uses the Android Client ID internally (based on package name + SHA-1)
+ * - requestIdToken() requires the WEB Client ID to get a token verifiable by backend
+ * - Both client IDs must be from the same Google Cloud project
  */
 object OAuthConfig {
     
     /**
-     * Generate redirect URI using reverse client ID format.
-     * Google requires this format for Android apps using AppAuth.
-     * 
-     * Client ID: xxx.apps.googleusercontent.com
-     * Redirect:  com.googleusercontent.apps.xxx:/oauth2redirect
-     */
-    val REDIRECT_URI: Uri
-        get() {
-            val clientId = Google.CLIENT_ID
-            // Extract the prefix before .apps.googleusercontent.com
-            val clientIdPrefix = clientId.replace(".apps.googleusercontent.com", "")
-            val reverseClientId = "com.googleusercontent.apps.$clientIdPrefix"
-            return Uri.parse("$reverseClientId:/oauth2redirect")
-        }
-    
-    // Also expose the scheme for AndroidManifest
-    val REDIRECT_SCHEME: String
-        get() {
-            val clientId = Google.CLIENT_ID
-            val clientIdPrefix = clientId.replace(".apps.googleusercontent.com", "")
-            return "com.googleusercontent.apps.$clientIdPrefix"
-        }
-    
-    /**
      * Google OAuth configuration.
+     * 
+     * For Google Sign-In SDK on Android:
+     * - ANDROID_CLIENT_ID: Used internally by SDK (matches package + SHA-1 fingerprint)
+     * - WEB_CLIENT_ID: Used with requestIdToken() for backend verification
      */
     object Google {
-        val CLIENT_ID: String
+        /**
+         * Web Client ID - Required for requestIdToken().
+         * The backend will verify tokens issued to this client ID.
+         */
+        val WEB_CLIENT_ID: String
+            get() = BuildConfig.GOOGLE_OAUTH_WEB_CLIENT_ID
+        
+        /**
+         * Android Client ID - Used internally by Google Sign-In SDK.
+         * Must match the registered package name and SHA-1 fingerprint.
+         */
+        val ANDROID_CLIENT_ID: String
             get() = BuildConfig.GOOGLE_OAUTH_CLIENT_ID
         
-        val AUTHORIZATION_ENDPOINT: Uri = Uri.parse("https://accounts.google.com/o/oauth2/v2/auth")
-        val TOKEN_ENDPOINT: Uri = Uri.parse("https://oauth2.googleapis.com/token")
-        
-        // OpenID Connect scopes
+        // OpenID Connect scopes requested
         val SCOPES = listOf(
             "openid",
             "email",
             "profile"
         )
-        
-        // Additional parameters for Google OAuth
-        const val PROMPT = "select_account"  // Always show account chooser
     }
     
     /**
      * GitHub OAuth configuration (for future use).
      */
     object GitHub {
-        val AUTHORIZATION_ENDPOINT: Uri = Uri.parse("https://github.com/login/oauth/authorize")
-        val TOKEN_ENDPOINT: Uri = Uri.parse("https://github.com/login/oauth/access_token")
-        
         val SCOPES = listOf(
             "read:user",
             "user:email"
@@ -71,7 +57,7 @@ object OAuthConfig {
      */
     fun isProviderConfigured(provider: OAuthProvider): Boolean {
         return when (provider) {
-            OAuthProvider.GOOGLE -> Google.CLIENT_ID.isNotBlank()
+            OAuthProvider.GOOGLE -> Google.WEB_CLIENT_ID.isNotBlank()
             OAuthProvider.GITHUB -> false  // Not yet configured
             OAuthProvider.APPLE -> false   // Not yet configured
         }
