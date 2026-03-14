@@ -8,15 +8,9 @@ import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
  */
 object OAuthConfig {
     
-    // Redirect URI for OAuth callback
+    // Redirect URI for OAuth callback (standard AppAuth format)
     const val REDIRECT_SCHEME = "com.samsung.android.health.sdk.sample.healthdiary"
-    const val REDIRECT_HOST = "oauth"
-    const val REDIRECT_PATH = "/callback"
-    val REDIRECT_URI: Uri = Uri.Builder()
-        .scheme(REDIRECT_SCHEME)
-        .authority(REDIRECT_HOST)
-        .path(REDIRECT_PATH)
-        .build()
+    val REDIRECT_URI: Uri = Uri.parse("$REDIRECT_SCHEME:/oauth2redirect")
     
     /**
      * Google OAuth configuration.
