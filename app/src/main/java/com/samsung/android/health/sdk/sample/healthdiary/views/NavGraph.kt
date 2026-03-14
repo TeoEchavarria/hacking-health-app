@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object LegacyHome : Screen("legacy_home")
+    object PreviousVersion : Screen("previous_version")
     object Logs : Screen("logs")
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
@@ -70,13 +72,54 @@ fun NavGraph() {
 
     NavHost(navController = navController, startDestination = Screen.Home.route) {
         composable(Screen.Home.route) {
-            HomeScreen(
+            HealthDashboardScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToTraining = { navController.navigate(Screen.Training.route) },
+                onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
+                onLogout = {
+                    // Navigate to LoginActivity and clear task stack
+                    val intent = Intent(context, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    // Finish current activity
+                    activity?.finish()
+                }
+            )
+        }
+        
+        // Previous Version - Old DeviceHomeScreen for Settings access
+        composable(Screen.PreviousVersion.route) {
+            PreviousVersionScreen(
                 onNavigateToLogs = { navController.navigate(Screen.Logs.route) },
                 onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
                 onUploadPdf = { pdfLauncher.launch("application/pdf") },
+                onLogout = {
+                    val intent = Intent(context, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    activity?.finish()
+                },
+                onReturnToNewVersion = { navController.popBackStack() },
+                onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
+                    { navController.navigate(Screen.SandboxGallery.route) }
+                } else null
+            )
+        }
+        
+        composable(Screen.LegacyHome.route) {
+            LegacyHomeScreen(
+                onNavigateToLogs = { navController.navigate(Screen.Logs.route) },
+                onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToTraining = { navController.navigate(Screen.Training.route) },
+                onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
+                onUploadPdf = { pdfLauncher.launch("application/pdf") },
+                onReturnToNewVersion = { navController.popBackStack() },
                 onLogout = {
                     // Navigate to LoginActivity and clear task stack
                     val intent = Intent(context, LoginActivity::class.java).apply {
@@ -106,7 +149,8 @@ fun NavGraph() {
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToLegacyHome = { navController.navigate(Screen.PreviousVersion.route) }
             )
         }
 

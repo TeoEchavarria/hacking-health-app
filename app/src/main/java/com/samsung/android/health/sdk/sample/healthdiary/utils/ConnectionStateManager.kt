@@ -15,7 +15,9 @@ enum class ConnectionState {
 data class DeviceInfo(
     val name: String,
     val id: String,
-    val isNearby: Boolean
+    val isNearby: Boolean,
+    val alias: String? = null,
+    val lastSyncTimestamp: Long? = null
 )
 
 object ConnectionStateManager {

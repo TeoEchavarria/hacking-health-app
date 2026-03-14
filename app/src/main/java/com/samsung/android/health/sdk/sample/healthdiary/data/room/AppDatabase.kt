@@ -17,7 +17,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
 
 /**
  * Main Room database for the Health Diary application
- * Version 2: Added SensorBatch, UploadLog, MedicalDocument, TxAgentQuery, TxAgentResponse
+ * Version 12: Added PairedDeviceEntity for watch device management
  */
 @Database(
     entities = [
@@ -35,9 +35,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         WatchStepsEntity::class,
         WatchHeartRateEntity::class,
         WatchSleepEntity::class,
-        WatchDailySummaryEntity::class
+        WatchDailySummaryEntity::class,
+        PairedDeviceEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -55,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun habitDao(): HabitDao
     abstract fun habitReminderTimeDao(): HabitReminderTimeDao
     abstract fun watchHealthDao(): WatchHealthDao
+    abstract fun pairedDeviceDao(): PairedDeviceDao
 
     companion object {
         @Volatile
@@ -413,6 +415,25 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create paired_devices table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS paired_devices (
+                        deviceId TEXT NOT NULL PRIMARY KEY,
+                        deviceName TEXT NOT NULL,
+                        alias TEXT,
+                        boundNodeId TEXT,
+                        connectionStatus TEXT NOT NULL,
+                        lastSyncTimestamp INTEGER,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_paired_devices_deviceId ON paired_devices(deviceId)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -420,7 +441,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

@@ -191,6 +191,21 @@ class HealthMainActivity : AppCompatActivity() {
             throw e
         }
         
+        // Initialize DeviceConnectionMonitor for real-time connection state tracking
+        try {
+            com.samsung.android.health.sdk.sample.healthdiary.wearable.DeviceConnectionMonitor.initialize(applicationContext)
+            Log.d("HealthMainActivity", "DeviceConnectionMonitor initialized")
+            // #region agent log
+            debugLog("H4", "DeviceConnectionMonitor initialized")
+            // #endregion
+        } catch (e: Exception) {
+            // #region agent log
+            debugLog("H4", "DeviceConnectionMonitor init failed", mapOf("error" to e.javaClass.simpleName))
+            // #endregion
+            // Non-fatal: app can still function without real-time monitoring
+            Log.w("HealthMainActivity", "DeviceConnectionMonitor initialization failed", e)
+        }
+        
         // Log app startup to TelemetryLogger
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val timestamp = sdf.format(Date())

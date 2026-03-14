@@ -194,6 +194,7 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
         Log.i(TAG, "📊 Processing health daily summary...")
         val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
         val byteArray = dataMapItem.dataMap.getByteArray("summary")
+        val nodeId = event.dataItem.uri.host ?: "unknown"
         
         if (byteArray != null) {
             scope.launch {
@@ -204,6 +205,9 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                     Log.i(TAG, "📊 Daily summary: date=${summary.date}, steps=${summary.steps}, hr_samples=${summary.heartRateSamples.size}")
                     
                     watchHealthRepository.ingestDailySummary(summary)
+                    
+                    // Update handshake state - health data received means connection is alive
+                    com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager.updateHandshake(System.currentTimeMillis())
                     
                     TelemetryLogger.log(
                         "HEALTH",
@@ -235,6 +239,9 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                     
                     watchHealthRepository.ingestHeartRateSamples(samples)
                     
+                    // Update handshake state - health data received means connection is alive
+                    com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager.updateHandshake(System.currentTimeMillis())
+                    
                     if (samples.isNotEmpty()) {
                         val latest = samples.last()
                         TelemetryLogger.log(
@@ -242,6 +249,7 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                             "Heart Rate",
                             "Latest: ${latest.bpm} bpm (${samples.size} samples total)"
                         )
+                        ConnectionLogManager.log(LogType.SUCCESS, TAG, "💓 HR received: ${latest.bpm} bpm")
                     }
                     
                 } catch (e: Exception) {

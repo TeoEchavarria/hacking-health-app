@@ -215,20 +215,27 @@
                 tools:node="remove" />
         </provider>
 
-        <!-- Legacy listener disabled -->
-        <!--
+        <!-- Health Data Receiver - listens for watch health data -->
         <service
             android:name=".wearable.WearableReceiverService"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <!-- Health Data Paths (Primary) -->
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/health/daily" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/health/hr" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/health/sleep" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/health/steps" />
+                <!-- Legacy Paths -->
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/sensor_batch" />
-                <data android:scheme="wear" android:host="*" android:pathPrefix="/ping" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/handshake_response" />
             </intent-filter>
+            <!-- Separate intent-filter for Messages -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/sensor_data" />
+            </intent-filter>
         </service>
-        -->
     </application>
 
 </manifest>

@@ -35,6 +35,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionState
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.DeviceInfo
 import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
+import com.samsung.android.health.sdk.sample.healthdiary.data.repository.DeviceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -45,12 +46,16 @@ import java.net.URL
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToLegacyHome: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var apiUrl by remember { mutableStateOf(DeviceConfig.getApiBaseUrl()) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Device Repository for database persistence
+    val deviceRepository = remember { DeviceRepository(context) }
     
     // Connection State from Manager
     val connectionState by ConnectionStateManager.connectionState.collectAsState()
@@ -153,9 +158,19 @@ fun SettingsScreen(
     
     fun bindDevice(node: Node) {
         scope.launch {
+            // Persist to Room database FIRST (this is what Home screen observes)
+            deviceRepository.addDevice(
+                deviceId = node.id,
+                deviceName = node.displayName,
+                boundNodeId = node.id,
+                connectionStatus = "CONNECTED"
+            )
+            
+            // Also update in-memory state (for Settings screen immediate feedback)
             DeviceConfig.setBoundNodeId(node.id)
             ConnectionStateManager.setConnectedDevice(DeviceInfo(node.displayName, node.id, node.isNearby))
             ConnectionStateManager.setConnectionState(ConnectionState.CONNECTED)
+            
             ConnectionLogManager.log(LogType.INFO, "Settings", "Bound to device: ${node.displayName}")
             snackbarHostState.showSnackbar("Bound to ${node.displayName}")
             
@@ -215,10 +230,22 @@ fun SettingsScreen(
     }
     
     fun unbindDevice() {
-        DeviceConfig.setBoundNodeId(null)
-        ConnectionStateManager.setConnectedDevice(null)
-        ConnectionStateManager.setConnectionState(ConnectionState.DISCONNECTED)
-        ConnectionLogManager.log(LogType.INFO, "Settings", "Unbound device")
+        scope.launch {
+            // Get current bound node ID before clearing
+            val boundNodeId = DeviceConfig.getBoundNodeId()
+            
+            // Remove from database (what Home screen observes)
+            if (boundNodeId != null) {
+                deviceRepository.removeDevice(boundNodeId)
+            }
+            
+            // Clear in-memory state
+            DeviceConfig.setBoundNodeId(null)
+            ConnectionStateManager.setConnectedDevice(null)
+            ConnectionStateManager.setConnectionState(ConnectionState.DISCONNECTED)
+            
+            ConnectionLogManager.log(LogType.INFO, "Settings", "Unbound device")
+        }
     }
     
     Scaffold(
@@ -392,6 +419,41 @@ fun SettingsScreen(
                         scope.launch { snackbarHostState.showSnackbar("Settings saved") }
                     }
                 )
+            }
+
+            // --- Previous Version Access ---
+            SandboxCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onNavigateToLegacyHome
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "Previous Version",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Access the original feature-rich home screen",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Navigate to Previous Version",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // --- Live Log Console ---
