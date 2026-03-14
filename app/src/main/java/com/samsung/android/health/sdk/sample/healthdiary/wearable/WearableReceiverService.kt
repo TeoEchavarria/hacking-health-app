@@ -6,8 +6,11 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.WearableListenerService
 import com.samsung.android.health.sdk.sample.healthdiary.data.repository.SensorRepository
+import com.samsung.android.health.sdk.sample.healthdiary.data.repository.WatchHealthIngestionRepository
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionLogManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.model.HealthDailySummary
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.model.HeartRateSample
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.model.SensorData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,10 +27,14 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorRepository: SensorRepository
+    private lateinit var watchHealthRepository: WatchHealthIngestionRepository
+    
+    private val json = Json { ignoreUnknownKeys = true }
 
     override fun onCreate() {
         super.onCreate()
         sensorRepository = SensorRepository(applicationContext)
+        watchHealthRepository = WatchHealthIngestionRepository(applicationContext)
         Log.d(TAG, "🚀 WearableReceiverService CREATED and READY to receive data")
         TelemetryLogger.log("PHONE", "Service", "WearableReceiverService started")
         
@@ -61,7 +68,7 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
         scope.launch {
             try {
                 val jsonString = String(messageEvent.data, Charsets.UTF_8)
-                val data = Json.decodeFromString<SensorData>(jsonString)
+                val data = json.decodeFromString<SensorData>(jsonString)
                 // Log.d(TAG, "  📊 Sensor data received: ${data.timestamp}")
                 
                 sensorRepository.saveSensorData(data)
@@ -87,6 +94,20 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                 Log.d(TAG, "  📍 Path: $path from $nodeId")
                 
                 when (path) {
+                    // New Health Data Paths (Primary)
+                    Protocol.PATH_HEALTH_DAILY -> {
+                        handleHealthDailySummary(event)
+                    }
+                    Protocol.PATH_HEALTH_HR -> {
+                        handleHealthHeartRate(event)
+                    }
+                    Protocol.PATH_HEALTH_SLEEP -> {
+                        handleHealthSleep(event)
+                    }
+                    Protocol.PATH_HEALTH_STEPS -> {
+                        handleHealthSteps(event)
+                    }
+                    // Legacy Paths (kept for compatibility)
                     "/sensor_batch" -> {
                         handleSensorBatch(event)
                     }
@@ -167,18 +188,132 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
         }
     }
 
+    // ============ HEALTH DATA HANDLERS (PRIMARY SOURCE OF TRUTH) ============
+
+    private fun handleHealthDailySummary(event: DataEvent) {
+        Log.i(TAG, "📊 Processing health daily summary...")
+        val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+        val byteArray = dataMapItem.dataMap.getByteArray("summary")
+        
+        if (byteArray != null) {
+            scope.launch {
+                try {
+                    val jsonString = String(byteArray, Charsets.UTF_8)
+                    val summary = json.decodeFromString<HealthDailySummary>(jsonString)
+                    
+                    Log.i(TAG, "📊 Daily summary: date=${summary.date}, steps=${summary.steps}, hr_samples=${summary.heartRateSamples.size}")
+                    
+                    watchHealthRepository.ingestDailySummary(summary)
+                    
+                    TelemetryLogger.log(
+                        "HEALTH",
+                        "Daily Summary",
+                        "Received: ${summary.date} - Steps: ${summary.steps}, HR samples: ${summary.heartRateSamples.size}"
+                    )
+                    ConnectionLogManager.log(LogType.SUCCESS, TAG, "Health daily summary ingested: ${summary.date}")
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error parsing health daily summary", e)
+                    ConnectionLogManager.log(LogType.ERROR, TAG, "Error parsing daily summary: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun handleHealthHeartRate(event: DataEvent) {
+        Log.d(TAG, "💓 Processing heart rate samples...")
+        val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+        val byteArray = dataMapItem.dataMap.getByteArray("samples")
+        
+        if (byteArray != null) {
+            scope.launch {
+                try {
+                    val jsonString = String(byteArray, Charsets.UTF_8)
+                    val samples = json.decodeFromString<List<HeartRateSample>>(jsonString)
+                    
+                    Log.d(TAG, "💓 Received ${samples.size} heart rate samples")
+                    
+                    watchHealthRepository.ingestHeartRateSamples(samples)
+                    
+                    if (samples.isNotEmpty()) {
+                        val latest = samples.last()
+                        TelemetryLogger.log(
+                            "HEALTH",
+                            "Heart Rate",
+                            "Latest: ${latest.bpm} bpm (${samples.size} samples total)"
+                        )
+                    }
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error parsing heart rate samples", e)
+                }
+            }
+        }
+    }
+
+    private fun handleHealthSleep(event: DataEvent) {
+        Log.d(TAG, "😴 Processing sleep data...")
+        val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+        val date = dataMapItem.dataMap.getString("date")
+        val sleepMinutes = dataMapItem.dataMap.getInt("sleepMinutes")
+        
+        if (date != null) {
+            scope.launch {
+                try {
+                    watchHealthRepository.ingestSleepUpdate(date, sleepMinutes)
+                    
+                    val hours = sleepMinutes / 60.0
+                    TelemetryLogger.log(
+                        "HEALTH",
+                        "Sleep",
+                        "$date: ${String.format("%.1f", hours)} hours"
+                    )
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error handling sleep data", e)
+                }
+            }
+        }
+    }
+
+    private fun handleHealthSteps(event: DataEvent) {
+        Log.d(TAG, "👟 Processing steps data...")
+        val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
+        val date = dataMapItem.dataMap.getString("date")
+        val steps = dataMapItem.dataMap.getInt("steps")
+        
+        if (date != null) {
+            scope.launch {
+                try {
+                    watchHealthRepository.ingestStepsUpdate(date, steps)
+                    
+                    TelemetryLogger.log(
+                        "HEALTH",
+                        "Steps",
+                        "$date: $steps steps"
+                    )
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error handling steps data", e)
+                }
+            }
+        }
+    }
+
+    // ============ END HEALTH DATA HANDLERS ============
+
     private fun sendHandshakeAck(nodeId: String) {
          scope.launch {
             try {
                 val dataClient = com.google.android.gms.wearable.Wearable.getDataClient(applicationContext)
                 val putDataMapReq = com.google.android.gms.wearable.PutDataMapRequest.create("/handshake_ack")
                 
-                val json = org.json.JSONObject()
-                json.put("type", "handshake_ack")
-                json.put("source", "phone")
-                json.put("timestamp", System.currentTimeMillis())
+                val jsonObj = org.json.JSONObject()
+                jsonObj.put("type", "handshake_ack")
+                jsonObj.put("source", "phone")
+                jsonObj.put("timestamp", System.currentTimeMillis())
                 
-                putDataMapReq.dataMap.putString("payload", json.toString())
+                putDataMapReq.dataMap.putString("payload", jsonObj.toString())
                 putDataMapReq.dataMap.putLong("timestamp", System.currentTimeMillis())
                 
                 val putDataReq = putDataMapReq.asPutDataRequest()

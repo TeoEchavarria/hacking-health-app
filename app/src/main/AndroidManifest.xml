@@ -82,6 +82,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Watch onboarding/pairing screen -->
+        <activity
+            android:name=".wearable.ui.WatchOnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".habit.HabitConfirmationActivity"
             android:exported="false"

@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.R
 import com.samsung.android.health.sdk.sample.healthdiary.activity.HealthMainActivity
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.ui.WatchOnboardingActivity
+import com.samsung.android.health.sdk.sample.healthdiary.wearable.ui.isWatchOnboardingComplete
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.AuthViewModel
@@ -299,10 +301,19 @@ private fun GoogleSignInButton(
 }
 
 /**
- * Navigate to the main activity and clear the back stack.
+ * Navigate to the main activity (optionally through onboarding) and clear the back stack.
  */
 private fun navigateToMainActivity(context: android.content.Context) {
-    val intent = android.content.Intent(context, HealthMainActivity::class.java)
+    // Check if watch onboarding has been completed
+    val shouldShowOnboarding = !isWatchOnboardingComplete(context)
+    
+    val targetActivity = if (shouldShowOnboarding) {
+        WatchOnboardingActivity::class.java
+    } else {
+        HealthMainActivity::class.java
+    }
+    
+    val intent = android.content.Intent(context, targetActivity)
     intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or 
                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
     context.startActivity(intent)

@@ -31,9 +31,13 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         BlockEntity::class,
         WorkoutSessionEntity::class,
         HabitEntity::class,
-        HabitReminderTimeEntity::class
+        HabitReminderTimeEntity::class,
+        WatchStepsEntity::class,
+        WatchHeartRateEntity::class,
+        WatchSleepEntity::class,
+        WatchDailySummaryEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -50,6 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun workoutSessionDao(): WorkoutSessionDao
     abstract fun habitDao(): HabitDao
     abstract fun habitReminderTimeDao(): HabitReminderTimeDao
+    abstract fun watchHealthDao(): WatchHealthDao
 
     companion object {
         @Volatile
@@ -350,6 +355,64 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create watch_steps table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS watch_steps (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        date TEXT NOT NULL,
+                        steps INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        syncedAt INTEGER
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_watch_steps_date ON watch_steps(date)")
+
+                // Create watch_heart_rate table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS watch_heart_rate (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        bpm INTEGER NOT NULL,
+                        measurementTimestamp INTEGER NOT NULL,
+                        accuracy TEXT NOT NULL,
+                        receivedAt INTEGER NOT NULL,
+                        syncedAt INTEGER
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_watch_heart_rate_measurementTimestamp ON watch_heart_rate(measurementTimestamp)")
+
+                // Create watch_sleep table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS watch_sleep (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        date TEXT NOT NULL,
+                        sleepMinutes INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        syncedAt INTEGER
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_watch_sleep_date ON watch_sleep(date)")
+
+                // Create watch_daily_summary table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS watch_daily_summary (
+                        date TEXT NOT NULL PRIMARY KEY,
+                        steps INTEGER NOT NULL,
+                        sleepMinutes INTEGER,
+                        avgHeartRate INTEGER,
+                        minHeartRate INTEGER,
+                        maxHeartRate INTEGER,
+                        heartRateSampleCount INTEGER NOT NULL,
+                        heartRateSamplesJson TEXT,
+                        syncTimestamp INTEGER NOT NULL,
+                        receivedAt INTEGER NOT NULL,
+                        syncedToBackendAt INTEGER
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -357,7 +420,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance
