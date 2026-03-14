@@ -60,7 +60,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             UploadScheduler.cancelAllWork(context)
             
             // Logout from API and clear local tokens
-            authRepository.logout()
+            authRepository.logout(context)
             
             // Reset state
             resetState()
