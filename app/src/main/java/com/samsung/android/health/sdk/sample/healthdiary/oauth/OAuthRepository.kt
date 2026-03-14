@@ -46,8 +46,11 @@ class OAuthRepository(private val context: Context) {
      * based on package name and SHA-1 fingerprint.
      */
     private val googleSignInClient: GoogleSignInClient by lazy {
+        val webClientId = OAuthConfig.Google.WEB_CLIENT_ID
+        Log.d(TAG, "Initializing GoogleSignInClient with Web Client ID: $webClientId")
+        Log.d(TAG, "Package name: ${context.packageName}")
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(OAuthConfig.Google.WEB_CLIENT_ID) // Must be Web Client ID for backend verification
+            .requestIdToken(webClientId) // Must be Web Client ID for backend verification
             .requestEmail()
             .requestProfile()
             .build()

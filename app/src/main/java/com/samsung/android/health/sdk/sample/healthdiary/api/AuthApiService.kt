@@ -25,12 +25,12 @@ interface AuthApiService {
         @Body request: LoginRequest
     ): Response<LoginResponse>
 
-    @POST("/auth/refresh")
+    @POST("/refresh")
     fun refresh(
         @Body request: RefreshRequest
     ): retrofit2.Call<LoginResponse>
 
-    @POST("/auth/logout")
+    @POST("/logout")
     suspend fun logout(
         @Body request: RefreshRequest
     ): Response<Map<String, Boolean>>
@@ -39,7 +39,7 @@ interface AuthApiService {
      * Revoke all tokens for the current user.
      * Requires Authorization header with Bearer token.
      */
-    @DELETE("/auth/revoke")
+    @DELETE("/revoke")
     suspend fun revokeTokens(
         @Header("Authorization") authorization: String
     ): Response<SuccessResponse>
@@ -54,7 +54,7 @@ interface AuthApiService {
      * The backend verifies the ID token with the provider (e.g., Google),
      * creates or links the user account, and returns JWT access/refresh tokens.
      */
-    @POST("/auth/oauth/token")
+    @POST("/oauth/token")
     suspend fun authenticateWithOAuth(
         @Body request: OAuthTokenRequest
     ): Response<OAuthTokenResponse>
@@ -62,7 +62,7 @@ interface AuthApiService {
     /**
      * Get list of available OAuth providers.
      */
-    @GET("/auth/oauth/providers")
+    @GET("/oauth/providers")
     suspend fun getOAuthProviders(): Response<OAuthProvidersResponse>
 }
 
