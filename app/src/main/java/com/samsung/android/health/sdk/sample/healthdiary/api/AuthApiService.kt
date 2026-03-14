@@ -3,12 +3,15 @@ package com.samsung.android.health.sdk.sample.healthdiary.api
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.RefreshRequest
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SuccessResponse
 import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthTokenRequest
 import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthTokenResponse
 import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthProvidersResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface AuthApiService {
@@ -31,6 +34,15 @@ interface AuthApiService {
     suspend fun logout(
         @Body request: RefreshRequest
     ): Response<Map<String, Boolean>>
+    
+    /**
+     * Revoke all tokens for the current user.
+     * Requires Authorization header with Bearer token.
+     */
+    @DELETE("/auth/revoke")
+    suspend fun revokeTokens(
+        @Header("Authorization") authorization: String
+    ): Response<SuccessResponse>
     
     // ==========================================================================
     // OAuth Authentication

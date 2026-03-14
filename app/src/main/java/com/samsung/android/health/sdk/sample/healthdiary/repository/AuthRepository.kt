@@ -1,9 +1,12 @@
 package com.samsung.android.health.sdk.sample.healthdiary.repository
 
+import android.content.Context
+import android.util.Log
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.RefreshRequest
+import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthRepository
 import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthTokenRequest
 import com.samsung.android.health.sdk.sample.healthdiary.oauth.OAuthTokenResponse
 import retrofit2.HttpException
@@ -11,20 +14,60 @@ import java.io.IOException
 
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 
+sealed class LogoutResult {
+    object Success : LogoutResult()
+    data class Error(val message: String) : LogoutResult()
+}
+
 class AuthRepository {
     
     private val apiService = RetrofitClient.authApiService
     
-    suspend fun logout() {
-        try {
-            val refresh = TokenManager.getRefreshToken()
-            if (!refresh.isNullOrEmpty()) {
-                apiService.logout(RefreshRequest(refresh))
+    /**
+     * Complete logout flow:
+     * 1. Revoke tokens on backend
+     * 2. Sign out from OAuth providers (Google)
+     * 3. Clear local tokens
+     */
+    suspend fun logout(context: Context): LogoutResult {
+        return try {
+            // 1. Attempt to revoke tokens on backend (best effort)
+            val accessToken = TokenManager.getToken()
+            if (!accessToken.isNullOrEmpty()) {
+                try {
+                    val response = apiService.revokeTokens("Bearer $accessToken")
+                    if (!response.isSuccessful) {
+                        Log.w("AuthRepository", "Backend revoke failed: ${response.code()}")
+                    }
+                } catch (e: Exception) {
+                    // Ignore backend errors - continue with local cleanup
+                    Log.w("AuthRepository", "Backend revoke failed: ${e.message}")
+                }
             }
-        } catch (e: Exception) {
-            // Best effort - ignore network errors
-        } finally {
+
+            // 2. Sign out from Google OAuth
+            try {
+                val oauthRepository = OAuthRepository(context)
+                oauthRepository.signOut()
+            } catch (e: Exception) {
+                // Continue even if OAuth sign out fails
+                Log.w("AuthRepository", "OAuth sign out failed: ${e.message}")
+            }
+
+            // 3. Clear local tokens (CRITICAL - always execute)
             TokenManager.clearToken()
+
+            LogoutResult.Success
+            
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Logout error: ${e.message}", e)
+            // Even on error, try to clear local tokens
+            try {
+                TokenManager.clearToken()
+            } catch (clearError: Exception) {
+                Log.e("AuthRepository", "Failed to clear tokens: ${clearError.message}")
+            }
+            LogoutResult.Error(e.message ?: "Logout failed")
         }
     }
 

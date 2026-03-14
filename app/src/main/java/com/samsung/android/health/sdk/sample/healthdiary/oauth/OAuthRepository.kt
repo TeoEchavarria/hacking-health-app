@@ -7,10 +7,14 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import net.openid.appauth.*
 import java.security.MessageDigest
@@ -33,6 +37,15 @@ class OAuthRepository(private val context: Context) {
     
     // PKCE storage for code verifier (preserved across authorization request/response)
     private var codeVerifier: String? = null
+    
+    // Google Sign-In client for revoking credentials
+    private val googleSignInClient: GoogleSignInClient by lazy {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(OAuthConfig.Google.CLIENT_ID)
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
     
     /**
      * Build Google OAuth authorization request with PKCE.
@@ -205,6 +218,27 @@ class OAuthRepository(private val context: Context) {
         val digest = MessageDigest.getInstance("SHA-256")
         val hash = digest.digest(bytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(hash)
+    }
+    
+    /**
+     * Revokes Google Sign-In credentials and signs out the user.
+     * This clears cached credentials and forces account selection on next login.
+     */
+    suspend fun signOut() {
+        try {
+            // Revoke access to completely disconnect the app
+            googleSignInClient.revokeAccess().await()
+            Log.d(TAG, "Google credentials revoked successfully")
+        } catch (e: Exception) {
+            // Fallback to sign out if revoke fails
+            try {
+                googleSignInClient.signOut().await()
+                Log.d(TAG, "Google sign out successful")
+            } catch (signOutException: Exception) {
+                Log.w(TAG, "Google sign out failed: ${signOutException.message}")
+                // Continue anyway - local token cleanup is more important
+            }
+        }
     }
 }
 

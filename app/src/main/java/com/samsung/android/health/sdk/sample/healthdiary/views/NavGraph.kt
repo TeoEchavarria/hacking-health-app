@@ -1,5 +1,6 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.NavType
+import com.samsung.android.health.sdk.sample.healthdiary.activity.LoginActivity
 import com.samsung.android.health.sdk.sample.healthdiary.repository.DocumentRepository
 import kotlinx.coroutines.launch
 
@@ -75,6 +77,15 @@ fun NavGraph() {
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
                 onUploadPdf = { pdfLauncher.launch("application/pdf") },
+                onLogout = {
+                    // Navigate to LoginActivity and clear task stack
+                    val intent = Intent(context, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    // Finish current activity
+                    activity?.finish()
+                },
                 onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
                     { navController.navigate(Screen.SandboxGallery.route) }
                 } else null

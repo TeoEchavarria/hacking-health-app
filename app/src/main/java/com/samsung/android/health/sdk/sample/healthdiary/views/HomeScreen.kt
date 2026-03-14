@@ -5,15 +5,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HomeViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogoutState
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.ProfileViewModel
 
 @Composable
 fun HomeScreen(
@@ -23,10 +30,23 @@ fun HomeScreen(
     onNavigateToTraining: () -> Unit,
     onNavigateToHabits: () -> Unit,
     onUploadPdf: () -> Unit,
+    onLogout: () -> Unit = {},
     onNavigateToSandboxGallery: (() -> Unit)? = null,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    profileViewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val logoutState by profileViewModel.logoutState.collectAsState()
+    val context = LocalContext.current
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    // Handle logout success
+    LaunchedEffect(logoutState) {
+        if (logoutState is LogoutState.Success) {
+            profileViewModel.resetState()
+            onLogout()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -34,12 +54,31 @@ fun HomeScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Header
-        SandboxHeader(
-            title = "Health Diary v1.2.10 ✓",
-            variant = HeaderVariant.Medium,
-            modifier = Modifier.padding(vertical = 24.dp)
-        )
+        // Header with logout button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(48.dp)) // Balance for logout button
+            
+            SandboxHeader(
+                title = "Health Diary v1.2.10 ✓",
+                variant = HeaderVariant.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            
+            // Logout button
+            IconButton(onClick = { showLogoutDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = "Logout",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
 
         // Profile Card
         ProfileCard(uiState.userProfile)
@@ -117,6 +156,48 @@ fun HomeScreen(
                 variant = ButtonVariant.Text,
                 fullWidth = true
             )
+        }
+    }
+    
+    // Logout confirmation dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro que deseas cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        profileViewModel.logout(context)
+                    }
+                ) {
+                    Text("Cerrar sesión")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+    
+    // Loading overlay during logout
+    if (logoutState is LogoutState.Loading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }
+    
+    // Error message
+    if (logoutState is LogoutState.Error) {
+        LaunchedEffect(logoutState) {
+            // Could show a Snackbar here if needed
+            profileViewModel.resetState()
         }
     }
 }
