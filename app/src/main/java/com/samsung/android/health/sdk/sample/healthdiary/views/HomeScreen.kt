@@ -65,7 +65,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.width(48.dp)) // Balance for logout button
             
             SandboxHeader(
-                title = "Health Diary v1.2.10 ✓",
+                title = "Health Diary v1.3.3",
                 variant = HeaderVariant.Medium,
                 modifier = Modifier.weight(1f)
             )
