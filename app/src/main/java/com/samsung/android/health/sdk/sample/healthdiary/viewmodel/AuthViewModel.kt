@@ -171,22 +171,30 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             _authState.emit(AuthState.Loading)
             
             val repo = oauthRepository ?: run {
+                Log.e(TAG, "GoogleAuth: OAuth repository not initialized")
                 _authState.emit(AuthState.Error("OAuth not initialized"))
                 return@launch
             }
             
-            Log.d(TAG, "Handling Google Sign-In result")
+            Log.d(TAG, "GoogleAuth: Handling Google Sign-In result")
             
             val result = repo.handleGoogleSignInResult(data)
             
             result.fold(
                 onSuccess = { oauthResponse ->
-                    Log.d(TAG, "Google Sign-In authentication successful")
+                    Log.d(TAG, "GoogleAuth: Backend authentication successful")
+                    Log.d(TAG, "GoogleAuth: Saving access token to TokenManager")
+                    
+                    // Save the JWT token from backend response
+                    TokenManager.saveToken(oauthResponse.accessToken)
+                    
+                    Log.d(TAG, "GoogleAuth: Token saved, hasToken=${TokenManager.hasToken()}")
+                    
                     _authState.emit(AuthState.OAuthSuccess(oauthResponse = oauthResponse))
                     _errorMessage.emit(null)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Google Sign-In failed", error)
+                    Log.e(TAG, "GoogleAuth: Authentication failed - ${error.message}", error)
                     val errorMsg = error.message ?: "Google Sign-In failed"
                     _authState.emit(AuthState.Error(errorMsg))
                     _errorMessage.emit(errorMsg)
