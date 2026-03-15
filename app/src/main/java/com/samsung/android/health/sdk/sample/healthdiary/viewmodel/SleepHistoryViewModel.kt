@@ -70,6 +70,9 @@ class SleepHistoryViewModel(private val context: Context) : ViewModel() {
                     isLoading = false,
                     error = null
                 )
+                
+                // UI render confirmation
+                Log.i(TAG, "[SLEEP][UI][RENDERED] count=${dataPoints.size}, avg_hours=$averageHours")
             } catch (e: Exception) {
                 Log.e(TAG, "[SLEEP][PHONE][QUERIED] ERROR: ${e.message}")
                 _uiState.value = _uiState.value.copy(

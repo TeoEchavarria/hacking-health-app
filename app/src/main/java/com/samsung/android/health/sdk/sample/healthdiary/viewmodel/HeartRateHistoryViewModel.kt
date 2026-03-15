@@ -67,6 +67,9 @@ class HeartRateHistoryViewModel(private val context: Context) : ViewModel() {
                     isLoading = false,
                     error = null
                 )
+                
+                // UI render confirmation
+                Log.i(TAG, "[HEART_RATE][UI][RENDERED] count=${dataPoints.size}")
             } catch (e: Exception) {
                 Log.e(TAG, "[HEART_RATE][PHONE][QUERIED] ERROR: ${e.message}")
                 _uiState.value = _uiState.value.copy(

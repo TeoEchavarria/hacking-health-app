@@ -108,6 +108,12 @@ class WatchHealthIngestionRepository(private val context: Context) {
                     Log.w(TAG, "[HEART_RATE][PHONE][PERSISTED] sample_count=0, reason=no_samples")
                 }
                 
+                // Database verification - query row counts to prove persistence
+                val stepsRowCount = watchHealthDao.getStepsRowCount()
+                val sleepRowCount = watchHealthDao.getSleepRowCount()
+                val hrRowCount = watchHealthDao.getHeartRateRowCount()
+                Log.d(TAG, "[DIAGNOSTIC][DB] Persistence verified - Steps rows: $stepsRowCount, Sleep rows: $sleepRowCount, HR rows: $hrRowCount")
+                
                 Log.d(TAG, "Daily summary stored successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "DB_WRITE_ERROR: Failed to persist daily summary", e)

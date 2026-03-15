@@ -73,6 +73,9 @@ class StepsHistoryViewModel(private val context: Context) : ViewModel() {
                     isLoading = false,
                     error = null
                 )
+                
+                // UI render confirmation
+                Log.i(TAG, "[STEPS][UI][RENDERED] count=${dataPoints.size}, total=$totalSteps, avg=$averageSteps")
             } catch (e: Exception) {
                 Log.e(TAG, "[STEPS][PHONE][QUERIED] ERROR: ${e.message}")
                 _uiState.value = _uiState.value.copy(
