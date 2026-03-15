@@ -94,20 +94,28 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                 Log.d(TAG, "  📍 Path: $path from $nodeId")
                 
                 when (path) {
-                    // New Health Data Paths (Primary)
+                    // ===== ACTIVELY USED HEALTH DATA PATHS =====
                     Protocol.PATH_HEALTH_DAILY -> {
+                        // Primary sync path: All metrics sent every 15 min
                         handleHealthDailySummary(event)
                     }
                     Protocol.PATH_HEALTH_HR -> {
+                        // HR batch path: Sent when 5+ samples accumulated
                         handleHealthHeartRate(event)
                     }
+                    
+                    // ===== DEPRECATED HEALTH PATHS (handlers kept for compatibility) =====
+                    // NOTE: Watch never sends these - all data comes via PATH_HEALTH_DAILY
                     Protocol.PATH_HEALTH_SLEEP -> {
+                        // UNUSED: Sleep included in daily summary
                         handleHealthSleep(event)
                     }
                     Protocol.PATH_HEALTH_STEPS -> {
+                        // UNUSED: Steps included in daily summary
                         handleHealthSteps(event)
                     }
-                    // Legacy Paths (kept for compatibility)
+                    
+                    // ===== LEGACY SENSOR PATHS (kept for compatibility) =====
                     "/sensor_batch" -> {
                         handleSensorBatch(event)
                     }
@@ -195,16 +203,44 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
         val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
         val byteArray = dataMapItem.dataMap.getByteArray("summary")
         val nodeId = event.dataItem.uri.host ?: "unknown"
+        val receiveTimestamp = System.currentTimeMillis()
+        
+        Log.i(TAG, "RECEIVE_PAYLOAD: path=/health/daily, nodeId=$nodeId, size=${byteArray?.size ?: 0} bytes, timestamp=$receiveTimestamp")
+        Log.i(TAG, "[DAILY_SUMMARY][PHONE][RECEIVED] nodeId=$nodeId, payload_size=${byteArray?.size ?: 0}")
         
         if (byteArray != null) {
             scope.launch {
                 try {
                     val jsonString = String(byteArray, Charsets.UTF_8)
+                    Log.d(TAG, "PARSE_START: Deserializing JSON payload (${byteArray.size} bytes)")
+                    
                     val summary = json.decodeFromString<HealthDailySummary>(jsonString)
                     
                     Log.i(TAG, "📊 Daily summary: date=${summary.date}, steps=${summary.steps}, hr_samples=${summary.heartRateSamples.size}")
+                    Log.i(TAG, "PARSE_SUCCESS: date=${summary.date}, steps=${summary.steps}, sleepMinutes=${summary.sleepMinutes}, hr_count=${summary.heartRateSamples.size}, avgHR=${summary.avgHeartRate}")
                     
+                    // Forensic per-metric parse logs
+                    Log.i(TAG, "[STEPS][PHONE][PARSED] date=${summary.date}, value=${summary.steps}")
+                    if (summary.sleepMinutes != null) {
+                        Log.i(TAG, "[SLEEP][PHONE][PARSED] date=${summary.date}, value=${summary.sleepMinutes}min")
+                    } else {
+                        Log.w(TAG, "[SLEEP][PHONE][PARSED] date=${summary.date}, value=NULL")
+                    }
+                    Log.i(TAG, "[HEART_RATE][PHONE][PARSED] date=${summary.date}, sample_count=${summary.heartRateSamples.size}, avgBPM=${summary.avgHeartRate}")
+                    
+                    // Log specific metric values for diagnostic purposes
+                    if (summary.steps == 0) {
+                        Log.w(TAG, "PARSE_RESULT: Steps value is ZERO - check watch-side collection")
+                    }
+                    if (summary.sleepMinutes == null) {
+                        Log.w(TAG, "PARSE_RESULT: Sleep value is NULL - no sleep detected on watch")
+                    } else {
+                        Log.i(TAG, "PARSE_RESULT: Sleep detected: ${summary.sleepMinutes} minutes (${summary.sleepMinutes / 60.0} hours)")
+                    }
+                    
+                    Log.d(TAG, "PERSIST_START: Calling ingestDailySummary()")
                     watchHealthRepository.ingestDailySummary(summary)
+                    Log.i(TAG, "PERSIST_SUCCESS: Daily summary persisted to database")
                     
                     // Update handshake state - health data received means connection is alive
                     com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager.updateHandshake(System.currentTimeMillis())
@@ -218,9 +254,14 @@ class WearableReceiverService : WearableListenerService(), com.google.android.gm
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Error parsing health daily summary", e)
+                    Log.e(TAG, "PARSE_ERROR: ${e.javaClass.simpleName}: ${e.message}")
+                    Log.e(TAG, "[DAILY_SUMMARY][PHONE][PARSED] ERROR: ${e.message}")
                     ConnectionLogManager.log(LogType.ERROR, TAG, "Error parsing daily summary: ${e.message}")
                 }
             }
+        } else {
+            Log.e(TAG, "RECEIVE_ERROR: Byte array is null - invalid payload received")
+            Log.e(TAG, "[DAILY_SUMMARY][PHONE][RECEIVED] ERROR: null_payload")
         }
     }
 

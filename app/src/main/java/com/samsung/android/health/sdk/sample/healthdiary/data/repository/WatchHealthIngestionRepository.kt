@@ -47,51 +47,73 @@ class WatchHealthIngestionRepository(private val context: Context) {
     suspend fun ingestDailySummary(summary: HealthDailySummary) {
         withContext(Dispatchers.IO) {
             Log.i(TAG, "Ingesting daily summary: date=${summary.date}, steps=${summary.steps}, hr_samples=${summary.heartRateSamples.size}")
+            Log.d(TAG, "DB_WRITE_START: Persisting daily summary and decomposed entities")
             
-            // Store the daily summary
-            val summaryEntity = WatchDailySummaryEntity(
-                date = summary.date,
-                steps = summary.steps,
-                sleepMinutes = summary.sleepMinutes,
-                avgHeartRate = summary.avgHeartRate,
-                minHeartRate = summary.minHeartRate,
-                maxHeartRate = summary.maxHeartRate,
-                heartRateSampleCount = summary.heartRateSamples.size,
-                heartRateSamplesJson = json.encodeToString(summary.heartRateSamples),
-                syncTimestamp = summary.syncTimestamp
-            )
-            watchHealthDao.insertDailySummary(summaryEntity)
-            
-            // Also update individual metric tables for easier querying
-            watchHealthDao.insertSteps(
-                WatchStepsEntity(
+            try {
+                // Store the daily summary
+                val summaryEntity = WatchDailySummaryEntity(
+                    date = summary.date,
+                    steps = summary.steps,
+                    sleepMinutes = summary.sleepMinutes,
+                    avgHeartRate = summary.avgHeartRate,
+                    minHeartRate = summary.minHeartRate,
+                    maxHeartRate = summary.maxHeartRate,
+                    heartRateSampleCount = summary.heartRateSamples.size,
+                    heartRateSamplesJson = json.encodeToString(summary.heartRateSamples),
+                    syncTimestamp = summary.syncTimestamp
+                )
+                watchHealthDao.insertDailySummary(summaryEntity)
+                Log.d(TAG, "DB_WRITE_SUCCESS: Daily summary entity inserted for date=${summary.date}")
+                
+                // Also update individual metric tables for easier querying
+                val stepsEntity = WatchStepsEntity(
                     date = summary.date,
                     steps = summary.steps
                 )
-            )
-            
-            if (summary.sleepMinutes != null) {
-                watchHealthDao.insertSleep(
-                    WatchSleepEntity(
+                watchHealthDao.insertSteps(stepsEntity)
+                Log.i(TAG, "DB_WRITE_SUCCESS: Steps entity inserted: date=${summary.date}, steps=${summary.steps}")
+                Log.i(TAG, "[STEPS][PHONE][PERSISTED] date=${summary.date}, value=${summary.steps}, table=watch_steps")
+                
+                if (summary.steps == 0) {
+                    Log.w(TAG, "DB_WRITE_WARNING: Steps value is ZERO for date=${summary.date}")
+                }
+                
+                if (summary.sleepMinutes != null) {
+                    val sleepEntity = WatchSleepEntity(
                         date = summary.date,
                         sleepMinutes = summary.sleepMinutes
                     )
-                )
+                    watchHealthDao.insertSleep(sleepEntity)
+                    Log.i(TAG, "DB_WRITE_SUCCESS: Sleep entity inserted: date=${summary.date}, minutes=${summary.sleepMinutes}")
+                    Log.i(TAG, "[SLEEP][PHONE][PERSISTED] date=${summary.date}, value=${summary.sleepMinutes}min, table=watch_sleep")
+                } else {
+                    Log.w(TAG, "DB_WRITE_SKIPPED: Sleep is NULL for date=${summary.date} - no sleep entity created")
+                    Log.w(TAG, "[SLEEP][PHONE][PERSISTED] date=${summary.date}, value=NULL, reason=no_sleep_data")
+                }
+                
+                // Store individual heart rate samples
+                val hrEntities = summary.heartRateSamples.map { sample ->
+                    WatchHeartRateEntity(
+                        bpm = sample.bpm,
+                        measurementTimestamp = sample.timestamp,
+                        accuracy = sample.accuracy.name
+                    )
+                }
+                if (hrEntities.isNotEmpty()) {
+                    watchHealthDao.insertHeartRates(hrEntities)
+                    Log.i(TAG, "DB_WRITE_SUCCESS: ${hrEntities.size} heart rate entities inserted")
+                    Log.i(TAG, "[HEART_RATE][PHONE][PERSISTED] sample_count=${hrEntities.size}, table=watch_heart_rate")
+                } else {
+                    Log.w(TAG, "DB_WRITE_SKIPPED: No heart rate samples to insert")
+                    Log.w(TAG, "[HEART_RATE][PHONE][PERSISTED] sample_count=0, reason=no_samples")
+                }
+                
+                Log.d(TAG, "Daily summary stored successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "DB_WRITE_ERROR: Failed to persist daily summary", e)
+                Log.e(TAG, "DB_WRITE_ERROR: ${e.javaClass.simpleName}: ${e.message}")
+                throw e
             }
-            
-            // Store individual heart rate samples
-            val hrEntities = summary.heartRateSamples.map { sample ->
-                WatchHeartRateEntity(
-                    bpm = sample.bpm,
-                    measurementTimestamp = sample.timestamp,
-                    accuracy = sample.accuracy.name
-                )
-            }
-            if (hrEntities.isNotEmpty()) {
-                watchHealthDao.insertHeartRates(hrEntities)
-            }
-            
-            Log.d(TAG, "Daily summary stored successfully")
         }
     }
     
@@ -193,6 +215,61 @@ class WatchHealthIngestionRepository(private val context: Context) {
         return watchHealthDao.getRecentDailySummaries(limit)
     }
     
+    // ============ HISTORICAL DATA FOR CHARTS ============
+    
+    /**
+     * Get historical steps data for charting.
+     */
+    suspend fun getStepsHistory(days: Int = 30): List<WatchStepsEntity> {
+        return withContext(Dispatchers.IO) {
+            watchHealthDao.getRecentSteps(limit = days)
+        }
+    }
+    
+    /**
+     * Get historical sleep data for charting.
+     */
+    suspend fun getSleepHistory(days: Int = 30): List<WatchSleepEntity> {
+        return withContext(Dispatchers.IO) {
+            watchHealthDao.getRecentSleep(limit = days)
+        }
+    }
+    
+    /**
+     * Get historical heart rate data for charting.
+     * Returns daily summaries which include aggregated HR stats.
+     */
+    suspend fun getHeartRateHistory(days: Int = 30): List<WatchDailySummaryEntity> {
+        return withContext(Dispatchers.IO) {
+            watchHealthDao.getRecentDailySummaries(limit = days)
+        }
+    }
+    
+    /**
+     * Get all heart rate samples for a specific date (for detailed view).
+     */
+    suspend fun getHeartRatesForDate(date: String): List<WatchHeartRateEntity> {
+        return withContext(Dispatchers.IO) {
+            val summary = watchHealthDao.getDailySummary(date)
+            if (summary != null && !summary.heartRateSamplesJson.isNullOrEmpty()) {
+                try {
+                    json.decodeFromString<List<HeartRateSample>>(summary.heartRateSamplesJson!!).map {
+                        WatchHeartRateEntity(
+                            bpm = it.bpm,
+                            measurementTimestamp = it.timestamp,
+                            accuracy = it.accuracy.name
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse HR samples from JSON", e)
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+        }
+    }
+    
     // ============ SYNC TO BACKEND ============
     
     /**
@@ -245,6 +322,24 @@ class WatchHealthIngestionRepository(private val context: Context) {
             Log.d(TAG, "Cleaned up heart rate samples older than $olderThanDays days")
         }
     }
+    
+    // ============ DIAGNOSTICS ============
+    
+    /**
+     * Get database diagnostics for health data tables.
+     */
+    suspend fun getDatabaseDiagnostics(): HealthDatabaseDiagnostics {
+        return withContext(Dispatchers.IO) {
+            HealthDatabaseDiagnostics(
+                stepsRowCount = watchHealthDao.getStepsRowCount(),
+                sleepRowCount = watchHealthDao.getSleepRowCount(),
+                heartRateRowCount = watchHealthDao.getHeartRateRowCount(),
+                latestStepsDate = watchHealthDao.getLatestStepsDate(),
+                latestSleepDate = watchHealthDao.getLatestSleepDate(),
+                latestHeartRateTimestamp = watchHealthDao.getLatestHeartRateTimestamp()
+            )
+        }
+    }
 }
 
 /**
@@ -262,3 +357,15 @@ data class UnsyncedWatchData(
     val totalCount: Int
         get() = steps.size + heartRates.size + sleep.size + dailySummaries.size
 }
+
+/**
+ * Database diagnostics for health data tables.
+ */
+data class HealthDatabaseDiagnostics(
+    val stepsRowCount: Int,
+    val sleepRowCount: Int,
+    val heartRateRowCount: Int,
+    val latestStepsDate: String?,
+    val latestSleepDate: String?,
+    val latestHeartRateTimestamp: Long?
+)

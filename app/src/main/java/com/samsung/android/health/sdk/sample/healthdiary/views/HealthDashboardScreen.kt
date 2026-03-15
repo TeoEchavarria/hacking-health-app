@@ -30,7 +30,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.*
  * 1. Connected device status (real-time)
  * 2. Current heart rate
  * 3. Today's sleep hours
- * 4. Maximum steps reached today
+ * 4. Today's steps (cumulative daily total)
  * 
  * The "No watch connected" state is tappable and navigates to Settings.
  */
@@ -40,6 +40,9 @@ fun HealthDashboardScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToTraining: () -> Unit,
     onNavigateToHabits: () -> Unit,
+    onNavigateToHeartRateHistory: () -> Unit = {},
+    onNavigateToStepsHistory: () -> Unit = {},
+    onNavigateToSleepHistory: () -> Unit = {},
     onLogout: () -> Unit = {},
     profileViewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
@@ -142,7 +145,8 @@ fun HealthDashboardScreen(
                     value = uiState.currentHeartRate?.toString(),
                     unit = "bpm",
                     subtitle = uiState.heartRateTimestamp,
-                    isLoading = uiState.isLoadingMetrics
+                    isLoading = uiState.isLoadingMetrics,
+                    onClick = onNavigateToHeartRateHistory
                 )
 
                 // Sleep
@@ -156,7 +160,8 @@ fun HealthDashboardScreen(
                     },
                     unit = "hours",
                     subtitle = "Today",
-                    isLoading = uiState.isLoadingMetrics
+                    isLoading = uiState.isLoadingMetrics,
+                    onClick = onNavigateToSleepHistory
                 )
             }
 
@@ -167,14 +172,15 @@ fun HealthDashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 icon = Icons.Default.DirectionsWalk,
                 iconColor = Color(0xFF43A047),
-                title = "Maximum Steps",
+                title = "Today's Steps",
                 value = uiState.todayMaxSteps?.let { 
                     String.format("%,d", it) 
                 },
                 unit = "steps",
-                subtitle = "Today's total",
+                subtitle = "Today's total steps",
                 isLoading = uiState.isLoadingMetrics,
-                isLarge = true
+                isLarge = true,
+                onClick = onNavigateToStepsHistory
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -433,10 +439,12 @@ private fun HealthMetricCard(
     unit: String,
     subtitle: String?,
     isLoading: Boolean,
-    isLarge: Boolean = false
+    isLarge: Boolean = false,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier,
+        onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),

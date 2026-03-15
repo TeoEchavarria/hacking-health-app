@@ -77,7 +77,7 @@ data class HealthDashboardUiState(
  * - Real-time device connection status
  * - Current heart rate from watch
  * - Today's sleep hours
- * - Today's maximum steps
+ * - Today's steps (cumulative daily total)
  */
 class HealthDashboardViewModel(private val context: Context) : ViewModel() {
     

@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
+import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
+import com.samsung.android.health.sdk.sample.healthdiary.data.repository.DeviceRepository
+import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionState
+import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager
+import com.samsung.android.health.sdk.sample.healthdiary.utils.DeviceInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -53,6 +58,9 @@ fun WatchOnboardingScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    
+    // Repository for persisting device to database
+    val deviceRepository = remember { DeviceRepository(context) }
     
     var connectionState by remember { mutableStateOf<WatchConnectionState>(WatchConnectionState.Searching) }
     var isHealthSyncEnabled by remember { mutableStateOf(false) }
@@ -184,14 +192,40 @@ fun WatchOnboardingScreen(
             
             Button(
                 onClick = {
-                    // Save sync preference
-                    val prefs = context.getSharedPreferences("watch_onboarding", Context.MODE_PRIVATE)
-                    prefs.edit()
-                        .putBoolean("onboarding_completed", true)
-                        .putBoolean("health_sync_enabled", isHealthSyncEnabled)
-                        .apply()
-                    Log.i(TAG, "Onboarding completed: healthSyncEnabled=$isHealthSyncEnabled")
-                    onComplete()
+                    // Persist device to canonical state sources
+                    scope.launch {
+                        val connectedNode = (connectionState as? WatchConnectionState.Connected)?.node
+                        if (connectedNode != null) {
+                            // 1. Save to Room database (what Home screen observes)
+                            deviceRepository.addDevice(
+                                deviceId = connectedNode.id,
+                                deviceName = connectedNode.displayName,
+                                boundNodeId = connectedNode.id,
+                                connectionStatus = "CONNECTED"
+                            )
+                            Log.i(TAG, "Persisted device to DeviceRepository: ${connectedNode.displayName}")
+                            
+                            // 2. Update in-memory ConnectionStateManager
+                            ConnectionStateManager.setConnectedDevice(
+                                DeviceInfo(connectedNode.displayName, connectedNode.id, connectedNode.isNearby)
+                            )
+                            ConnectionStateManager.setConnectionState(ConnectionState.CONNECTED)
+                            Log.i(TAG, "Updated ConnectionStateManager to CONNECTED")
+                            
+                            // 3. Save legacy config (compatibility)
+                            DeviceConfig.setBoundNodeId(connectedNode.id)
+                        }
+                        
+                        // Save sync preference to SharedPreferences
+                        val prefs = context.getSharedPreferences("watch_onboarding", Context.MODE_PRIVATE)
+                        prefs.edit()
+                            .putBoolean("onboarding_completed", true)
+                            .putBoolean("health_sync_enabled", isHealthSyncEnabled)
+                            .apply()
+                        Log.i(TAG, "Onboarding completed: healthSyncEnabled=$isHealthSyncEnabled")
+                        
+                        onComplete()
+                    }
                 },
                 modifier = Modifier.weight(1f),
                 enabled = connectionState is WatchConnectionState.Connected

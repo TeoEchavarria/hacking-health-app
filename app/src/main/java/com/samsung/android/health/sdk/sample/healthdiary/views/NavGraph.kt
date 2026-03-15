@@ -27,6 +27,9 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Training : Screen("training")
     object Habits : Screen("habits")
+    object HeartRateHistory : Screen("heart_rate_history")
+    object StepsHistory : Screen("steps_history")
+    object SleepHistory : Screen("sleep_history")
     data class WorkoutPlayer(val routineId: String? = null, val sessionId: String? = null) : Screen("workout_player?routineId=$routineId&sessionId=$sessionId")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
@@ -76,6 +79,9 @@ fun NavGraph() {
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
+                onNavigateToHeartRateHistory = { navController.navigate(Screen.HeartRateHistory.route) },
+                onNavigateToStepsHistory = { navController.navigate(Screen.StepsHistory.route) },
+                onNavigateToSleepHistory = { navController.navigate(Screen.SleepHistory.route) },
                 onLogout = {
                     // Navigate to LoginActivity and clear task stack
                     val intent = Intent(context, LoginActivity::class.java).apply {
@@ -151,6 +157,25 @@ fun NavGraph() {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToLegacyHome = { navController.navigate(Screen.PreviousVersion.route) }
+            )
+        }
+        
+        // Health Metric History Screens
+        composable(Screen.HeartRateHistory.route) {
+            HeartRateHistoryScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.StepsHistory.route) {
+            StepsHistoryScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.SleepHistory.route) {
+            SleepHistoryScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

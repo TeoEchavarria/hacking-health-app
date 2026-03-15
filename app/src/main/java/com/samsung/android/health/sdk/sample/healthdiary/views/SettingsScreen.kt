@@ -25,20 +25,13 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import androidx.activity.result.contract.ActivityResultContracts
-import com.google.android.gms.wearable.Node
-import com.google.android.gms.wearable.PutDataMapRequest
-import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.common.GoogleApiAvailability
 import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionLogManager
-import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionState
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager
-import com.samsung.android.health.sdk.sample.healthdiary.utils.DeviceInfo
 import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
-import com.samsung.android.health.sdk.sample.healthdiary.data.repository.DeviceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
@@ -54,18 +47,8 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Device Repository for database persistence
-    val deviceRepository = remember { DeviceRepository(context) }
-    
-    // Connection State from Manager
-    val connectionState by ConnectionStateManager.connectionState.collectAsState()
+    // Connection State from Manager (read-only for diagnostics)
     val connectedDevice by ConnectionStateManager.connectedDevice.collectAsState()
-    val lastHandshake by ConnectionStateManager.lastHandshakeTimestamp.collectAsState()
-    
-    // Local state for discovery
-    var discoveredNodes by remember { mutableStateOf<List<Node>>(emptyList()) }
-    var isScanning by remember { mutableStateOf(false) }
-    var scanError by remember { mutableStateOf<String?>(null) }
     
     // Logs
     val logs by ConnectionLogManager.logs.collectAsState()
@@ -112,141 +95,6 @@ fun SettingsScreen(
         
         permissionLauncher.launch(permissionsToCheck)
     }
-
-    // Load bound device on start
-    LaunchedEffect(Unit) {
-        val boundId = DeviceConfig.getBoundNodeId()
-        if (boundId != null) {
-            ConnectionStateManager.setConnectionState(ConnectionState.CONNECTING)
-            // Try to find this node again
-            try {
-                val nodeClient = Wearable.getNodeClient(context)
-                val nodes = nodeClient.connectedNodes.await()
-                val found = nodes.find { it.id == boundId }
-                if (found != null) {
-                    ConnectionStateManager.setConnectedDevice(DeviceInfo(found.displayName, found.id, found.isNearby))
-                    ConnectionStateManager.setConnectionState(ConnectionState.CONNECTED)
-                } else {
-                    ConnectionLogManager.log(LogType.ERROR, "Settings", "Bound device $boundId not found in connected nodes.")
-                    ConnectionStateManager.setConnectionState(ConnectionState.DISCONNECTED)
-                }
-            } catch (e: Exception) {
-                ConnectionLogManager.log(LogType.ERROR, "Settings", "Error restoring connection: ${e.message}")
-            }
-        }
-    }
-
-    fun initiateHandshake(nodeId: String) {
-        scope.launch {
-            ConnectionLogManager.log(LogType.INFO, "Settings", "Initiating Handshake with $nodeId...")
-            try {
-                val dataClient = Wearable.getDataClient(context)
-                val putDataMapReq = PutDataMapRequest.create("/handshake_request")
-                putDataMapReq.dataMap.putLong("timestamp", System.currentTimeMillis())
-                putDataMapReq.dataMap.putString("source", "phone_manual")
-                val putDataReq = putDataMapReq.asPutDataRequest()
-                putDataReq.setUrgent()
-                
-                dataClient.putDataItem(putDataReq).await()
-                ConnectionLogManager.log(LogType.TRAFFIC, "Settings", "📤 Handshake Request sent")
-                snackbarHostState.showSnackbar("Handshake request sent")
-            } catch (e: Exception) {
-                ConnectionLogManager.log(LogType.ERROR, "Settings", "❌ Handshake failed: ${e.message}")
-            }
-        }
-    }
-    
-    fun bindDevice(node: Node) {
-        scope.launch {
-            // Persist to Room database FIRST (this is what Home screen observes)
-            deviceRepository.addDevice(
-                deviceId = node.id,
-                deviceName = node.displayName,
-                boundNodeId = node.id,
-                connectionStatus = "CONNECTED"
-            )
-            
-            // Also update in-memory state (for Settings screen immediate feedback)
-            DeviceConfig.setBoundNodeId(node.id)
-            ConnectionStateManager.setConnectedDevice(DeviceInfo(node.displayName, node.id, node.isNearby))
-            ConnectionStateManager.setConnectionState(ConnectionState.CONNECTED)
-            
-            ConnectionLogManager.log(LogType.INFO, "Settings", "Bound to device: ${node.displayName}")
-            snackbarHostState.showSnackbar("Bound to ${node.displayName}")
-            
-            // Auto-trigger handshake
-            initiateHandshake(node.id)
-        }
-    }
-
-    fun scanForDevices() {
-        scope.launch {
-            isScanning = true
-            scanError = null
-            ConnectionLogManager.log(LogType.INFO, "Settings", "Scanning for wearable devices...")
-            ConnectionStateManager.setConnectionState(ConnectionState.SCANNING)
-            
-            try {
-                // Method 1: Get all connected nodes (System level)
-                val nodeClient = Wearable.getNodeClient(context)
-                val nodes = nodeClient.connectedNodes.await()
-                
-                // Method 2: Get nodes with specific capability (App level)
-                val capabilityClient = Wearable.getCapabilityClient(context)
-                // Add specific debug log for capabilities
-                try {
-                    val allCaps = capabilityClient.getAllCapabilities(com.google.android.gms.wearable.CapabilityClient.FILTER_REACHABLE).await()
-                    allCaps.forEach { (name, capabilityInfo) ->
-                        ConnectionLogManager.log(LogType.INFO, "Settings", "Found Capability: $name - Nodes: ${capabilityInfo.nodes.size}")
-                    }
-                } catch (e: Exception) {
-                     ConnectionLogManager.log(LogType.ERROR, "Settings", "Failed to list capabilities: ${e.message}")
-                }
-
-                val capabilityInfo = capabilityClient.getCapability("sensor_data_sender", com.google.android.gms.wearable.CapabilityClient.FILTER_REACHABLE).await()
-                val capableNodes = capabilityInfo.nodes
-                
-                // Combine or prioritize
-                discoveredNodes = nodes
-                
-                if (nodes.isEmpty()) {
-                    ConnectionLogManager.log(LogType.ERROR, "Settings", "No devices found via NodeClient. Check Permissions & Galaxy Wearable App connection.")
-                } else {
-                    nodes.forEach { node ->
-                        val isCapable = capableNodes.any { it.id == node.id }
-                        ConnectionLogManager.log(LogType.SUCCESS, "Settings", "Found: ${node.displayName} (Capable: $isCapable)")
-                    }
-                }
-                
-                ConnectionStateManager.setConnectionState(if (connectedDevice != null) ConnectionState.CONNECTED else ConnectionState.DISCONNECTED)
-                
-            } catch (e: Exception) {
-                scanError = e.message
-                ConnectionLogManager.log(LogType.ERROR, "Settings", "Scan failed: ${e.message}")
-                ConnectionStateManager.setConnectionState(ConnectionState.DISCONNECTED)
-            }
-            isScanning = false
-        }
-    }
-    
-    fun unbindDevice() {
-        scope.launch {
-            // Get current bound node ID before clearing
-            val boundNodeId = DeviceConfig.getBoundNodeId()
-            
-            // Remove from database (what Home screen observes)
-            if (boundNodeId != null) {
-                deviceRepository.removeDevice(boundNodeId)
-            }
-            
-            // Clear in-memory state
-            DeviceConfig.setBoundNodeId(null)
-            ConnectionStateManager.setConnectedDevice(null)
-            ConnectionStateManager.setConnectionState(ConnectionState.DISCONNECTED)
-            
-            ConnectionLogManager.log(LogType.INFO, "Settings", "Unbound device")
-        }
-    }
     
     Scaffold(
         topBar = {
@@ -271,7 +119,7 @@ fun SettingsScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // --- Connection Status Card ---
+            // --- Developer Note Card ---
             SandboxCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -280,122 +128,70 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Watch",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Watch Connection Management",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        text = "💡 To connect or manage your watch, complete the onboarding flow when you first open the app.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Read-only connection status for diagnostics
+                    if (connectedDevice != null) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Status Indicator
                             Box(
                                 modifier = Modifier
-                                    .size(12.dp)
+                                    .size(10.dp)
                                     .clip(CircleShape)
-                                    .background(
-                                        when (connectionState) {
-                                            ConnectionState.VERIFIED -> Color(0xFF4CAF50) // Green
-                                            ConnectionState.CONNECTED -> Color(0xFFFFC107) // Amber
-                                            ConnectionState.CONNECTING, ConnectionState.SCANNING -> Color(0xFF2196F3) // Blue
-                                            else -> Color(0xFFF44336) // Red
-                                        }
-                                    )
+                                    .background(Color(0xFF4CAF50))
                             )
-                            Text(
-                                text = when (connectionState) {
-                                    ConnectionState.VERIFIED -> "Verified & Active"
-                                    ConnectionState.CONNECTED -> "Connected (No Handshake)"
-                                    ConnectionState.CONNECTING -> "Connecting..."
-                                    ConnectionState.SCANNING -> "Scanning..."
-                                    else -> "Disconnected"
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    
-                    if (connectedDevice != null) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text("Active Device:", style = MaterialTheme.typography.labelSmall)
-                        Text(connectedDevice!!.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                        Text("ID: ${connectedDevice!!.id}", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                        
-                        if (lastHandshake > 0) {
-                            Text(
-                                "Last Handshake: ${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(lastHandshake))}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF4CAF50)
-                            )
-                        } else {
-                             Text("No handshake verified yet", style = MaterialTheme.typography.bodySmall, color = Color.Red)
-                        }
-                        
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                             SandboxButton(
-                                text = "Handshake",
-                                onClick = { initiateHandshake(connectedDevice!!.id) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            SandboxButton(
-                                text = "Unbind",
-                                onClick = { unbindDevice() },
-                                modifier = Modifier.weight(1f),
-                                variant = ButtonVariant.Secondary
-                            )
+                            Column {
+                                Text(
+                                    text = "Connected: ${connectedDevice!!.name}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "ID: ${connectedDevice!!.id}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     } else {
-                         Text("No device bound.", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-
-            // --- Discovery Section ---
-            if (connectedDevice == null) {
-                SandboxCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Available Devices", style = MaterialTheme.typography.titleMedium)
-                            if (isScanning) {
-                                SandboxLoader(variant = LoaderVariant.Small)
-                            } else {
-                                SandboxIconButton(
-                                    icon = Icons.Default.Refresh,
-                                    onClick = { scanForDevices() },
-                                    contentDescription = "Scan"
-                                )
-                            }
-                        }
-                        
-                        if (discoveredNodes.isEmpty() && !isScanning) {
-                             Text("No devices found. Make sure Bluetooth is on.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                        }
-                        
-                        discoveredNodes.forEach { node ->
-                            Row(
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(node.displayName, style = MaterialTheme.typography.bodyMedium)
-                                    Text(node.id, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                }
-                                SandboxButton(
-                                    text = "Bind",
-                                    onClick = { bindDevice(node) }
-                                )
-                            }
-                            HorizontalDivider()
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF44336))
+                            )
+                            Text(
+                                text = "No watch connected",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -491,7 +287,7 @@ fun SettingsScreen(
                                         LogType.ERROR -> Color(0xFFFF5252)
                                         LogType.SUCCESS -> Color(0xFF4CAF50)
                                         LogType.TRAFFIC -> Color(0xFF64B5F6)
-                                        else -> Color.White
+                                        else -> Color(0xFF424242) // Dark gray for readability on white bg
                                     },
                                     fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace

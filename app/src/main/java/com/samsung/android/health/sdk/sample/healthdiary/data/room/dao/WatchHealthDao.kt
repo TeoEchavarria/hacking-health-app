@@ -110,4 +110,24 @@ interface WatchHealthDao {
     
     @Query("UPDATE watch_daily_summary SET syncedToBackendAt = :syncedAt WHERE date IN (:dates)")
     suspend fun markDailySummariesSynced(dates: List<String>, syncedAt: Long = System.currentTimeMillis())
+    
+    // ============ DIAGNOSTICS ============
+    
+    @Query("SELECT COUNT(*) FROM watch_steps")
+    suspend fun getStepsRowCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM watch_sleep")
+    suspend fun getSleepRowCount(): Int
+    
+    @Query("SELECT COUNT(*) FROM watch_heart_rate")
+    suspend fun getHeartRateRowCount(): Int
+    
+    @Query("SELECT date FROM watch_steps ORDER BY date DESC LIMIT 1")
+    suspend fun getLatestStepsDate(): String?
+    
+    @Query("SELECT date FROM watch_sleep ORDER BY date DESC LIMIT 1")
+    suspend fun getLatestSleepDate(): String?
+    
+    @Query("SELECT measurementTimestamp FROM watch_heart_rate ORDER BY measurementTimestamp DESC LIMIT 1")
+    suspend fun getLatestHeartRateTimestamp(): Long?
 }
