@@ -55,7 +55,11 @@ val SandboxErrorLight = Color(0xFFFFDAD6)
 val SandboxErrorContainer = Color(0xFFFFDAD6)
 val SandboxOnErrorContainer = Color(0xFF93000A)
 val SandboxWarning = Color(0xFFFF9500)
+val SandboxWarningLight = Color(0xFFFFF3E0)
+val SandboxWarningDark = Color(0xFFD97706)
 val SandboxSuccess = Color(0xFF34C759)
+val SandboxSuccessLight = Color(0xFFDCFCE7)
+val SandboxSuccessDark = Color(0xFF16A34A)
 val SandboxInfo = Color(0xFF0061A3)
 
 // Outline Colors
