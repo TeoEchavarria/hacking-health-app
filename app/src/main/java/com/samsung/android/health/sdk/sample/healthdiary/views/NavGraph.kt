@@ -75,7 +75,7 @@ fun NavGraph() {
 
     NavHost(navController = navController, startDestination = Screen.Home.route) {
         composable(Screen.Home.route) {
-            HealthDashboardScreen(
+            MainScaffold(
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },

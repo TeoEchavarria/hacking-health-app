@@ -5,45 +5,82 @@ import androidx.compose.ui.graphics.Color
 /**
  * Sandbox Design System - Color Palette
  * 
- * Apple-inspired, minimal, health-tech aesthetic
- * High contrast but calm colors
+ * Tu Salud - Health-tech aesthetic with blue primary and red emergency accents
+ * Based on Material Design 3 semantic colors
  */
 
-// Primary Colors - Blue accents
-val SandboxPrimary = Color(0xFF007AFF)
-val SandboxPrimaryLight = Color(0xFF5AC8FA)
-val SandboxPrimaryDark = Color(0xFF0051D5)
+// Primary Colors - Deep Blue (from Tu Salud design)
+val SandboxPrimary = Color(0xFF004474)
+val SandboxPrimaryLight = Color(0xFF0061A3)
+val SandboxPrimaryDark = Color(0xFF00497D)
+val SandboxPrimaryContainer = Color(0xFF005C9A)
+val SandboxOnPrimaryContainer = Color(0xFFB0D3FF)
+val SandboxPrimaryFixed = Color(0xFFD1E4FF)
+val SandboxPrimaryFixedDim = Color(0xFF9ECAFF)
 
-// Secondary Colors - Calm, supportive
-val SandboxSecondary = Color(0xFF34C759) // Apple Green (health)
-val SandboxSecondaryLight = Color(0xFF66D98F)
-val SandboxSecondaryDark = Color(0xFF28A745)
+// Secondary Colors - Neutral gray tones
+val SandboxSecondary = Color(0xFF5C5F61)
+val SandboxSecondaryLight = Color(0xFFE0E3E6)
+val SandboxSecondaryDark = Color(0xFF44474A)
+val SandboxSecondaryContainer = Color(0xFFE0E3E6)
+val SandboxOnSecondaryContainer = Color(0xFF626567)
 
-// Neutral Colors - Pure white backgrounds, black text
-val SandboxBackground = Color(0xFFFFFFFF)
-val SandboxSurface = Color(0xFFFFFFFF)
-val SandboxSurfaceVariant = Color(0xFFFFFFFF)
+// Tertiary Colors - Emergency Red
+val SandboxTertiary = Color(0xFF89001A)
+val SandboxTertiaryContainer = Color(0xFFB30B27)
+val SandboxOnTertiaryContainer = Color(0xFFFFC1BF)
+val SandboxTertiaryFixed = Color(0xFFFFDAD8)
+val SandboxTertiaryFixedDim = Color(0xFFFFB3B1)
 
-val SandboxOnBackground = Color(0xFF000000)
-val SandboxOnSurface = Color(0xFF000000)
-val SandboxOnSurfaceVariant = Color(0xFF000000)
+// Surface Colors - Light backgrounds
+val SandboxBackground = Color(0xFFF8F9FA)
+val SandboxSurface = Color(0xFFF8F9FA)
+val SandboxSurfaceBright = Color(0xFFF8F9FA)
+val SandboxSurfaceDim = Color(0xFFD9DADB)
+val SandboxSurfaceContainer = Color(0xFFEDEEEF)
+val SandboxSurfaceContainerLow = Color(0xFFF3F4F5)
+val SandboxSurfaceContainerHigh = Color(0xFFE7E8E9)
+val SandboxSurfaceContainerHighest = Color(0xFFE1E3E4)
+val SandboxSurfaceContainerLowest = Color(0xFFFFFFFF)
+val SandboxSurfaceVariant = Color(0xFFE1E3E4)
+
+// On Surface Colors - Text colors
+val SandboxOnBackground = Color(0xFF191C1D)
+val SandboxOnSurface = Color(0xFF191C1D)
+val SandboxOnSurfaceVariant = Color(0xFF424752)
 
 // Semantic Colors
-val SandboxError = Color(0xFFFF3B30) // Apple Red
-val SandboxErrorLight = Color(0xFFFF6961)
-val SandboxWarning = Color(0xFFFF9500) // Apple Orange
+val SandboxError = Color(0xFFBA1A1A)
+val SandboxErrorLight = Color(0xFFFFDAD6)
+val SandboxErrorContainer = Color(0xFFFFDAD6)
+val SandboxOnErrorContainer = Color(0xFF93000A)
+val SandboxWarning = Color(0xFFFF9500)
 val SandboxSuccess = Color(0xFF34C759)
-val SandboxInfo = Color(0xFF007AFF)
+val SandboxInfo = Color(0xFF0061A3)
 
-// Divider & Border - Blue lines
-val SandboxDivider = Color(0xFF007AFF)
-val SandboxBorder = Color(0xFF007AFF)
+// Outline Colors
+val SandboxOutline = Color(0xFF727784)
+val SandboxOutlineVariant = Color(0xFFC2C6D4)
+
+// Divider & Border
+val SandboxDivider = Color(0xFFC2C6D4)
+val SandboxBorder = Color(0xFFC2C6D4)
 
 // Disabled States
-val SandboxDisabled = Color(0xFFC7C7CC) // Light gray
-val SandboxOnDisabled = Color(0xFF8E8E93) // Medium gray
+val SandboxDisabled = Color(0xFFC4C7CA)
+val SandboxOnDisabled = Color(0xFF8E8E93)
 
-// Health-specific accent colors
-val SandboxHealthAccent = Color(0xFF4ECDC4) // Teal
+// Health-specific accent colors (keeping for backward compatibility)
+val SandboxHealthAccent = Color(0xFF4ECDC4)
 val SandboxHealthAccentLight = Color(0xFF7EDDD6)
 val SandboxHealthAccentDark = Color(0xFF2BA89A)
+
+// Inverse Colors
+val SandboxInverseSurface = Color(0xFF2E3132)
+val SandboxInverseOnSurface = Color(0xFFF0F1F2)
+val SandboxInversePrimary = Color(0xFF9ECAFF)
+
+// Connection Status Colors
+val SandboxConnectedGreen = Color(0xFF22C55E)
+val SandboxConnectedGreenLight = Color(0xFFDCFCE7)
+val SandboxConnectedGreenBorder = Color(0xFFBBF7D0)

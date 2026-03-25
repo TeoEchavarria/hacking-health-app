@@ -20,30 +20,30 @@ import androidx.core.view.WindowCompat
 /**
  * Sandbox Design System - Theme
  * 
- * Light theme only for now (minimal, health-focused)
- * Can be extended with dark theme later
+ * Tu Salud - Light theme with blue primary and red emergency accents
+ * Based on Material Design 3 semantic tokens
  */
 
 private val SandboxLightColorScheme = lightColorScheme(
     primary = SandboxPrimary,
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = SandboxPrimaryLight,
-    onPrimaryContainer = SandboxPrimaryDark,
+    primaryContainer = SandboxPrimaryContainer,
+    onPrimaryContainer = SandboxOnPrimaryContainer,
     
     secondary = SandboxSecondary,
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = SandboxSecondaryLight,
-    onSecondaryContainer = SandboxSecondaryDark,
+    secondaryContainer = SandboxSecondaryContainer,
+    onSecondaryContainer = SandboxOnSecondaryContainer,
     
-    tertiary = SandboxHealthAccent,
+    tertiary = SandboxTertiary,
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = SandboxHealthAccentLight,
-    onTertiaryContainer = SandboxHealthAccentDark,
+    tertiaryContainer = SandboxTertiaryContainer,
+    onTertiaryContainer = SandboxOnTertiaryContainer,
     
     error = SandboxError,
     onError = Color(0xFFFFFFFF),
-    errorContainer = SandboxErrorLight,
-    onErrorContainer = SandboxError,
+    errorContainer = SandboxErrorContainer,
+    onErrorContainer = SandboxOnErrorContainer,
     
     background = SandboxBackground,
     onBackground = SandboxOnBackground,
@@ -53,8 +53,20 @@ private val SandboxLightColorScheme = lightColorScheme(
     surfaceVariant = SandboxSurfaceVariant,
     onSurfaceVariant = SandboxOnSurfaceVariant,
     
-    outline = SandboxBorder,
-    outlineVariant = SandboxDivider
+    outline = SandboxOutline,
+    outlineVariant = SandboxOutlineVariant,
+    
+    inverseSurface = SandboxInverseSurface,
+    inverseOnSurface = SandboxInverseOnSurface,
+    inversePrimary = SandboxInversePrimary,
+    
+    surfaceDim = SandboxSurfaceDim,
+    surfaceBright = SandboxSurfaceBright,
+    surfaceContainerLowest = SandboxSurfaceContainerLowest,
+    surfaceContainerLow = SandboxSurfaceContainerLow,
+    surfaceContainer = SandboxSurfaceContainer,
+    surfaceContainerHigh = SandboxSurfaceContainerHigh,
+    surfaceContainerHighest = SandboxSurfaceContainerHighest
 )
 
 @Composable
