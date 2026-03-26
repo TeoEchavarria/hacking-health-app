@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.DeviceThermostat
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Speed
@@ -31,7 +33,9 @@ enum class BiometricType {
     SPO2,
     BLOOD_PRESSURE,
     TEMPERATURE,
-    HEART_RATE
+    HEART_RATE,
+    STEPS,
+    SLEEP
 }
 
 /**
@@ -168,6 +172,8 @@ private fun getIconForType(type: BiometricType): ImageVector {
         BiometricType.BLOOD_PRESSURE -> Icons.Default.Speed
         BiometricType.TEMPERATURE -> Icons.Default.DeviceThermostat
         BiometricType.HEART_RATE -> Icons.Default.Favorite
+        BiometricType.STEPS -> Icons.AutoMirrored.Filled.DirectionsWalk
+        BiometricType.SLEEP -> Icons.Default.Bedtime
     }
 }
 
@@ -179,6 +185,8 @@ private fun getIconContainerColor(type: BiometricType, status: HealthAlertStatus
         type == BiometricType.BLOOD_PRESSURE -> SandboxTertiaryFixed.copy(alpha = 0.3f)
         type == BiometricType.TEMPERATURE -> Color(0xFFDBEAFE) // Light blue
         type == BiometricType.HEART_RATE -> SandboxTertiaryFixed.copy(alpha = 0.3f)
+        type == BiometricType.STEPS -> Color(0xFFD1FAE5) // Green light
+        type == BiometricType.SLEEP -> Color(0xFFE0E7FF) // Indigo light
         else -> SandboxSurfaceVariant
     }
 }
@@ -191,6 +199,8 @@ private fun getIconTint(type: BiometricType, status: HealthAlertStatus): Color {
         type == BiometricType.BLOOD_PRESSURE -> SandboxTertiary
         type == BiometricType.TEMPERATURE -> Color(0xFF1D4ED8) // Blue-700
         type == BiometricType.HEART_RATE -> SandboxTertiary
+        type == BiometricType.STEPS -> Color(0xFF059669) // Green-600
+        type == BiometricType.SLEEP -> Color(0xFF4F46E5) // Indigo-600
         else -> SandboxOnSurfaceVariant
     }
 }

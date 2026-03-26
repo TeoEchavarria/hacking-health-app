@@ -11,6 +11,10 @@ object Protocol {
     const val PATH_HEALTH_HR = "/health/hr"
     const val PATH_HEALTH_SLEEP = "/health/sleep"
     const val PATH_HEALTH_STEPS = "/health/steps"
+    
+    // On-Demand Measurement Requests (Phone → Watch)
+    const val PATH_HEALTH_MEASURE_REQUEST = "/health/measure_request"  // Request immediate health data collection
+    const val PATH_HEALTH_MEASURE_ACK = "/health/measure_ack"         // Watch acknowledgment
 
     // Data API Paths (State Sync)
     const val PATH_WATCH_STATE = "/state/watch"

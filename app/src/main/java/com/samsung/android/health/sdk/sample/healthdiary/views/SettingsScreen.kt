@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.wearable.Wearable
 import com.samsung.android.health.sdk.sample.healthdiary.config.DeviceConfig
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionLogManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionStateManager
@@ -33,6 +35,8 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -46,6 +50,10 @@ fun SettingsScreen(
     var apiUrl by remember { mutableStateOf(DeviceConfig.getApiBaseUrl()) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Watch connectivity test state
+    var testingWatchConnection by remember { mutableStateOf(false) }
+    var watchTestResult by remember { mutableStateOf<String?>(null) }
     
     // Connection State from Manager (read-only for diagnostics)
     val connectedDevice by ConnectionStateManager.connectedDevice.collectAsState()
@@ -198,23 +206,66 @@ fun SettingsScreen(
             }
 
             // --- API Config Section ---
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                SandboxInput(
-                    value = apiUrl,
-                    onValueChange = { apiUrl = it },
-                    label = "Base API URL",
-                    modifier = Modifier.weight(1f)
-                )
+                // API URL Configuration
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SandboxInput(
+                        value = apiUrl,
+                        onValueChange = { apiUrl = it },
+                        label = "Base API URL",
+                        modifier = Modifier.weight(1f)
+                    )
+                    SandboxButton(
+                        text = "Save",
+                        onClick = {
+                            DeviceConfig.setApiBaseUrl(apiUrl)
+                            scope.launch { snackbarHostState.showSnackbar("Settings saved") }
+                        }
+                    )
+                }
+                
+                // Watch Connectivity Test Button
                 SandboxButton(
-                    text = "Save",
+                    text = if (testingWatchConnection) "Testing..." else "Test Watch Connection",
                     onClick = {
-                        DeviceConfig.setApiBaseUrl(apiUrl)
-                        scope.launch { snackbarHostState.showSnackbar("Settings saved") }
-                    }
+                        testingWatchConnection = true
+                        watchTestResult = null
+                        scope.launch {
+                            watchTestResult = testWatchConnectivity(context)
+                            testingWatchConnection = false
+                            snackbarHostState.showSnackbar(watchTestResult ?: "Test completed")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !testingWatchConnection,
+                    icon = Icons.Default.Wifi
                 )
+                
+                // Test result display
+                if (watchTestResult != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = when {
+                            watchTestResult!!.startsWith("✅") -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                            watchTestResult!!.startsWith("⚠") -> Color(0xFFFFA726).copy(alpha = 0.1f)
+                            else -> Color(0xFFFF5252).copy(alpha = 0.1f)
+                        },
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = watchTestResult!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
 
             // --- Previous Version Access ---
@@ -318,6 +369,55 @@ suspend fun testConnection(urlString: String): String {
             }
         } catch (e: Exception) {
             "Failed: ${e.message}"
+        }
+    }
+}
+
+/**
+ * Test watch connectivity by sending a ping message and waiting for pong.
+ * Returns a user-friendly status message.
+ */
+suspend fun testWatchConnectivity(context: android.content.Context): String {
+    return withContext(Dispatchers.IO) {
+        try {
+            val boundNodeId = DeviceConfig.getBoundNodeId()
+            if (boundNodeId == null) {
+                ConnectionLogManager.log(LogType.ERROR, "WatchTest", "No bound node ID found")
+                return@withContext "⚠️ No watch bound - Complete onboarding first"
+            }
+            
+            ConnectionLogManager.log(LogType.INFO, "WatchTest", "Sending ping to watch: $boundNodeId")
+            
+            val messageClient = Wearable.getMessageClient(context)
+            
+            // Send ping with timeout
+            val result = withTimeoutOrNull(5000L) {
+                try {
+                    messageClient.sendMessage(
+                        boundNodeId,
+                        "/ping",
+                        "ping".toByteArray()
+                    ).await()
+                    true
+                } catch (e: Exception) {
+                    ConnectionLogManager.log(LogType.ERROR, "WatchTest", "Ping failed: ${e.message}")
+                    false
+                }
+            }
+            
+            if (result == true) {
+                ConnectionLogManager.log(LogType.SUCCESS, "WatchTest", "✅ Ping sent successfully")
+                "✅ Connected - Watch is responding"
+            } else if (result == false) {
+                "❌ Not Responding - Check watch connection"
+            } else {
+                ConnectionLogManager.log(LogType.ERROR, "WatchTest", "Ping timeout")
+                "❌ Timeout - Watch may be offline"
+            }
+            
+        } catch (e: Exception) {
+            ConnectionLogManager.log(LogType.ERROR, "WatchTest", "Test failed: ${e.message}")
+            "❌ Error: ${e.message}"
         }
     }
 }

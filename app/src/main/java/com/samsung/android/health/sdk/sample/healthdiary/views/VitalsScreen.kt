@@ -60,7 +60,7 @@ fun VitalsScreen(
             }
         )
         
-        // Biometric Analysis Section
+        // Biometric Analysis Section - Data from Watch
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -71,7 +71,7 @@ fun VitalsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Análisis Biométrico",
+                    text = "Datos del Reloj",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = SandboxPrimary
@@ -88,49 +88,71 @@ fun VitalsScreen(
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // Biometric Cards Grid (2 columns)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // SpO2
-                BiometricCard(
-                    type = BiometricType.SPO2,
-                    label = "Oxígeno (SpO2)",
-                    reading = uiState.spO2,
-                    onClick = {
-                        Toast.makeText(context, "Historial de SpO2 próximamente", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // Temperature
-                BiometricCard(
-                    type = BiometricType.TEMPERATURE,
-                    label = "Temperatura",
-                    reading = uiState.temperature,
-                    onClick = {
-                        Toast.makeText(context, "Historial de temperatura próximamente", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // Heart Rate (full width - primary metric from watch)
+            BiometricCard(
+                type = BiometricType.HEART_RATE,
+                label = "Ritmo Cardíaco",
+                reading = uiState.heartRate,
+                onClick = {
+                    Toast.makeText(context, "Historial de ritmo cardíaco próximamente", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+        
+        // Day Summary Card (Steps + Sleep from watch)
+        DaySummaryCard(
+            summary = uiState.daySummary
+        )
+        
+        // Other Biometrics Section - Not available from watch
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Otros Indicadores",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = SandboxSecondary
+            )
             
-            // Blood Pressure (full width, often the most important reading)
+            Text(
+                text = "Estos datos requieren dispositivos adicionales",
+                style = MaterialTheme.typography.bodySmall,
+                color = SandboxSecondary.copy(alpha = 0.7f)
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // SpO2 (full width)
+            BiometricCard(
+                type = BiometricType.SPO2,
+                label = "Oxígeno (SpO2)",
+                reading = uiState.spO2,
+                onClick = {
+                    Toast.makeText(context, "SpO2 no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
+                }
+            )
+            
+            // Blood Pressure (full width)
             BiometricCard(
                 type = BiometricType.BLOOD_PRESSURE,
                 label = "Presión Arterial",
                 reading = uiState.bloodPressure,
                 onClick = {
-                    Toast.makeText(context, "Historial de presión arterial próximamente", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Presión arterial no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
+                }
+            )
+            
+            // Temperature (full width)
+            BiometricCard(
+                type = BiometricType.TEMPERATURE,
+                label = "Temperatura",
+                reading = uiState.temperature,
+                onClick = {
+                    Toast.makeText(context, "Temperatura no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
                 }
             )
         }
-        
-        // Day Summary Card
-        DaySummaryCard(
-            summary = uiState.daySummary
-        )
         
         // Loading indicator
         if (uiState.isLoading) {
