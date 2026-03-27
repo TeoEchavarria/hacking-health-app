@@ -156,12 +156,16 @@ data class VitalsUiState(
 /**
  * ViewModel for the Vitals screen.
  * 
- * PRIMARY DATA SOURCE: Watch database (WatchHealthIngestionRepository)
- * FALLBACK: Samsung Health SDK (if watch data unavailable)
+ * PRIMARY DATA SOURCE: Samsung Health SDK
+ * FALLBACK: Watch database (WatchHealthIngestionRepository)
  * 
- * The watch sends health data every 15 minutes via WatchHealthIngestion,
- * which stores it in the Room database. This ViewModel queries that database
- * and uses reactive Flow queries to automatically update the UI when new data arrives.
+ * Samsung Health is the primary source because it aggregates data from multiple sources:
+ * - Phone sensors (steps, activity)
+ * - Watch sensors (heart rate, steps, sleep)
+ * - Manual measurements (SpO2, blood pressure, temperature)
+ * 
+ * The watch database is used as fallback when Samsung Health data is unavailable.
+ * Watch Flow observers trigger full refresh to maintain data consistency.
  */
 class VitalsViewModel(private val context: Context) : ViewModel() {
     
@@ -196,56 +200,39 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
     
     /**
      * Observe watch database for real-time updates using Flow.
-     * This enables automatic UI updates when new watch data arrives.
+     * When watch data arrives, trigger a full refresh to re-read from Samsung Health (primary) + Watch (fallback).
+     * This ensures we always show the most complete data available.
      */
     private fun observeWatchDataChanges() {
         val today = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         
-        // Observe steps from watch
+        // Observe steps from watch - trigger full refresh when updated
         viewModelScope.launch {
             watchHealthRepo.getTodayStepsFlow(today).collect { stepsEntity ->
                 if (stepsEntity != null) {
-                    Log.d(TAG, "[FLOW] Watch steps updated: ${stepsEntity.steps}")
-                    _uiState.update { state ->
-                        state.copy(
-                            steps = buildStepsReading(stepsEntity.steps),
-                            daySummary = state.daySummary.copy(steps = stepsEntity.steps),
-                            lastUpdateTime = "Actualizado ahora"
-                        )
-                    }
+                    Log.d(TAG, "[FLOW] Watch steps updated: ${stepsEntity.steps} - triggering full refresh")
+                    loadHealthData() // Re-read from Samsung Health + Watch fallback
                 }
             }
         }
         
-        // Observe heart rate from watch
+        // Observe heart rate from watch - trigger full refresh when updated
         viewModelScope.launch {
             watchHealthRepo.getLatestHeartRateFlow().collect { hrEntity ->
                 if (hrEntity != null) {
-                    Log.d(TAG, "[FLOW] Watch heart rate updated: ${hrEntity.bpm} bpm")
-                    _uiState.update { state ->
-                        state.copy(
-                            heartRate = buildHeartRateReading(Pair(hrEntity.bpm, hrEntity.measurementTimestamp)),
-                            lastUpdateTime = "Actualizado ahora"
-                        )
-                    }
+                    Log.d(TAG, "[FLOW] Watch heart rate updated: ${hrEntity.bpm} bpm - triggering full refresh")
+                    loadHealthData() // Re-read from Samsung Health + Watch fallback
                 }
             }
         }
         
-        // Observe sleep from watch
+        // Observe sleep from watch - trigger full refresh when updated
         viewModelScope.launch {
             val yesterday = LocalDateTime.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
             watchHealthRepo.getTodaySleepFlow(yesterday).collect { sleepEntity ->
                 if (sleepEntity != null) {
-                    Log.d(TAG, "[FLOW] Watch sleep updated: ${sleepEntity.sleepMinutes} min")
-                    val sleepHours = sleepEntity.sleepMinutes / 60f
-                    _uiState.update { state ->
-                        state.copy(
-                            sleep = buildSleepReading(sleepHours),
-                            daySummary = state.daySummary.copy(sleepHours = sleepHours),
-                            lastUpdateTime = "Actualizado ahora"
-                        )
-                    }
+                    Log.d(TAG, "[FLOW] Watch sleep updated: ${sleepEntity.sleepMinutes} min - triggering full refresh")
+                    loadHealthData() // Re-read from Samsung Health + Watch fallback
                 }
             }
         }
@@ -278,47 +265,93 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                 val now = LocalDateTime.now()
                 val today = now.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 val yesterday = now.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
-                
-                Log.d(TAG, "[VITALS] Querying watch database for date: $today")
-                
-                // PRIMARY: Load data from watch database
-                var stepsResult = watchHealthRepo.getTodaySteps(today)
-                var sleepResult = watchHealthRepo.getTodaySleep(yesterday)?.let { it / 60f }
-                var heartRateResult = watchHealthRepo.getLatestHeartRate()?.let { 
-                    Pair(it.bpm, it.measurementTimestamp) 
-                }
-                
-                Log.d(TAG, "[VITALS][WATCH_DB] Steps: ${stepsResult ?: "NULL"}")
-                Log.d(TAG, "[VITALS][WATCH_DB] Sleep: ${sleepResult ?: "NULL"} hours")
-                Log.d(TAG, "[VITALS][WATCH_DB] Heart Rate: ${heartRateResult?.first ?: "NULL"} bpm")
-                
-                // FALLBACK: If watch data is unavailable, try Samsung Health
                 val startOfToday = now.withHour(0).withMinute(0).withSecond(0).withNano(0)
                 val endOfDay = startOfToday.plusDays(1)
                 val startOfYesterday = startOfToday.minusDays(1)
                 
+                Log.d(TAG, "[VITALS] Loading health data - Samsung Health PRIMARY, Watch DB fallback")
+                
+                // PRIMARY: Load data from Samsung Health (más completo: teléfono + reloj + mediciones manuales)
+                var stepsResult = try {
+                    loadTodaySteps(startOfToday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Steps read failed", e)
+                    null
+                }
+                
+                var sleepResult = try {
+                    loadSleepData(startOfYesterday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Sleep read failed", e)
+                    null
+                }
+                
+                var heartRateResult = try {
+                    loadLatestHeartRate(startOfToday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Heart Rate read failed", e)
+                    null
+                }
+                
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Steps: ${stepsResult ?: "NULL"}")
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Sleep: ${sleepResult ?: "NULL"} hours")
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Heart Rate: ${heartRateResult?.first ?: "NULL"} bpm")
+                
+                // FALLBACK: If Samsung Health data unavailable, try watch database
                 if (stepsResult == null || stepsResult == 0) {
-                    Log.d(TAG, "[VITALS] Watch steps unavailable, trying Samsung Health fallback")
-                    stepsResult = loadTodaySteps(startOfToday, endOfDay)
-                    Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Steps: ${stepsResult ?: "NULL"}")
+                    Log.d(TAG, "[VITALS] Samsung Health steps unavailable, trying watch database fallback")
+                    stepsResult = watchHealthRepo.getTodaySteps(today)
+                    Log.d(TAG, "[VITALS][WATCH_DB] Steps: ${stepsResult ?: "NULL"}")
                 }
                 
                 if (sleepResult == null) {
-                    Log.d(TAG, "[VITALS] Watch sleep unavailable, trying Samsung Health fallback")
-                    sleepResult = loadSleepData(startOfYesterday, endOfDay)
-                    Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Sleep: ${sleepResult ?: "NULL"} hours")
+                    Log.d(TAG, "[VITALS] Samsung Health sleep unavailable, trying watch database fallback")
+                    sleepResult = watchHealthRepo.getTodaySleep(yesterday)?.let { it / 60f }
+                    Log.d(TAG, "[VITALS][WATCH_DB] Sleep: ${sleepResult ?: "NULL"} hours")
                 }
                 
                 if (heartRateResult == null) {
-                    Log.d(TAG, "[VITALS] Watch heart rate unavailable, trying Samsung Health fallback")
-                    heartRateResult = loadLatestHeartRate(startOfToday, endOfDay)
-                    Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Heart Rate: ${heartRateResult?.first ?: "NULL"} bpm")
+                    Log.d(TAG, "[VITALS] Samsung Health heart rate unavailable, trying watch database fallback")
+                    heartRateResult = watchHealthRepo.getLatestHeartRate()?.let { 
+                        Pair(it.bpm, it.measurementTimestamp) 
+                    }
+                    Log.d(TAG, "[VITALS][WATCH_DB] Heart Rate: ${heartRateResult?.first ?: "NULL"} bpm")
                 }
+                
+                // Load SpO2, Blood Pressure, and Skin Temperature from Samsung Health
+                Log.d(TAG, "[VITALS] Loading SpO2, BP, Temperature from Samsung Health")
+                val spO2Result = try {
+                    loadLatestSpO2(startOfToday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] SpO2 read failed", e)
+                    null
+                }
+                
+                val bpResult = try {
+                    loadLatestBloodPressure(startOfToday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Blood Pressure read failed", e)
+                    null
+                }
+                
+                val tempResult = try {
+                    loadLatestSkinTemperature(startOfToday, endOfDay)
+                } catch (e: Exception) {
+                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Temperature read failed", e)
+                    null
+                }
+                
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] SpO2: ${spO2Result?.first ?: "NULL"}%")
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Blood Pressure: ${bpResult?.first ?: "NULL"}/${bpResult?.second ?: "NULL"}")
+                Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Temperature: ${tempResult?.first ?: "NULL"}°C")
                 
                 // Build readings
                 val stepsReading = buildStepsReading(stepsResult)
                 val sleepReading = buildSleepReading(sleepResult)
                 val heartRateReading = buildHeartRateReading(heartRateResult)
+                val spO2Reading = buildSpO2Reading(spO2Result)
+                val bpReading = buildBloodPressureReading(bpResult)
+                val tempReading = buildTemperatureReading(tempResult)
                 
                 // Update timestamp
                 lastUpdateTimestamp = System.currentTimeMillis()
@@ -332,6 +365,9 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                         heartRate = heartRateReading,
                         steps = stepsReading,
                         sleep = sleepReading,
+                        spO2 = spO2Reading,
+                        bloodPressure = bpReading,
+                        temperature = tempReading,
                         daySummary = DaySummary(
                             steps = stepsResult,
                             sleepHours = sleepResult,
@@ -447,6 +483,103 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
         }
     }
     
+    /**
+     * Load the latest SpO2 (blood oxygen) reading from Samsung Health.
+     * Returns Pair(spO2 percentage, timestamp) or null.
+     */
+    private suspend fun loadLatestSpO2(startOfDay: LocalDateTime, endOfDay: LocalDateTime): Pair<Int, Long>? {
+        return try {
+            val readRequest = DataTypes.BLOOD_OXYGEN.buildReadRequest(
+                start = startOfDay.minusDays(1), // Look back 1 day for recent reading
+                end = endOfDay,
+                ordering = Ordering.DESC
+            )
+            
+            val spO2List = healthDataStore.readData(readRequest).dataList
+            
+            Log.d(TAG, "[SPO2] Samsung Health returned ${spO2List.size} SpO2 records")
+            
+            val latestReading = spO2List.firstOrNull()
+            if (latestReading != null) {
+                val spO2 = latestReading.getValue(DataType.BloodOxygenType.OXYGEN_SATURATION)?.toInt()
+                val timestamp = latestReading.startTime.toEpochMilli()
+                
+                if (spO2 != null && spO2 > 0) {
+                    Log.d(TAG, "[SPO2] Latest: $spO2% at ${latestReading.startTime}")
+                    Pair(spO2, timestamp)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            Log.w(TAG, "[SPO2] Error reading SpO2 from Samsung Health", e)
+            null
+        }
+    }
+    
+    /**
+     * Load the latest blood pressure reading from Samsung Health.
+     * Returns Triple(systolic, diastolic, timestamp) or null.
+     */
+    private suspend fun loadLatestBloodPressure(startOfDay: LocalDateTime, endOfDay: LocalDateTime): Triple<Int, Int, Long>? {
+        return try {
+            val readRequest = DataTypes.BLOOD_PRESSURE.buildReadRequest(
+                start = startOfDay.minusDays(1), // Look back 1 day for recent reading
+                end = endOfDay,
+                ordering = Ordering.DESC
+            )
+            
+            val bpList = healthDataStore.readData(readRequest).dataList
+            
+            Log.d(TAG, "[BLOOD_PRESSURE] Samsung Health returned ${bpList.size} BP records")
+            
+            val latestReading = bpList.firstOrNull()
+            if (latestReading != null) {
+                val systolic = latestReading.getValue(DataType.BloodPressureType.SYSTOLIC)?.toInt()
+                val diastolic = latestReading.getValue(DataType.BloodPressureType.DIASTOLIC)?.toInt()
+                val timestamp = latestReading.startTime.toEpochMilli()
+                
+                if (systolic != null && diastolic != null && systolic > 0 && diastolic > 0) {
+                    Log.d(TAG, "[BLOOD_PRESSURE] Latest: $systolic/$diastolic at ${latestReading.startTime}")
+                    Triple(systolic, diastolic, timestamp)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            Log.w(TAG, "[BLOOD_PRESSURE] Error reading blood pressure from Samsung Health", e)
+            null
+        }
+    }
+    
+    /**
+     * Load the latest skin temperature reading from Samsung Health.
+     * Returns Pair(temperature in Celsius, timestamp) or null.
+     */
+    private suspend fun loadLatestSkinTemperature(startOfDay: LocalDateTime, endOfDay: LocalDateTime): Pair<Float, Long>? {
+        return try {
+            val readRequest = DataTypes.SKIN_TEMPERATURE.buildReadRequest(
+                start = startOfDay.minusDays(1), // Look back 1 day for recent reading
+                end = endOfDay,
+                ordering = Ordering.DESC
+            )
+            
+            val tempList = healthDataStore.readData(readRequest).dataList
+            
+            Log.d(TAG, "[SKIN_TEMPERATURE] Samsung Health returned ${tempList.size} temperature records")
+            
+            val latestReading = tempList.firstOrNull()
+            if (latestReading != null) {
+                val tempCelsius = latestReading.getValue(DataType.SkinTemperatureType.SKIN_TEMPERATURE)?.toFloat()
+                val timestamp = latestReading.startTime.toEpochMilli()
+                
+                if (tempCelsius != null && tempCelsius > 0) {
+                    Log.d(TAG, "[SKIN_TEMPERATURE] Latest: ${tempCelsius}°C at ${latestReading.startTime}")
+                    Pair(tempCelsius, timestamp)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            Log.w(TAG, "[SKIN_TEMPERATURE] Error reading skin temperature from Samsung Health", e)
+            null
+        }
+    }
+    
     private fun buildStepsReading(steps: Int?): BiometricReading {
         return if (steps != null && steps > 0) {
             val status = when {
@@ -533,6 +666,124 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                 secondaryText = "Sin lectura",
                 isAvailable = false
             )
+        }
+    }
+    
+    private fun buildSpO2Reading(data: Pair<Int, Long>?): BiometricReading {
+        return if (data != null) {
+            val (spO2, timestamp) = data
+            val status = when {
+                spO2 >= 96 -> HealthAlertStatus.OPTIMAL
+                spO2 in 93..95 -> HealthAlertStatus.WARNING
+                else -> HealthAlertStatus.CRITICAL
+            }
+            
+            val timeAgo = formatTimeAgo(timestamp)
+            
+            BiometricReading(
+                value = "$spO2%",
+                status = status,
+                statusLabel = when (status) {
+                    HealthAlertStatus.OPTIMAL -> "ÓPTIMO"
+                    HealthAlertStatus.WARNING -> "BAJO"
+                    HealthAlertStatus.CRITICAL -> "MUY BAJO"
+                },
+                secondaryText = timeAgo,
+                timestamp = timestamp,
+                isAvailable = true
+            )
+        } else {
+            BiometricReading(
+                value = "--",
+                status = HealthAlertStatus.OPTIMAL,
+                statusLabel = "SIN DATOS",
+                secondaryText = "Toca para medir",
+                isAvailable = false
+            )
+        }
+    }
+    
+    private fun buildBloodPressureReading(data: Triple<Int, Int, Long>?): BiometricReading {
+        return if (data != null) {
+            val (systolic, diastolic, timestamp) = data
+            val status = when {
+                systolic < 120 && diastolic < 80 -> HealthAlertStatus.OPTIMAL
+                systolic in 120..139 || diastolic in 80..89 -> HealthAlertStatus.WARNING
+                else -> HealthAlertStatus.CRITICAL
+            }
+            
+            val timeAgo = formatTimeAgo(timestamp)
+            
+            BiometricReading(
+                value = "$systolic/$diastolic",
+                status = status,
+                statusLabel = when (status) {
+                    HealthAlertStatus.OPTIMAL -> "NORMAL"
+                    HealthAlertStatus.WARNING -> "ELEVADA"
+                    HealthAlertStatus.CRITICAL -> "ALTA"
+                },
+                secondaryText = timeAgo,
+                timestamp = timestamp,
+                isAvailable = true
+            )
+        } else {
+            BiometricReading(
+                value = "--/--",
+                status = HealthAlertStatus.OPTIMAL,
+                statusLabel = "SIN DATOS",
+                secondaryText = "Toca para medir",
+                isAvailable = false
+            )
+        }
+    }
+    
+    private fun buildTemperatureReading(data: Pair<Float, Long>?): BiometricReading {
+        return if (data != null) {
+            val (tempCelsius, timestamp) = data
+            val status = when {
+                tempCelsius in 36.1f..37.2f -> HealthAlertStatus.OPTIMAL
+                tempCelsius in 37.3f..37.9f -> HealthAlertStatus.WARNING
+                else -> HealthAlertStatus.CRITICAL
+            }
+            
+            val timeAgo = formatTimeAgo(timestamp)
+            
+            BiometricReading(
+                value = String.format("%.1f°C", tempCelsius),
+                status = status,
+                statusLabel = when (status) {
+                    HealthAlertStatus.OPTIMAL -> "NORMAL"
+                    HealthAlertStatus.WARNING -> "ELEVADA"
+                    HealthAlertStatus.CRITICAL -> "FIEBRE"
+                },
+                secondaryText = timeAgo,
+                timestamp = timestamp,
+                isAvailable = true
+            )
+        } else {
+            BiometricReading(
+                value = "--°C",
+                status = HealthAlertStatus.OPTIMAL,
+                statusLabel = "SIN DATOS",
+                secondaryText = "Toca para medir",
+                isAvailable = false
+            )
+        }
+    }
+    
+    /**
+     * Format timestamp as "Hace X minutos/horas" for display.
+     */
+    private fun formatTimeAgo(timestamp: Long): String {
+        val elapsed = System.currentTimeMillis() - timestamp
+        val minutes = elapsed / 60_000
+        
+        return when {
+            minutes < 1 -> "Hace un momento"
+            minutes < 60 -> "Hace ${minutes.toInt()} min"
+            minutes < 120 -> "Hace 1 hora"
+            minutes < 1440 -> "Hace ${(minutes / 60).toInt()} horas"
+            else -> "Hace ${(minutes / 1440).toInt()} días"
         }
     }
     
@@ -822,6 +1073,56 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                 
             } catch (e: Exception) {
                 Log.e(TAG, "[MEASURE_REQUEST] ❌ Failed to send request", e)
+            }
+        }
+    }
+    
+    /**
+     * Open Samsung Health app for manual measurement.
+     * Uses Deep Links to navigate to specific measurement screens.
+     * 
+     * @param metric The metric to measure: "spo2", "blood_pressure", "temperature"
+     */
+    fun openSamsungHealthForMeasurement(metric: String) {
+        viewModelScope.launch(Dispatchers.Main) {
+            try {
+                val uri = when (metric.lowercase()) {
+                    "spo2" -> "shealth://tracker/bloodoxygen"
+                    "blood_pressure" -> "samsunghealthmonitor://blood_pressure"
+                    "temperature" -> "shealth://tracker/temperature"
+                    else -> "shealth://" // Generic Samsung Health launcher
+                }
+                
+                Log.d(TAG, "[DEEP_LINK] Opening Samsung Health: $uri")
+                
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    data = android.net.Uri.parse(uri)
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                
+                // Check if Samsung Health is installed
+                val packageManager = context.packageManager
+                val canHandle = intent.resolveActivity(packageManager) != null
+                
+                if (canHandle) {
+                    context.startActivity(intent)
+                    Log.d(TAG, "[DEEP_LINK] ✅ Samsung Health launched successfully")
+                } else {
+                    Log.w(TAG, "[DEEP_LINK] ⚠️ Samsung Health not installed or Deep Link not supported")
+                    
+                    // Fallback: Try opening Samsung Health main app
+                    val fallbackIntent = packageManager.getLaunchIntentForPackage("com.sec.android.app.shealth")
+                    if (fallbackIntent != null) {
+                        fallbackIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(fallbackIntent)
+                        Log.d(TAG, "[DEEP_LINK] ✅ Samsung Health main app launched (fallback)")
+                    } else {
+                        Log.e(TAG, "[DEEP_LINK] ❌ Samsung Health not found on device")
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "[DEEP_LINK] ❌ Failed to open Samsung Health", e)
             }
         }
     }

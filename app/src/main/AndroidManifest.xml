@@ -28,12 +28,22 @@
     <queries>
         <package android:name="com.samsung.android.app.shealth" />
         <package android:name="com.sec.android.app.shealth" />
+        <package android:name="com.samsung.android.samsunghealth" />
         <package android:name="com.google.android.wearable.app" />
         <!-- OAuth browsers -->
         <package android:name="com.android.chrome" />
         <package android:name="com.chrome.beta" />
         <package android:name="com.chrome.dev" />
         <package android:name="com.google.android.apps.chrome" />
+        <!-- Samsung Health Deep Links -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="shealth" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="samsunghealthmonitor" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.BROWSABLE" />

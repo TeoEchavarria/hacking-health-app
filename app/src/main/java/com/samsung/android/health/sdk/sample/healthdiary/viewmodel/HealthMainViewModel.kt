@@ -82,6 +82,7 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
                 Permission.of(DataTypes.STEPS, AccessType.READ),
                 Permission.of(DataTypes.SLEEP, AccessType.READ),
                 Permission.of(DataTypes.BLOOD_OXYGEN, AccessType.READ),
+                Permission.of(DataTypes.BLOOD_PRESSURE, AccessType.READ),
                 Permission.of(DataTypes.SKIN_TEMPERATURE, AccessType.READ),
                 Permission.of(DataTypes.NUTRITION, AccessType.READ),
                 Permission.of(DataTypes.HEART_RATE, AccessType.READ)
@@ -179,6 +180,7 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
                 Permission.of(DataTypes.STEPS, AccessType.READ),
                 Permission.of(DataTypes.SLEEP, AccessType.READ),
                 Permission.of(DataTypes.BLOOD_OXYGEN, AccessType.READ),
+                Permission.of(DataTypes.BLOOD_PRESSURE, AccessType.READ),
                 Permission.of(DataTypes.SKIN_TEMPERATURE, AccessType.READ),
                 Permission.of(DataTypes.NUTRITION, AccessType.READ),
                 Permission.of(DataTypes.HEART_RATE, AccessType.READ)
@@ -231,7 +233,19 @@ class HealthMainViewModel(private val healthDataStore: HealthDataStore) :
             val updatedCards = HealthMetricRegistry.metrics.map { definition ->
                 val value = runCatching { loadLatestValue(definition) }
                     .getOrElse { exception ->
-                        Log.w(TAG, "Error reading ${definition.dataType.name}", exception)
+                        when (exception) {
+                            is UnsupportedOperationException -> {
+                                // Goal types (sleep_goal, steps_goal, etc.) are write-only, not readable
+                                // This is expected behavior, no need to log
+                            }
+                            is com.samsung.android.sdk.health.data.error.AuthorizationException -> {
+                                // Permission not granted yet - expected on first launch
+                                Log.d(TAG, "Permission needed for ${definition.dataType.name}: ${exception.message}")
+                            }
+                            else -> {
+                                Log.w(TAG, "Error reading ${definition.dataType.name}", exception)
+                            }
+                        }
                         "--"
                     }
                 HealthMetricCardUiState(definition, value, false)

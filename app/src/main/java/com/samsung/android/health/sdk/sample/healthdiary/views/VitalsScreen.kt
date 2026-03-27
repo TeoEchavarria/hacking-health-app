@@ -129,7 +129,11 @@ fun VitalsScreen(
                 label = "Oxígeno (SpO2)",
                 reading = uiState.spO2,
                 onClick = {
-                    Toast.makeText(context, "SpO2 no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
+                    if (!uiState.spO2.isAvailable) {
+                        viewModel.openSamsungHealthForMeasurement("spo2")
+                    } else {
+                        Toast.makeText(context, "Historial de SpO2 próximamente", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
             
@@ -139,7 +143,11 @@ fun VitalsScreen(
                 label = "Presión Arterial",
                 reading = uiState.bloodPressure,
                 onClick = {
-                    Toast.makeText(context, "Presión arterial no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
+                    if (!uiState.bloodPressure.isAvailable) {
+                        viewModel.openSamsungHealthForMeasurement("blood_pressure")
+                    } else {
+                        Toast.makeText(context, "Historial de presión arterial próximamente", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
             
@@ -149,7 +157,11 @@ fun VitalsScreen(
                 label = "Temperatura",
                 reading = uiState.temperature,
                 onClick = {
-                    Toast.makeText(context, "Temperatura no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
+                    if (!uiState.temperature.isAvailable) {
+                        viewModel.openSamsungHealthForMeasurement("temperature")
+                    } else {
+                        Toast.makeText(context, "Historial de temperatura próximamente", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
         }
