@@ -41,6 +41,7 @@ fun MainScaffold(
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(BottomNavTab.DASHBOARD) }
+    var showTrackingScreen by remember { mutableStateOf(false) }
     val logoutState by profileViewModel.logoutState.collectAsState()
     
     // User profile data from HomeViewModel
@@ -79,7 +80,10 @@ fun MainScaffold(
         bottomBar = {
             TuSaludBottomBar(
                 selectedTab = selectedTab,
-                onTabSelected = { tab -> selectedTab = tab }
+                onTabSelected = { tab -> 
+                    selectedTab = tab
+                    showTrackingScreen = false // Reset tracking screen when changing tabs
+                }
             )
         },
         containerColor = SandboxBackground
@@ -89,27 +93,32 @@ fun MainScaffold(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (selectedTab) {
-                BottomNavTab.DASHBOARD -> {
-                    DashboardTabContent(
-                        userName = userName,
-                        onNavigateToSettings = onNavigateToSettings,
-                        onNavigateToTraining = onNavigateToTraining,
-                        onNavigateToHabits = onNavigateToHabits,
-                        onNavigateToHeartRateHistory = onNavigateToHeartRateHistory,
-                        onNavigateToStepsHistory = onNavigateToStepsHistory,
-                        onNavigateToSleepHistory = onNavigateToSleepHistory
-                    )
+            // Main tab content
+            if (!showTrackingScreen) {
+                when (selectedTab) {
+                    BottomNavTab.DASHBOARD -> {
+                        DashboardTabContent(
+                            userName = userName,
+                            onNavigateToSettings = onNavigateToSettings,
+                            onNavigateToTraining = onNavigateToTraining,
+                            onNavigateToHabits = onNavigateToHabits,
+                            onNavigateToHeartRateHistory = onNavigateToHeartRateHistory,
+                            onNavigateToStepsHistory = onNavigateToStepsHistory,
+                            onNavigateToSleepHistory = onNavigateToSleepHistory
+                        )
+                    }
+                    BottomNavTab.VITALS -> {
+                        VitalsScreen(
+                            onNavigateToTracking = { showTrackingScreen = true }
+                        )
+                    }
+                    BottomNavTab.CALENDAR -> {
+                        CalendarScreen()
+                    }
                 }
-                BottomNavTab.TRACKING -> {
-                    TrackingScreen()
-                }
-                BottomNavTab.VITALS -> {
-                    VitalsScreen()
-                }
-                BottomNavTab.CALENDAR -> {
-                    CalendarScreen()
-                }
+            } else {
+                // Tracking screen overlay
+                TrackingScreen()
             }
         }
     }

@@ -8,11 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,7 +35,6 @@ enum class BottomNavTab(
     val iconOutlined: ImageVector
 ) {
     DASHBOARD("Dashboard", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
-    TRACKING("Tracking", Icons.Filled.LocationOn, Icons.Outlined.LocationOn),
     VITALS("Vitals", Icons.Filled.MonitorHeart, Icons.Outlined.MonitorHeart),
     CALENDAR("Calendar", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
 }
@@ -45,10 +42,9 @@ enum class BottomNavTab(
 /**
  * Tu Salud Bottom Navigation Bar
  * 
- * Fixed bottom navigation with 4 tabs:
+ * Fixed bottom navigation with 3 tabs:
  * - Dashboard (home)
- * - Tracking (location/GPS)
- * - Vitals (health metrics)
+ * - Vitals (health metrics & notifications)
  * - Calendar (schedule)
  */
 @Composable

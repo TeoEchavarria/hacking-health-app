@@ -1,5 +1,6 @@
 package com.samsung.android.health.sdk.sample.healthdiary.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,20 +15,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.samsung.android.health.sdk.sample.healthdiary.model.LocationData
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
 
 /**
  * Map Preview Card
  * 
- * Shows a map preview with the current GPS location.
+ * Shows a visual map preview with the current GPS location.
  * Clickable to navigate to full map/tracking screen.
  */
 @Composable
@@ -44,13 +46,11 @@ fun MapPreviewCard(
             .shadow(2.dp, RoundedCornerShape(32.dp))
             .clickable(onClick = onClick)
     ) {
-        // Map image or placeholder
+        // Map background with visual representation
         if (location != null) {
-            AsyncImage(
-                model = location.getStaticMapUrl(apiKey = ""), // TODO: Add Google Maps API key
-                contentDescription = "Mapa de ubicación",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+            MapVisualBackground(
+                latitude = location.latitude,
+                longitude = location.longitude
             )
         } else {
             // Placeholder when no location
@@ -138,7 +138,7 @@ fun MapPreviewCard(
                     
                     Column {
                         Text(
-                            text = "Ubicación GPS",
+                            text = location?.address ?: "Ubicación GPS",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -173,6 +173,132 @@ fun MapPreviewCard(
                         fontSize = 12.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Visual map background using Canvas drawing
+ * Creates a stylized map appearance without requiring external APIs
+ */
+@Composable
+private fun MapVisualBackground(
+    latitude: Double,
+    longitude: Double,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF1E88E5),
+                        Color(0xFF42A5F5)
+                    )
+                )
+            )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            
+            // Draw "streets" as a grid pattern
+            val gridColor = Color.White.copy(alpha = 0.3f)
+            val gridSpacing = 60f
+            
+            // Vertical lines
+            var x = (longitude % 1 * gridSpacing).toFloat()
+            while (x < width) {
+                drawLine(
+                    color = gridColor,
+                    start = Offset(x, 0f),
+                    end = Offset(x, height),
+                    strokeWidth = 2f
+                )
+                x += gridSpacing
+            }
+            
+            // Horizontal lines
+            var y = (latitude % 1 * gridSpacing).toFloat()
+            while (y < height) {
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(width, y),
+                    strokeWidth = 2f
+                )
+                y += gridSpacing
+            }
+            
+            // Draw curved "roads"
+            val roadColor = Color.White.copy(alpha = 0.4f)
+            val path = Path()
+            
+            // Curved road 1
+            path.moveTo(0f, height * 0.3f)
+            path.cubicTo(
+                width * 0.3f, height * 0.2f,
+                width * 0.6f, height * 0.5f,
+                width, height * 0.4f
+            )
+            drawPath(
+                path = path,
+                color = roadColor,
+                style = Stroke(width = 4f)
+            )
+            
+            // Curved road 2
+            val path2 = Path()
+            path2.moveTo(0f, height * 0.7f)
+            path2.cubicTo(
+                width * 0.4f, height * 0.8f,
+                width * 0.7f, height * 0.6f,
+                width, height * 0.75f
+            )
+            drawPath(
+                path = path2,
+                color = roadColor,
+                style = Stroke(width = 4f)
+            )
+            
+            // Draw location marker (red pin)
+            val markerX = width / 2
+            val markerY = height / 2
+            val markerRadius = 12f
+            
+            // Outer glow
+            drawCircle(
+                color = Color.Red.copy(alpha = 0.3f),
+                radius = markerRadius * 2,
+                center = Offset(markerX, markerY)
+            )
+            
+            // Main marker
+            drawCircle(
+                color = Color.Red,
+                radius = markerRadius,
+                center = Offset(markerX, markerY)
+            )
+            
+            // Inner dot
+            drawCircle(
+                color = Color.White,
+                radius = markerRadius * 0.4f,
+                center = Offset(markerX, markerY)
+            )
+            
+            // Draw "buildings" as small rectangles
+            val buildingColor = Color.White.copy(alpha = 0.2f)
+            for (i in 0..8) {
+                val bx = (width * 0.15f) + (i % 3) * (width * 0.3f)
+                val by = (height * 0.2f) + (i / 3) * (height * 0.25f)
+                drawRect(
+                    color = buildingColor,
+                    topLeft = Offset(bx, by),
+                    size = androidx.compose.ui.geometry.Size(25f, 25f)
+                )
             }
         }
     }
