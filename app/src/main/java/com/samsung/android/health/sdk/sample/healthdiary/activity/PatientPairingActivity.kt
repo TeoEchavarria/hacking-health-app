@@ -41,6 +41,10 @@ class PatientPairingActivity : ComponentActivity() {
                         onBack = {
                             Log.i(TAG, "User cancelled pairing")
                             finish()
+                        },
+                        onSkip = {
+                            Log.i(TAG, "User skipped pairing (testing mode)")
+                            navigateToWatchOnboarding()
                         }
                     )
                 }
@@ -64,6 +68,19 @@ class PatientPairingActivity : ComponentActivity() {
             putExtra("PAIRED_CAREGIVER_ID", caregiverId)
             putExtra("PAIRED_CAREGIVER_NAME", caregiverName)
             putExtra("PAIRING_ID", pairingId)
+        }
+        
+        startActivity(intent)
+        finish()
+    }
+    
+    /**
+     * Navigate to watch onboarding without pairing (testing mode).
+     */
+    private fun navigateToWatchOnboarding() {
+        val intent = Intent(this, WatchOnboardingActivity::class.java).apply {
+            // Clear back stack
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         
         startActivity(intent)

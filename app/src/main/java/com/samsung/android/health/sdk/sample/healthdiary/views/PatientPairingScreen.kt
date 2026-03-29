@@ -48,7 +48,8 @@ import kotlin.math.max
 @Composable
 fun PatientPairingScreen(
     onPairingSuccess: (String, String, String) -> Unit, // pairingId, caregiverId, caregiverName
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onSkip: () -> Unit = {} // Skip pairing and continue without caregiver
 ) {
     val context = LocalContext.current
     val viewModel: PairingViewModel = viewModel(
@@ -122,7 +123,8 @@ fun PatientPairingScreen(
                         code = state.code,
                         expiresAt = state.expiresAt,
                         onCopy = { copyToClipboard(context, state.code) },
-                        onRegenerate = { viewModel.refreshCode() }
+                        onRegenerate = { viewModel.refreshCode() },
+                        onSkip = onSkip
                     )
                 }
                 is PairingUiState.PairingSuccess -> {
@@ -245,7 +247,8 @@ private fun CodeGeneratedContent(
     code: String,
     expiresAt: Long,
     onCopy: () -> Unit,
-    onRegenerate: () -> Unit
+    onRegenerate: () -> Unit,
+    onSkip: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -300,7 +303,21 @@ private fun CodeGeneratedContent(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Skip button
+        TextButton(
+            onClick = onSkip,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Continuar sin cuidador por ahora",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
         
         // Info card
         InfoCard()
