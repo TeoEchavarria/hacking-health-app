@@ -17,7 +17,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
 
 /**
  * Main Room database for the Health Diary application
- * Version 13: Added LocationPointEntity for GPS tracking feature
+ * Version 14: Added PairingEntity for caregiver-patient linking feature
  */
 @Database(
     entities = [
@@ -37,9 +37,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         WatchSleepEntity::class,
         WatchDailySummaryEntity::class,
         PairedDeviceEntity::class,
-        LocationPointEntity::class
+        LocationPointEntity::class,
+        PairingEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -59,6 +60,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun watchHealthDao(): WatchHealthDao
     abstract fun pairedDeviceDao(): PairedDeviceDao
     abstract fun locationDao(): LocationDao
+    abstract fun pairingDao(): PairingDao
 
     companion object {
         @Volatile
@@ -460,6 +462,34 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create pairings table for caregiver-patient linking
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS pairings (
+                        pairingId TEXT PRIMARY KEY NOT NULL,
+                        caregiverId TEXT,
+                        caregiverName TEXT,
+                        patientId TEXT,
+                        patientName TEXT,
+                        code TEXT,
+                        status TEXT NOT NULL,
+                        userRole TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        expiresAt INTEGER,
+                        activatedAt INTEGER,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Create indexes for efficient queries
+                database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_pairings_pairingId ON pairings(pairingId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_pairings_code ON pairings(code)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_pairings_caregiverId ON pairings(caregiverId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_pairings_patientId ON pairings(patientId)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -467,7 +497,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

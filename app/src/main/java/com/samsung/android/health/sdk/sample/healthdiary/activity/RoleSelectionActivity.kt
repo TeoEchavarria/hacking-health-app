@@ -67,8 +67,8 @@ class RoleSelectionActivity : ComponentActivity() {
     
     /**
      * Handle role selection and navigate to appropriate screen.
-     * - CAREGIVER → FamilyLinkActivity (link with family member)
-     * - PATIENT → WatchOnboardingActivity (connect Galaxy Watch)
+     * - CAREGIVER → CaregiverPairingActivity (enter patient code)
+     * - PATIENT → PatientPairingActivity (generate code for caregiver)
      */
     private fun handleRoleSelection(role: UserRole) {
         // Save role to SharedPreferences
@@ -77,12 +77,12 @@ class RoleSelectionActivity : ComponentActivity() {
         // Navigate based on role
         val targetActivity = when (role) {
             UserRole.CAREGIVER -> {
-                Log.i(TAG, "Navigating to FamilyLinkActivity (caregiver flow)")
-                FamilyLinkActivity::class.java
+                Log.i(TAG, "Navigating to CaregiverPairingActivity (caregiver flow)")
+                CaregiverPairingActivity::class.java
             }
             UserRole.PATIENT -> {
-                Log.i(TAG, "Navigating to WatchOnboardingActivity (patient flow)")
-                WatchOnboardingActivity::class.java
+                Log.i(TAG, "Navigating to PatientPairingActivity (patient flow)")
+                PatientPairingActivity::class.java
             }
         }
         

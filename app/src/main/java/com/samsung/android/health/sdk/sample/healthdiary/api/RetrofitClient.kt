@@ -206,6 +206,7 @@ object RetrofitClient {
     val authApiService: AuthApiService by lazy { retrofit.create(AuthApiService::class.java) }
     val omhSyncApiService: OmhSyncApiService by lazy { omhRetrofit.create(OmhSyncApiService::class.java) }
     val updateApi: UpdateApi by lazy { retrofit.create(UpdateApi::class.java) }
+    val pairingApiService: PairingApiService by lazy { retrofit.create(PairingApiService::class.java) }
     
     // GitHub API client for releases (OTA updates)
     private val githubOkHttpClient = OkHttpClient.Builder()

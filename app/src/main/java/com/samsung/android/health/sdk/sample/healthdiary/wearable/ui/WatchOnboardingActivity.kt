@@ -69,7 +69,7 @@ class WatchOnboardingActivity : ComponentActivity() {
             // Just finish, return to where we came from
             finish()
         } else {
-            // Navigate to main activity and clear back stack
+            // Navigate to main health dashboard
             val intent = Intent(this, HealthMainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }

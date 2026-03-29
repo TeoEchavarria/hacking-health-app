@@ -113,6 +113,20 @@
             android:theme="@style/Theme.MyApplication"
             android:screenOrientation="portrait" />
 
+        <!-- Caregiver pairing screen - enter patient code -->
+        <activity
+            android:name=".activity.CaregiverPairingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
+        <!-- Patient pairing screen - generate code for caregiver -->
+        <activity
+            android:name=".activity.PatientPairingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".habit.HabitConfirmationActivity"
             android:exported="false"

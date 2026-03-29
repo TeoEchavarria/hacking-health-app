@@ -187,6 +187,9 @@ dependencies {
     
     // Coil for image loading in Compose
     implementation "io.coil-kt:coil-compose:2.6.0"
+    
+    // Accompanist for Permissions
+    implementation "com.google.accompanist:accompanist-permissions:0.34.0"
 
     // Retrofit and OkHttp for API calls
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
