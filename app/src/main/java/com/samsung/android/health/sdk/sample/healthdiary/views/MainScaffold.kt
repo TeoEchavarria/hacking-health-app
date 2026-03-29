@@ -30,6 +30,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.DeviceConnect
 @Composable
 fun MainScaffold(
     onNavigateToSettings: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onNavigateToTraining: () -> Unit = {},
     onNavigateToHabits: () -> Unit = {},
     onNavigateToHeartRateHistory: () -> Unit = {},
@@ -74,7 +75,8 @@ fun MainScaffold(
             TuSaludTopBar(
                 userName = userName,
                 isConnected = isConnected,
-                onSensorsClick = onNavigateToSettings
+                onSensorsClick = onNavigateToSettings,
+                onAvatarClick = onNavigateToProfile
             )
         },
         bottomBar = {

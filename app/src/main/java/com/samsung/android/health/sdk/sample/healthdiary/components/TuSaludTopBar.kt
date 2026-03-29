@@ -37,6 +37,7 @@ fun TuSaludTopBar(
     userName: String = "",
     isConnected: Boolean = false,
     onSensorsClick: () -> Unit = {},
+    onAvatarClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -58,20 +59,25 @@ fun TuSaludTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // User Avatar - placeholder with initial
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(SandboxSecondaryContainer),
-                    contentAlignment = Alignment.Center
+                // User Avatar - clickeable to open profile
+                IconButton(
+                    onClick = onAvatarClick,
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Text(
-                        text = userName.firstOrNull()?.uppercase() ?: "U",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = SandboxPrimary
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(SandboxSecondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = userName.firstOrNull()?.uppercase() ?: "U",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = SandboxPrimary
+                        )
+                    }
                 }
                 
                 // Brand Name

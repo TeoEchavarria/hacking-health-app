@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object Profile : Screen("profile")
     object LegacyHome : Screen("legacy_home")
     object PreviousVersion : Screen("previous_version")
     object Logs : Screen("logs")
@@ -77,6 +78,7 @@ fun NavGraph() {
         composable(Screen.Home.route) {
             MainScaffold(
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
                 onNavigateToHeartRateHistory = { navController.navigate(Screen.HeartRateHistory.route) },
@@ -91,6 +93,20 @@ fun NavGraph() {
                     // Finish current activity
                     activity?.finish()
                 }
+            )
+        }
+        
+        // Profile Screen
+        composable(Screen.Profile.route) {
+            ProfileScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToNotifications = { 
+                    // TODO: Navigate to notifications screen when implemented
+                },
+                onNavigateToSecurity = { 
+                    // TODO: Navigate to security screen when implemented
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         

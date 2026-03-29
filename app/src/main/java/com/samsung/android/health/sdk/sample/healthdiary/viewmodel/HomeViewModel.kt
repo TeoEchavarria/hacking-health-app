@@ -2,6 +2,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,10 +13,13 @@ import java.util.Locale
 
 data class UserProfile(
     val name: String = "John Doe",
+    val email: String = "user@example.com",
     val age: Int = 30,
     val gender: String = "Male",
     val height: Int = 175, // cm
-    val weight: Int = 70   // kg
+    val weight: Int = 70,   // kg
+    val role: UserRole = UserRole.PATIENT,
+    val avatarUrl: String? = null
 )
 
 data class HomeUiState(
@@ -39,11 +43,14 @@ class HomeViewModel : ViewModel() {
         // Mock data for now
         _uiState.value = _uiState.value.copy(
             userProfile = UserProfile(
-                name = "Teo Echavarria",
-                age = 28,
-                gender = "Male",
-                height = 180,
-                weight = 75
+                name = "Lucía Méndez",
+                email = "lucia.mendez@serenecare.com",
+                age = 42,
+                gender = "Female",
+                height = 165,
+                weight = 62,
+                role = UserRole.CAREGIVER,
+                avatarUrl = null
             )
         )
     }
