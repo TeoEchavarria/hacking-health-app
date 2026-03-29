@@ -16,6 +16,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxBackgro
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HomeViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogoutState
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.ProfileViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.DeviceConnectionStatus
 
 /**
  * Main Scaffold - Tu Salud
@@ -46,6 +47,12 @@ fun MainScaffold(
     val homeUiState by homeViewModel.uiState.collectAsState()
     val userName = homeUiState.userProfile.name.split(" ").firstOrNull() ?: ""
     
+    // Health Dashboard ViewModel for connection status
+    val healthDashboardViewModel = remember { 
+        com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthDashboardViewModel(context) 
+    }
+    val dashboardUiState by healthDashboardViewModel.uiState.collectAsState()
+    
     // Handle logout success
     LaunchedEffect(logoutState) {
         if (logoutState is LogoutState.Success) {
@@ -56,8 +63,16 @@ fun MainScaffold(
     
     Scaffold(
         topBar = {
+            // Determine connection status from dashboardViewModel
+            val isConnected = when (dashboardUiState.connectionStatus) {
+                is DeviceConnectionStatus.Connected,
+                is DeviceConnectionStatus.Verified -> true
+                else -> false
+            }
+            
             TuSaludTopBar(
                 userName = userName,
+                isConnected = isConnected,
                 onSensorsClick = onNavigateToSettings
             )
         },
@@ -116,7 +131,7 @@ fun MainScaffold(
  * Dashboard Tab Content
  * 
  * Main dashboard view with:
- * - Wearable status card
+ * - Health tip nudge card
  * - AI interaction button
  * - Emergency button
  */
@@ -131,19 +146,6 @@ fun DashboardTabContent(
     onNavigateToSleepHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val viewModel = remember { 
-        com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthDashboardViewModel(context) 
-    }
-    val uiState by viewModel.uiState.collectAsState()
-    
-    // Determine connection status
-    val isConnected = when (uiState.connectionStatus) {
-        is com.samsung.android.health.sdk.sample.healthdiary.viewmodel.DeviceConnectionStatus.Connected,
-        is com.samsung.android.health.sdk.sample.healthdiary.viewmodel.DeviceConnectionStatus.Verified -> true
-        else -> false
-    }
-    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -151,13 +153,10 @@ fun DashboardTabContent(
             .padding(top = 16.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Section: Wearable Status
-        WearableStatusCard(
-            deviceName = uiState.connectedDevice?.alias ?: "Dispositivo Wearable",
-            deviceModel = uiState.connectedDevice?.deviceName ?: "Sin dispositivo conectado",
-            isConnected = isConnected,
-            isLoading = uiState.isLoadingDevice,
-            onClick = onNavigateToSettings
+        // Top Section: Health Tip Nudge
+        HealthTipNudgeCard(
+            userName = userName,
+            tipText = "Un pequeño paseo de 5 min te vendría genial ahora."
         )
         
         // Middle Section: AI Interaction
