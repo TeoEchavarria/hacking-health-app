@@ -136,11 +136,6 @@ fun VitalsScreen(
             }
         }
         
-        // 4. Day Summary Card
-        uiState.daySummary?.let { summary ->
-            DaySummaryCard(summary = summary)
-        }
-        
         // Loading indicator
         if (uiState.isLoading) {
             Box(

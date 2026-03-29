@@ -16,7 +16,6 @@ data class VitalsUiState(
     val currentAlert: HealthAlert? = null,
     val lastLocation: LocationData? = null,
     val notifications: List<Notification> = emptyList(),
-    val daySummary: DaySummary? = null,
     val isLoading: Boolean = false
 )
 
@@ -64,13 +63,6 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                     accuracy = 10f
                 )
                 
-                // Mock day summary
-                val mockSummary = DaySummary(
-                    steps = 2450,
-                    sleepHours = 7.7f,
-                    description = "Estado general estable. La tendencia de presión sugiere evitar esfuerzos intensos en las próximas 4h."
-                )
-                
                 // Mock urgent alert (simulating high blood pressure)
                 val mockAlert = HealthAlert(
                     title = "Alerta: Presión Arterial Elevada",
@@ -84,7 +76,6 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                         currentAlert = mockAlert,
                         lastLocation = mockLocation,
                         notifications = mockNotifications,
-                        daySummary = mockSummary,
                         isLoading = false
                     )
                 }
