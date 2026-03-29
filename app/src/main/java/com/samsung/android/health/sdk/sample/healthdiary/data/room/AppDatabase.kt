@@ -17,7 +17,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
 
 /**
  * Main Room database for the Health Diary application
- * Version 12: Added PairedDeviceEntity for watch device management
+ * Version 13: Added LocationPointEntity for GPS tracking feature
  */
 @Database(
     entities = [
@@ -36,9 +36,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         WatchHeartRateEntity::class,
         WatchSleepEntity::class,
         WatchDailySummaryEntity::class,
-        PairedDeviceEntity::class
+        PairedDeviceEntity::class,
+        LocationPointEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -57,6 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun habitReminderTimeDao(): HabitReminderTimeDao
     abstract fun watchHealthDao(): WatchHealthDao
     abstract fun pairedDeviceDao(): PairedDeviceDao
+    abstract fun locationDao(): LocationDao
 
     companion object {
         @Volatile
@@ -434,6 +436,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create location_points table for GPS tracking
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS location_points (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        latitude REAL NOT NULL,
+                        longitude REAL NOT NULL,
+                        address TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        activityType TEXT NOT NULL,
+                        notes TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                
+                // Create index for timestamp queries (24h lookups)
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS index_location_points_timestamp 
+                    ON location_points(timestamp)
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -441,7 +467,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance
