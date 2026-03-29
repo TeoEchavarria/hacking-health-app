@@ -99,6 +99,20 @@
             android:theme="@style/Theme.MyApplication"
             android:screenOrientation="portrait" />
 
+        <!-- Role selection screen - shown after login -->
+        <activity
+            android:name=".activity.RoleSelectionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
+        <!-- Family linking screen - for caregivers -->
+        <activity
+            android:name=".activity.FamilyLinkActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".habit.HabitConfirmationActivity"
             android:exported="false"

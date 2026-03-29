@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.R
 import com.samsung.android.health.sdk.sample.healthdiary.activity.HealthMainActivity
+import com.samsung.android.health.sdk.sample.healthdiary.activity.RoleSelectionActivity
+import com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.ui.WatchOnboardingActivity
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.ui.isWatchOnboardingComplete
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.LoginRequest
@@ -301,16 +303,31 @@ private fun GoogleSignInButton(
 }
 
 /**
- * Navigate to the main activity (optionally through onboarding) and clear the back stack.
+ * Navigate to the main activity (optionally through role selection and onboarding) and clear the back stack.
+ * 
+ * Navigation flow:
+ * 1. Check role selection completion → if not complete, go to RoleSelectionActivity
+ * 2. If role selected, check watch onboarding → if not complete, go to WatchOnboardingActivity (for PATIENT role)
+ * 3. If all completed, go to HealthMainActivity
  */
 private fun navigateToMainActivity(context: android.content.Context) {
-    // Check if watch onboarding has been completed
-    val shouldShowOnboarding = !isWatchOnboardingComplete(context)
+    // Step 1: Check if role selection has been completed
+    val isRoleSelected = UserRole.isRoleSelectionComplete(context)
     
-    val targetActivity = if (shouldShowOnboarding) {
-        WatchOnboardingActivity::class.java
-    } else {
-        HealthMainActivity::class.java
+    val targetActivity = when {
+        // Role not selected yet - show role selection screen first
+        !isRoleSelected -> {
+            RoleSelectionActivity::class.java
+        }
+        // Role selected, check if watch onboarding needed (only for PATIENT role)
+        // NOTE: CAREGIVER users go through FamilyLinkActivity, which is handled in RoleSelectionActivity
+        !isWatchOnboardingComplete(context) -> {
+            WatchOnboardingActivity::class.java
+        }
+        // All onboarding completed
+        else -> {
+            HealthMainActivity::class.java
+        }
     }
     
     val intent = android.content.Intent(context, targetActivity)
