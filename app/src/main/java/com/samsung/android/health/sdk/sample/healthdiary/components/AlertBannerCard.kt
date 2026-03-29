@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
-import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthAlert
+import com.samsung.android.health.sdk.sample.healthdiary.model.HealthAlert
 
 /**
  * Alert Banner Card

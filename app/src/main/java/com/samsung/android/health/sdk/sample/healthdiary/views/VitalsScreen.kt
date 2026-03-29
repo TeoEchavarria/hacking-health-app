@@ -11,22 +11,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.VitalsViewModel
 
 /**
- * Vitals Screen
+ * Vitals Screen - Monitoring & Notifications
  * 
- * Biometric dashboard showing:
- * - Urgent alert banner (when applicable)
- * - Health tip card
- * - Biometric analysis (SpO2, Blood Pressure, Temperature)
- * - Day summary (steps + sleep)
+ * NEW design focused on:
+ * - Urgent health alerts
+ * - GPS location tracking
+ * - Recent notifications
+ * - Day summary
+ * 
+ * Note: Biometric data moved to BiometricsScreen
  */
 @Composable
 fun VitalsScreen(
+    onNavigateToTracking: () -> Unit = {},
+    onNavigateToBiometrics: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -38,143 +41,116 @@ fun VitalsScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
-            .padding(top = 16.dp, bottom = 48.dp),
+            .padding(top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Alert Banner (only if there's a critical alert)
+        // 1. Urgent Alert Banner (conditional)
         uiState.currentAlert?.let { alert ->
             AlertBannerCard(
                 alert = alert,
                 onViewClick = {
-                    Toast.makeText(context, "Detalles de alerta próximamente", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Ver detalles de alerta", Toast.LENGTH_SHORT).show()
                 },
                 onDismiss = { viewModel.dismissAlert() }
             )
         }
         
-        // Health Tip Card
-        HealthTipCard(
-            tip = uiState.healthTip,
-            onActionClick = {
-                Toast.makeText(context, "Próximamente", Toast.LENGTH_SHORT).show()
+        // 2. Map Preview Card
+        MapPreviewCard(
+            location = uiState.lastLocation,
+            onClick = {
+                onNavigateToTracking()
+                Toast.makeText(context, "Abrir mapa completo", Toast.LENGTH_SHORT).show()
             }
         )
         
-        // Biometric Analysis Section - Data from Watch
+        // 3. Notifications Section
         Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section Header
+            // Section header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Datos del Reloj",
-                    style = MaterialTheme.typography.headlineSmall,
+                    text = "Últimas Notificaciones",
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = SandboxPrimary
                 )
-                
-                Text(
-                    text = uiState.lastUpdateTime.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = SandboxSecondary,
-                    letterSpacing = 1.sp
-                )
             }
             
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // Heart Rate (full width - primary metric from watch)
-            BiometricCard(
-                type = BiometricType.HEART_RATE,
-                label = "Ritmo Cardíaco",
-                reading = uiState.heartRate,
-                onClick = {
-                    Toast.makeText(context, "Historial de ritmo cardíaco próximamente", Toast.LENGTH_SHORT).show()
+            // Notifications list (show top 5)
+            if (uiState.notifications.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay notificaciones recientes",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SandboxSecondary
+                    )
                 }
-            )
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    uiState.notifications.take(5).forEach { notification ->
+                        NotificationItem(
+                            notification = notification,
+                            onClick = {
+                                viewModel.markNotificationAsRead(notification.id)
+                                Toast.makeText(
+                                    context,
+                                    "Ver detalles de: ${notification.title}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
+                }
+            }
+            
+            // "Ver más" button (if more than 5 notifications)
+            if (uiState.notifications.size > 5) {
+                TextButton(
+                    onClick = {
+                        viewModel.loadMoreNotifications()
+                        Toast.makeText(context, "Ver más notificaciones", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(
+                        text = "Ver más",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = SandboxPrimary
+                    )
+                }
+            }
         }
         
-        // Day Summary Card (Steps + Sleep from watch)
-        DaySummaryCard(
-            summary = uiState.daySummary
-        )
-        
-        // Other Biometrics Section - Not available from watch
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Otros Indicadores",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = SandboxSecondary
-            )
-            
-            Text(
-                text = "Estos datos requieren dispositivos adicionales",
-                style = MaterialTheme.typography.bodySmall,
-                color = SandboxSecondary.copy(alpha = 0.7f)
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            // SpO2 (full width)
-            BiometricCard(
-                type = BiometricType.SPO2,
-                label = "Oxígeno (SpO2)",
-                reading = uiState.spO2,
-                onClick = {
-                    if (!uiState.spO2.isAvailable) {
-                        viewModel.openSamsungHealthForMeasurement("spo2")
-                    } else {
-                        Toast.makeText(context, "Historial de SpO2 próximamente", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-            
-            // Blood Pressure (full width)
-            BiometricCard(
-                type = BiometricType.BLOOD_PRESSURE,
-                label = "Presión Arterial",
-                reading = uiState.bloodPressure,
-                onClick = {
-                    if (!uiState.bloodPressure.isAvailable) {
-                        viewModel.openSamsungHealthForMeasurement("blood_pressure")
-                    } else {
-                        Toast.makeText(context, "Historial de presión arterial próximamente", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
-            
-            // Temperature (full width)
-            BiometricCard(
-                type = BiometricType.TEMPERATURE,
-                label = "Temperatura",
-                reading = uiState.temperature,
-                onClick = {
-                    if (!uiState.temperature.isAvailable) {
-                        viewModel.openSamsungHealthForMeasurement("temperature")
-                    } else {
-                        Toast.makeText(context, "Historial de temperatura próximamente", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
+        // 4. Day Summary Card
+        uiState.daySummary?.let { summary ->
+            DaySummaryCard(summary = summary)
         }
         
         // Loading indicator
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
