@@ -31,6 +31,18 @@ data class DeviceInfo(
 )
 
 /**
+ * OpenWearables credentials returned from OAuth login.
+ */
+data class OAuthOpenWearablesCredentials(
+    @SerializedName("ow_user_id")
+    val owUserId: String?,
+    @SerializedName("ow_access_token")
+    val owAccessToken: String?,
+    @SerializedName("ow_refresh_token")
+    val owRefreshToken: String?
+)
+
+/**
  * OAuth2-compliant token response from backend.
  */
 data class OAuthTokenResponse(
@@ -41,7 +53,9 @@ data class OAuthTokenResponse(
     @SerializedName("token_type")
     val tokenType: String = "Bearer",
     @SerializedName("expires_in")
-    val expiresIn: Int
+    val expiresIn: Int,
+    @SerializedName("open_wearables")
+    val openWearables: OAuthOpenWearablesCredentials? = null
 )
 
 /**

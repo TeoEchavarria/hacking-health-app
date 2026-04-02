@@ -10,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -33,6 +34,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.utils.showErrorToast
 import com.samsung.android.health.sdk.sample.healthdiary.utils.showToast
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthMainViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.OpenWearablesViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.SyncViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.views.NavGraph
 import com.samsung.android.sdk.health.data.helper.SdkVersion
@@ -60,6 +62,7 @@ class HealthMainActivity : AppCompatActivity() {
 
     private lateinit var healthMainViewModel: HealthMainViewModel
     private lateinit var syncViewModel: SyncViewModel
+    private val openWearablesViewModel: OpenWearablesViewModel by viewModels()
     // private lateinit var binding: HealthMainBinding // Removed DataBinding
     private val debugGson = Gson()
 
@@ -292,6 +295,10 @@ class HealthMainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         healthMainViewModel.refreshMetricCards()
+        
+        // OpenWearables SDK lifecycle
+        openWearablesViewModel.setActivity(this)
+        openWearablesViewModel.onForeground()
     }
 
     /*
@@ -320,6 +327,10 @@ class HealthMainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         healthMainViewModel.setDefaultValueToExceptionResponse()
+        
+        // OpenWearables SDK lifecycle
+        openWearablesViewModel.onBackground()
+        openWearablesViewModel.setActivity(null)
     }
 
     /*

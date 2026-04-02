@@ -31,6 +31,7 @@ sealed class Screen(val route: String) {
     object HeartRateHistory : Screen("heart_rate_history")
     object StepsHistory : Screen("steps_history")
     object SleepHistory : Screen("sleep_history")
+    object OpenWearables : Screen("open_wearables")
     data class WorkoutPlayer(val routineId: String? = null, val sessionId: String? = null) : Screen("workout_player?routineId=$routineId&sessionId=$sessionId")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
@@ -172,8 +173,14 @@ fun NavGraph() {
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToLegacyHome = { navController.navigate(Screen.PreviousVersion.route) }
+                onNavigateToLegacyHome = { navController.navigate(Screen.PreviousVersion.route) },
+                onNavigateToOpenWearables = { navController.navigate(Screen.OpenWearables.route) }
             )
+        }
+        
+        // OpenWearables Health Connect Screen
+        composable(Screen.OpenWearables.route) {
+            OpenWearablesScreen()
         }
         
         // Health Metric History Screens

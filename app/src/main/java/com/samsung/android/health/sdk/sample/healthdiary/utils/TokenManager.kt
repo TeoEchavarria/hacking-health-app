@@ -108,6 +108,10 @@ object TokenManager {
             ?.remove(KEY_REFRESH)
             ?.remove(KEY_EXPIRY)
             ?.remove(KEY_AUTH_METHOD)
+            // Also clear OpenWearables credentials
+            ?.remove(KEY_OW_USER_ID)
+            ?.remove(KEY_OW_ACCESS_TOKEN)
+            ?.remove(KEY_OW_REFRESH_TOKEN)
             ?.apply()
     }
     
@@ -219,6 +223,72 @@ object TokenManager {
         } catch (e: Exception) {
             emptyList()
         }
+    }
+    
+    // ==========================================================================
+    // OpenWearables Credentials
+    // ==========================================================================
+    
+    private const val KEY_OW_USER_ID = "ow_user_id"
+    private const val KEY_OW_ACCESS_TOKEN = "ow_access_token"
+    private const val KEY_OW_REFRESH_TOKEN = "ow_refresh_token"
+    
+    /**
+     * Save OpenWearables credentials received from login.
+     */
+    fun saveOpenWearablesCredentials(
+        userId: String?,
+        accessToken: String?,
+        refreshToken: String?
+    ) {
+        if (userId.isNullOrBlank() || accessToken.isNullOrBlank()) return
+        
+        encryptedPrefs?.edit()
+            ?.putString(KEY_OW_USER_ID, userId)
+            ?.putString(KEY_OW_ACCESS_TOKEN, accessToken)
+            ?.putString(KEY_OW_REFRESH_TOKEN, refreshToken)
+            ?.apply()
+    }
+    
+    /**
+     * Get OpenWearables user ID.
+     */
+    fun getOpenWearablesUserId(): String? {
+        return encryptedPrefs?.getString(KEY_OW_USER_ID, null)
+    }
+    
+    /**
+     * Get OpenWearables access token.
+     */
+    fun getOpenWearablesAccessToken(): String? {
+        return encryptedPrefs?.getString(KEY_OW_ACCESS_TOKEN, null)
+    }
+    
+    /**
+     * Get OpenWearables refresh token.
+     */
+    fun getOpenWearablesRefreshToken(): String? {
+        return encryptedPrefs?.getString(KEY_OW_REFRESH_TOKEN, null)
+    }
+    
+    /**
+     * Check if OpenWearables credentials exist.
+     */
+    fun hasOpenWearablesCredentials(): Boolean {
+        val userId = getOpenWearablesUserId()
+        val token = getOpenWearablesAccessToken()
+        return !userId.isNullOrBlank() && !token.isNullOrBlank()
+    }
+    
+    /**
+     * Clear OpenWearables credentials.
+     */
+    fun clearOpenWearablesCredentials() {
+        encryptedPrefs?.edit()
+            ?.remove(KEY_OW_USER_ID)
+            ?.remove(KEY_OW_ACCESS_TOKEN)
+            ?.remove(KEY_OW_REFRESH_TOKEN)
+            ?.apply()
     }
 }
 

@@ -44,7 +44,8 @@ import java.net.URL
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToLegacyHome: () -> Unit = {}
+    onNavigateToLegacyHome: () -> Unit = {},
+    onNavigateToOpenWearables: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var apiUrl by remember { mutableStateOf(DeviceConfig.getApiBaseUrl()) }
@@ -202,6 +203,38 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // --- Health Connect / OpenWearables Section ---
+            SandboxCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onNavigateToOpenWearables
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Health Connect",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Conecta con Samsung Health o Health Connect",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Navigate",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 

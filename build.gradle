@@ -19,6 +19,8 @@ buildscript {
 allprojects {
     repositories {
         google()
+        mavenCentral()
+        mavenLocal()  // OpenWearables SDK from local Maven repository
         maven {
             url = uri("https://plugins.gradle.org/m2/")
         }

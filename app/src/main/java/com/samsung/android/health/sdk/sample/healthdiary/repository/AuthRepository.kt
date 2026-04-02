@@ -80,12 +80,22 @@ class AuthRepository {
             
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
-                // Save tokens
+                // Save auth tokens
                 TokenManager.saveAuthInfo(
                     token = loginResponse.token,
                     refreshToken = loginResponse.refresh,
                     expiry = loginResponse.expiry
                 )
+                
+                // Save OpenWearables credentials if present
+                loginResponse.openWearables?.let { owCreds ->
+                    TokenManager.saveOpenWearablesCredentials(
+                        userId = owCreds.owUserId,
+                        accessToken = owCreds.owAccessToken,
+                        refreshToken = owCreds.owRefreshToken
+                    )
+                }
+                
                 Result.success(loginResponse)
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
@@ -123,6 +133,16 @@ class AuthRepository {
                     refreshToken = oauthResponse.refreshToken,
                     expiresIn = oauthResponse.expiresIn
                 )
+                
+                // Save OpenWearables credentials if present
+                oauthResponse.openWearables?.let { owCreds ->
+                    TokenManager.saveOpenWearablesCredentials(
+                        userId = owCreds.owUserId,
+                        accessToken = owCreds.owAccessToken,
+                        refreshToken = owCreds.owRefreshToken
+                    )
+                }
+                
                 Result.success(oauthResponse)
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
