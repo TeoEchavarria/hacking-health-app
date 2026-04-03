@@ -144,14 +144,12 @@ class OpenWearablesViewModel @Inject constructor(
     
     /**
      * Check current authorization status
+     * Note: SDK doesn't have a separate checkAuthorization method,
+     * so we just maintain the last known state from requestAuthorization
      */
     fun checkAuthorization() {
-        viewModelScope.launch {
-            repository.checkAuthorization(HEALTH_DATA_TYPES)
-                .onSuccess { authorized ->
-                    _uiState.value = _uiState.value.copy(isAuthorized = authorized)
-                }
-        }
+        // Authorization state is updated when requestAuthorization() is called
+        // No separate SDK method exists for checking authorization status
     }
     
     /**
@@ -198,29 +196,11 @@ class OpenWearablesViewModel @Inject constructor(
                         isSyncing = false,
                         lastSyncTime = java.time.LocalDateTime.now().toString()
                     )
-                    loadLatestData()
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isSyncing = false,
                         errorMessage = error.message
-                    )
-                }
-        }
-    }
-    
-    /**
-     * Load latest health data
-     */
-    fun loadLatestData() {
-        viewModelScope.launch {
-            repository.readLatestData(HEALTH_DATA_TYPES)
-                .onSuccess { data ->
-                    _uiState.value = _uiState.value.copy(healthData = data)
-                }
-                .onFailure { error ->
-                    _uiState.value = _uiState.value.copy(
-                        errorMessage = "Failed to load health data: ${error.message}"
                     )
                 }
         }

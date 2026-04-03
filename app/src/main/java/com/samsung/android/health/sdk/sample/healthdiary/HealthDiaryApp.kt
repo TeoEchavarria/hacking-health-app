@@ -7,7 +7,6 @@ import androidx.work.Configuration
 import com.openwearables.health.sdk.OpenWearablesHealthSDK
 import com.openwearables.health.sdk.OWLogLevel
 import com.samsung.android.health.sdk.sample.healthdiary.config.ConfigInitializer
-import com.samsung.android.health.sdk.sample.healthdiary.config.ConfigManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -43,8 +42,10 @@ class HealthDiaryApp : Application(), Configuration.Provider {
                 Log.e("OpenWearablesSDK", "Auth error ($statusCode): $message")
             }
             
-            // Configure with OpenWearables server host from config
-            val owHost = ConfigManager.getString("OPENWEARABLES_HOST", "http://10.0.2.2:8000")
+            // Configure with OpenWearables server host
+            // Production: https://hh-openwearables.fly.dev
+            // For local: http://10.0.2.2:8000 (emulator) or http://localhost:8000
+            val owHost = "https://hh-openwearables.fly.dev"
             val shouldAutoRestore = sdk.configure(owHost)
             
             Log.i("HealthDiaryApp", "OpenWearables SDK initialized with host: $owHost (autoRestore=$shouldAutoRestore)")

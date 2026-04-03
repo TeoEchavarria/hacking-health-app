@@ -3,11 +3,13 @@ package com.samsung.android.health.sdk.sample.healthdiary.repository
 import android.app.Activity
 import android.util.Log
 import com.openwearables.health.sdk.OpenWearablesHealthSDK
-import com.openwearables.health.sdk.Outcome
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -83,14 +85,16 @@ class OpenWearablesRepository @Inject constructor() {
         val accessToken = TokenManager.getOpenWearablesAccessToken() ?: return
         val refreshToken = TokenManager.getOpenWearablesRefreshToken()
         
-        try {
-            sdk?.signIn(userId, accessToken, refreshToken, null)
-            Log.i(TAG, "Auto-signed in to OpenWearables as user: $userId")
-            _connectionState.value = OpenWearablesState.Disconnected // Ready to connect
-        } catch (e: Exception) {
-            Log.w(TAG, "Auto-sign in failed: ${e.message}")
-            // Clear invalid credentials
-            TokenManager.clearOpenWearablesCredentials()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                sdk?.signIn(userId, accessToken, refreshToken, null)
+                Log.i(TAG, "Auto-signed in to OpenWearables as user: $userId")
+                _connectionState.value = OpenWearablesState.Disconnected // Ready to connect
+            } catch (e: Exception) {
+                Log.w(TAG, "Auto-sign in failed: ${e.message}")
+                // Clear invalid credentials
+                TokenManager.clearOpenWearablesCredentials()
+            }
         }
     }
     
@@ -163,36 +167,11 @@ class OpenWearablesRepository @Inject constructor() {
         val sdkInstance = sdk ?: return Result.failure(IllegalStateException("SDK not initialized"))
         
         return try {
-            val outcome = sdkInstance.requestAuthorization(types)
-            when (outcome) {
-                is Outcome.Success -> {
-                    Log.d(TAG, "Authorization granted for types: $types")
-                    Result.success(outcome.value)
-                }
-                is Outcome.Error -> {
-                    Log.e(TAG, "Authorization failed: ${outcome.message}")
-                    Result.failure(outcome.exception)
-                }
-            }
+            val authorized = sdkInstance.requestAuthorization(types)
+            Log.d(TAG, "Authorization result for types $types: $authorized")
+            Result.success(authorized)
         } catch (e: Exception) {
             Log.e(TAG, "Authorization request error: ${e.message}")
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Check if authorization is granted for health data types
-     */
-    suspend fun checkAuthorization(types: List<String>): Result<Boolean> {
-        val sdkInstance = sdk ?: return Result.failure(IllegalStateException("SDK not initialized"))
-        
-        return try {
-            val outcome = sdkInstance.checkAuthorization(types)
-            when (outcome) {
-                is Outcome.Success -> Result.success(outcome.value)
-                is Outcome.Error -> Result.failure(outcome.exception)
-            }
-        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -261,30 +240,6 @@ class OpenWearablesRepository @Inject constructor() {
     fun updateSyncStatus() {
         sdk?.let { sdkInstance ->
             _syncStatus.value = sdkInstance.getSyncStatus()
-        }
-    }
-    
-    /**
-     * Read latest health data
-     */
-    suspend fun readLatestData(types: List<String>): Result<Map<String, Any?>> {
-        val sdkInstance = sdk ?: return Result.failure(IllegalStateException("SDK not initialized"))
-        
-        return try {
-            val outcome = sdkInstance.readLatestData(types)
-            when (outcome) {
-                is Outcome.Success -> {
-                    Log.d(TAG, "Read latest data: ${outcome.value}")
-                    Result.success(outcome.value)
-                }
-                is Outcome.Error -> {
-                    Log.e(TAG, "Read data failed: ${outcome.message}")
-                    Result.failure(outcome.exception)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Read data error: ${e.message}")
-            Result.failure(e)
         }
     }
     

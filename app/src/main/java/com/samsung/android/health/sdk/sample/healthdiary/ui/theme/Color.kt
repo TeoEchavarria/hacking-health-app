@@ -14,6 +14,7 @@ val SandboxPrimary = Color(0xFF004474)
 val SandboxPrimaryLight = Color(0xFF0061A3)
 val SandboxPrimaryDark = Color(0xFF00497D)
 val SandboxPrimaryContainer = Color(0xFF005C9A)
+val SandboxOnPrimary = Color.White
 val SandboxOnPrimaryContainer = Color(0xFFB0D3FF)
 val SandboxPrimaryFixed = Color(0xFFD1E4FF)
 val SandboxPrimaryFixedDim = Color(0xFF9ECAFF)

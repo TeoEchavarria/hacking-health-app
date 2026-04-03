@@ -17,7 +17,7 @@ object EnvironmentConfig {
     
     // Default values
     private const val DEFAULT_API_TIMEOUT = 30000L // 30 seconds
-    private const val DEFAULT_API_BASE_URL = "https://api.example.com"
+    private const val DEFAULT_API_BASE_URL = "https://apihealth.echavarrias.com"
     
     private var prefs: SharedPreferences? = null
     

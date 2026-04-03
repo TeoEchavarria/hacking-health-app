@@ -1,7 +1,7 @@
 package com.samsung.android.health.sdk.sample.healthdiary.api
 
 object ApiConstants {
-    const val BASE_URL = "https://hacking-health-api.fly.dev"
+    const val BASE_URL = "https://apihealth.echavarrias.com"
     const val API_PATH_SYNC = "/api/sync/data"
     const val API_PATH_LOGIN = "/login"
     
