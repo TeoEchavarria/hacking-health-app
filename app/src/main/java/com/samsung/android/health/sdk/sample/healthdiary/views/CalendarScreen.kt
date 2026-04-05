@@ -19,9 +19,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealthSummaryResponse
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.model.DaySummary
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricAnalysisUiState
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.CalendarViewModel
 
 /**
  * Calendar Screen - Medical Calendar
@@ -35,9 +39,11 @@ import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
  */
 @Composable
 fun CalendarScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    calendarViewModel: CalendarViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val biometricState by calendarViewModel.biometricState.collectAsState()
     
     // Mock data states
     var medicationsTaken by remember { mutableStateOf(setOf<Int>()) }
@@ -198,7 +204,10 @@ fun CalendarScreen(
         )
         
         // Biometric Analysis Section
-        BiometricAnalysisSection()
+        BiometricAnalysisSection(
+            state = biometricState,
+            onRefresh = { calendarViewModel.refreshBiometricData() }
+        )
         
         // Day Summary
         DaySummaryCard(
@@ -283,9 +292,16 @@ private fun MedicationsSection(
 
 /**
  * Biometric Analysis Section
+ * 
+ * Shows health metrics from the patient's wearable device.
+ * - Available metrics: Heart rate, Steps, Sleep
+ * - Unavailable metrics: SpO2, Blood Pressure, Temperature (shown with device limitation message)
  */
 @Composable
-private fun BiometricAnalysisSection() {
+private fun BiometricAnalysisSection(
+    state: BiometricAnalysisUiState,
+    onRefresh: () -> Unit = {}
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -295,14 +311,23 @@ private fun BiometricAnalysisSection() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Column {
+                Text(
+                    text = "Análisis Biométrico",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = SandboxPrimary
+                )
+                if (state.patientName != null && state.role == "caregiver") {
+                    Text(
+                        text = "de ${state.patientName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SandboxSecondary
+                    )
+                }
+            }
             Text(
-                text = "Análisis Biométrico",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = SandboxPrimary
-            )
-            Text(
-                text = "Hace 15 min",
+                text = state.lastUpdatedText,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = SandboxSecondary,
@@ -311,50 +336,225 @@ private fun BiometricAnalysisSection() {
             )
         }
         
-        // Biometric cards
-        BiometricCompactCard(
-            icon = "🫁", // Lungs emoji
-            metricName = "Oxígeno (SpO2)",
-            value = "98%",
-            status = BiometricStatus.OPTIMAL,
-            statusLabel = "Óptimo",
-            trend = "Estable",
-            backgroundColor = SandboxPrimaryFixed,
-            iconColor = SandboxPrimary
-        )
-        
-        BiometricCompactCard(
-            icon = "💓", // Beating heart emoji
-            metricName = "Variabilidad (VFC)",
-            value = "42ms",
-            status = BiometricStatus.WARNING,
-            statusLabel = "Aviso",
-            trend = "Fatiga",
-            backgroundColor = Color(0xFFFFF3E0),
-            iconColor = Color(0xFFEF6C00)
-        )
-        
-        BiometricCompactCard(
-            icon = "🌡️", // Thermometer emoji
-            metricName = "Presión Arterial",
-            value = "145/92",
-            status = BiometricStatus.CRITICAL,
-            statusLabel = "Alta",
-            trend = "Urgente",
-            backgroundColor = SandboxErrorContainer,
-            iconColor = SandboxError
-        )
-        
-        BiometricCompactCard(
-            icon = "🌡️", // Thermometer emoji
-            metricName = "Temperatura",
-            value = "36.7°C",
-            status = BiometricStatus.NORMAL,
-            statusLabel = "Normal",
-            trend = "Estable",
-            backgroundColor = Color(0xFFE3F2FD),
-            iconColor = Color(0xFF1976D2)
-        )
+        if (state.isLoading) {
+            // Loading state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = SandboxPrimary)
+            }
+        } else if (state.error != null) {
+            // Error state
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SandboxErrorContainer)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = state.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = SandboxError
+                    )
+                    TextButton(onClick = onRefresh) {
+                        Text("Reintentar", color = SandboxError)
+                    }
+                }
+            }
+        } else {
+            val summary = state.healthSummary
+            
+            // Available metrics from wearable
+            
+            // Heart Rate
+            if (summary?.hasHeartRate() == true) {
+                BiometricCompactCard(
+                    icon = "💓",
+                    metricName = "Frecuencia Cardíaca",
+                    value = "${summary.heartRate.average} BPM",
+                    status = when {
+                        summary.heartRate.average!! > 100 -> BiometricStatus.WARNING
+                        summary.heartRate.average < 50 -> BiometricStatus.WARNING
+                        else -> BiometricStatus.OPTIMAL
+                    },
+                    statusLabel = when {
+                        summary.heartRate.average > 100 -> "Alta"
+                        summary.heartRate.average < 50 -> "Baja"
+                        else -> "Normal"
+                    },
+                    trend = "Min: ${summary.heartRate.min} • Max: ${summary.heartRate.max}",
+                    backgroundColor = SandboxPrimaryFixed,
+                    iconColor = SandboxPrimary
+                )
+            } else {
+                BiometricUnavailableCard(
+                    icon = "💓",
+                    metricName = "Frecuencia Cardíaca",
+                    reason = "Sin datos del reloj"
+                )
+            }
+            
+            // Steps
+            if (summary?.hasSteps() == true) {
+                BiometricCompactCard(
+                    icon = "👟",
+                    metricName = "Pasos (Hoy)",
+                    value = "${summary.steps.total} pasos",
+                    status = when {
+                        summary.steps.total!! >= 10000 -> BiometricStatus.OPTIMAL
+                        summary.steps.total >= 5000 -> BiometricStatus.NORMAL
+                        else -> BiometricStatus.WARNING
+                    },
+                    statusLabel = when {
+                        summary.steps.total >= 10000 -> "Excelente"
+                        summary.steps.total >= 5000 -> "Bien"
+                        else -> "Bajo"
+                    },
+                    trend = null,
+                    backgroundColor = Color(0xFFE8F5E9),
+                    iconColor = Color(0xFF4CAF50)
+                )
+            } else {
+                BiometricUnavailableCard(
+                    icon = "👟",
+                    metricName = "Pasos (Hoy)",
+                    reason = "Sin datos del reloj"
+                )
+            }
+            
+            // Sleep
+            if (summary?.hasSleep() == true) {
+                val sleepHours = (summary.sleep.totalMinutes ?: 0) / 60
+                val sleepMins = (summary.sleep.totalMinutes ?: 0) % 60
+                BiometricCompactCard(
+                    icon = "😴",
+                    metricName = "Sueño (Anoche)",
+                    value = "${sleepHours}h ${sleepMins}m",
+                    status = when {
+                        sleepHours >= 7 -> BiometricStatus.OPTIMAL
+                        sleepHours >= 5 -> BiometricStatus.NORMAL
+                        else -> BiometricStatus.WARNING
+                    },
+                    statusLabel = when {
+                        sleepHours >= 7 -> "Óptimo"
+                        sleepHours >= 5 -> "Regular"
+                        else -> "Poco"
+                    },
+                    trend = null,
+                    backgroundColor = Color(0xFFE8EAF6),
+                    iconColor = Color(0xFF5C6BC0)
+                )
+            } else {
+                BiometricUnavailableCard(
+                    icon = "😴",
+                    metricName = "Sueño (Anoche)",
+                    reason = "Sin datos del reloj"
+                )
+            }
+            
+            // Unavailable metrics - device limitation
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "MÉTRICAS NO DISPONIBLES",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = SandboxSecondary,
+                letterSpacing = 1.2.sp,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            
+            BiometricUnavailableCard(
+                icon = "🫁",
+                metricName = "Oxígeno (SpO2)",
+                reason = "NO DISPONIBLE PARA TU DISPOSITIVO"
+            )
+            
+            BiometricUnavailableCard(
+                icon = "🩺",
+                metricName = "Presión Arterial",
+                reason = "NO DISPONIBLE PARA TU DISPOSITIVO"
+            )
+            
+            BiometricUnavailableCard(
+                icon = "🌡️",
+                metricName = "Temperatura",
+                reason = "NO DISPONIBLE PARA TU DISPOSITIVO"
+            )
+        }
+    }
+}
+
+/**
+ * Card for unavailable biometric metrics.
+ */
+@Composable
+private fun BiometricUnavailableCard(
+    icon: String,
+    metricName: String,
+    reason: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = SandboxSurfaceContainer.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon container
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SandboxSurfaceContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = icon,
+                    fontSize = 24.sp,
+                    color = Color.Gray
+                )
+            }
+            
+            // Content
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = metricName.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = SandboxSecondary,
+                    letterSpacing = 1.2.sp,
+                    fontSize = 10.sp
+                )
+                Text(
+                    text = reason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SandboxSecondary
+                )
+            }
+        }
     }
 }
 

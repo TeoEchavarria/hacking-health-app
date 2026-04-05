@@ -5,6 +5,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorBatchRequest
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface SyncApiService {
@@ -15,6 +16,7 @@ interface SyncApiService {
 
     @POST("/health/sensor-data")
     suspend fun uploadSensorData(
+        @Header("Authorization") authorization: String,
         @Body request: SensorBatchRequest
     ): Response<Map<String, Any>> // Expecting generic success response
 }

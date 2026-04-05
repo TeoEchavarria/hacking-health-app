@@ -7,10 +7,12 @@
 #   ./logs.sh -a           # Ver TODOS los logs de la app
 #   ./logs.sh -o           # Ver solo logs de OAuth/Google Sign-In
 #   ./logs.sh -s           # Ver solo logs de Sync/OpenWearables
+#   ./logs.sh -w           # Ver logs de OpenWearables credentials
 #   ./logs.sh -e           # Ver solo errores
 #   ./logs.sh -c           # Limpiar logs y empezar fresh
 #   ./logs.sh -d           # Dump: guardar logs a archivo
 #   ./logs.sh -g           # Ver logs de Google Play Services
+#   ./logs.sh -r           # Ver respuestas de API (Retrofit)
 # =============================================================================
 
 set -e
@@ -28,6 +30,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 print_header() {
@@ -64,11 +67,14 @@ show_help() {
     echo "  (sin args)   Ver logs de la app en tiempo real"
     echo "  -a, --all    Ver TODOS los logs de la app (por PID)"
     echo "  -o, --oauth  Ver logs de OAuth/Google Sign-In (AuthViewModel, OAuthRepository)"
+    echo "  -w, --ow     Ver logs de OpenWearables credentials y SDK"
+    echo "  -r, --api    Ver logs de API/Retrofit (requests y responses)"
     echo "  -g, --gms    Ver logs de Google Play Services (SignatureVerifier)"
     echo "  -s, --sync   Ver logs de Sync/OpenWearables"
     echo "  -e, --error  Ver solo errores y excepciones"
     echo "  -c, --clear  Limpiar buffer de logs"
     echo "  -d, --dump   Guardar logs a archivo"
+    echo "  -f, --full   Ver TODO el flujo de login (OAuth + OW + API)"
     echo "  -h, --help   Mostrar esta ayuda"
     echo ""
     echo -e "${YELLOW}Para debugear Google Sign-In:${NC}"
@@ -76,8 +82,13 @@ show_help() {
     echo "  2. Intenta login en la app"
     echo "  3. ./logs.sh -o              # Ver qué pasó"
     echo ""
-    echo -e "${YELLOW}TAGs monitoreados en -o:${NC}"
-    echo "  AuthViewModel, OAuthRepository, GoogleSignatureVerifier, ApiException"
+    echo -e "${YELLOW}Para debugear OpenWearables:${NC}"
+    echo "  1. ./logs.sh -c              # Limpiar logs"
+    echo "  2. Intenta login en la app"
+    echo "  3. ./logs.sh -w              # Ver credenciales OW"
+    echo ""
+    echo -e "${YELLOW}Para ver todo el flujo:${NC}"
+    echo "  ./logs.sh -f                 # Ver OAuth + OW + API"
     echo ""
 }
 
@@ -163,6 +174,36 @@ view_gms_logs() {
     adb logcat | grep --line-buffered -iE "(GoogleSignatureVerifier|SignInClient|Finsky|GmsClient|package.*info|SHA)"
 }
 
+view_openwearables_logs() {
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  OpenWearables Credentials & SDK Logs${NC}"
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "Monitoreando: OpenWearablesRepo, TokenManager, credentials, open_wearables"
+    echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
+    echo ""
+    adb logcat | grep --line-buffered -iE "(OpenWearables|TokenManager|open_wearables|ow_user|ow_access|owCreds|credentials.*stored|auto.*login|saveOpenWearables|hasOpenWearables)"
+}
+
+view_api_logs() {
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  API/Retrofit Request & Response Logs${NC}"
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "Monitoreando: API_REQUEST, API_RESPONSE, Retrofit, HTTP"
+    echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
+    echo ""
+    adb logcat | grep --line-buffered -iE "(API_REQUEST|API_RESPONSE|API_ERROR|Retrofit|oauth/token|/login|authenticateWithOAuth|response.*code|status.*code|\{.*access_token|\{.*open_wearables)"
+}
+
+view_full_login_flow() {
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Full Login Flow (OAuth + OpenWearables + API)${NC}"
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "Monitoreando todo el flujo de autenticación..."
+    echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
+    echo ""
+    adb logcat | grep --line-buffered -iE "(AuthViewModel|OAuthRepository|OpenWearables|TokenManager|API_REQUEST|API_RESPONSE|API_ERROR|oauth/token|Google.*Sign|Backend.*auth|saveOpenWearables|hasOpenWearables|credentials|access_token|open_wearables|Network error|timeout|Success|Failed)"
+}
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -188,6 +229,15 @@ case "${1:-}" in
         ;;
     -g|--gms)
         view_gms_logs
+        ;;
+    -w|--ow)
+        view_openwearables_logs
+        ;;
+    -r|--api)
+        view_api_logs
+        ;;
+    -f|--full)
+        view_full_login_flow
         ;;
     -s|--sync)
         view_sync_logs

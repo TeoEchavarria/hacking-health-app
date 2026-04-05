@@ -3,6 +3,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.utils
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.json.JSONObject
@@ -17,6 +18,7 @@ import java.time.ZoneId
  * legacy tokens (with stored expiry timestamps).
  */
 object TokenManager {
+    private const val TAG = "TokenManager"
     private const val PREFS_NAME = "auth_prefs"
     private const val KEY_TOKEN = "access_token"
     private const val KEY_REFRESH = "refresh_token"
@@ -241,13 +243,23 @@ object TokenManager {
         accessToken: String?,
         refreshToken: String?
     ) {
-        if (userId.isNullOrBlank() || accessToken.isNullOrBlank()) return
+        Log.d(TAG, "[OW Creds] saveOpenWearablesCredentials called")
+        Log.d(TAG, "[OW Creds] userId: ${userId?.take(20) ?: "NULL"}")
+        Log.d(TAG, "[OW Creds] accessToken length: ${accessToken?.length ?: 0}")
+        Log.d(TAG, "[OW Creds] refreshToken length: ${refreshToken?.length ?: 0}")
+        
+        if (userId.isNullOrBlank() || accessToken.isNullOrBlank()) {
+            Log.w(TAG, "[OW Creds] ⚠ Skipping save - userId or accessToken is null/blank")
+            return
+        }
         
         encryptedPrefs?.edit()
             ?.putString(KEY_OW_USER_ID, userId)
             ?.putString(KEY_OW_ACCESS_TOKEN, accessToken)
             ?.putString(KEY_OW_REFRESH_TOKEN, refreshToken)
             ?.apply()
+        
+        Log.i(TAG, "[OW Creds] ✓ OpenWearables credentials saved successfully")
     }
     
     /**
@@ -277,7 +289,12 @@ object TokenManager {
     fun hasOpenWearablesCredentials(): Boolean {
         val userId = getOpenWearablesUserId()
         val token = getOpenWearablesAccessToken()
-        return !userId.isNullOrBlank() && !token.isNullOrBlank()
+        val hasCredentials = !userId.isNullOrBlank() && !token.isNullOrBlank()
+        Log.d(TAG, "[OW Creds] hasOpenWearablesCredentials check:")
+        Log.d(TAG, "[OW Creds]   userId present: ${!userId.isNullOrBlank()}")
+        Log.d(TAG, "[OW Creds]   token present: ${!token.isNullOrBlank()}")
+        Log.d(TAG, "[OW Creds]   result: $hasCredentials")
+        return hasCredentials
     }
     
     /**

@@ -15,6 +15,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.SensorRecord
 import com.samsung.android.health.sdk.sample.healthdiary.utils.ConnectionLogManager
 import com.samsung.android.health.sdk.sample.healthdiary.utils.LogType
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TelemetryLogger
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import java.io.IOException
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -76,7 +77,20 @@ class UploadWorker(
                 return@withContext Result.retry()
             }
             
-            // No token check - auth disabled for dev/testing
+            // Get auth token - required for authenticated uploads
+            val accessToken = TokenManager.getToken()
+            if (accessToken.isNullOrEmpty()) {
+                Log.w(TAG, "Upload skipped: No auth token available. User may not be logged in.")
+                UploadHealthMonitor.recordFailure("NO_AUTH_TOKEN")
+                TelemetryLogger.log(
+                    "PHONE",
+                    "No Auth",
+                    "[${getTimestamp()}] No auth token. $pendingCount records stored. Please log in."
+                )
+                UploadScheduler.scheduleNext(applicationContext)
+                return@withContext Result.retry()
+            }
+            val authHeader = "Bearer $accessToken"
 
             val batchSize = 250
             var totalUploaded = 0
@@ -104,10 +118,10 @@ class UploadWorker(
                 val request = SensorBatchRequest(records)
 
                 try {
-                    // 3. Call Backend (no auth required - dev/testing mode)
+                    // 3. Call Backend with authentication
                     Log.d(TAG, "Uploading batch of ${dataToUpload.size} items... (Attempt $runAttemptCount)")
                     
-                    val response = RetrofitClient.syncApiService.uploadSensorData(request)
+                    val response = RetrofitClient.syncApiService.uploadSensorData(authHeader, request)
                     val latency = System.currentTimeMillis() - startTime
 
                     if (response.isSuccessful) {

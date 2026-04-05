@@ -161,19 +161,39 @@ class OAuthRepository(private val context: Context) {
                 deviceInfo = buildDeviceInfo()
             )
             
+            Log.d(TAG, "[Backend] Sending OAuth request to backend...")
+            Log.d(TAG, "[Backend] Provider: ${provider.value}")
+            Log.d(TAG, "[Backend] ID token length: ${idToken.length}")
+            
             val response = RetrofitClient.authApiService.authenticateWithOAuth(request)
             
+            Log.d(TAG, "[Backend] Response code: ${response.code()}")
+            
             if (response.isSuccessful && response.body() != null) {
-                Log.d(TAG, "Backend authentication successful")
-                Result.success(response.body()!!)
+                val body = response.body()!!
+                Log.d(TAG, "[Backend] ✓ Authentication successful")
+                Log.d(TAG, "[Backend] access_token received: ${body.accessToken.isNotEmpty()}")
+                Log.d(TAG, "[Backend] refresh_token received: ${body.refreshToken.isNotEmpty()}")
+                Log.d(TAG, "[Backend] open_wearables in response: ${body.openWearables != null}")
+                
+                if (body.openWearables != null) {
+                    Log.i(TAG, "[Backend] ✓ OpenWearables credentials received from backend!")
+                    Log.d(TAG, "[Backend]   ow_user_id: ${body.openWearables?.owUserId}")
+                } else {
+                    Log.w(TAG, "[Backend] ⚠ open_wearables is NULL in response")
+                    Log.w(TAG, "[Backend] This means backend didn't return OW credentials")
+                    Log.w(TAG, "[Backend] Check backend logs for OPENWEARABLES_* config")
+                }
+                
+                Result.success(body)
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                Log.e(TAG, "Backend authentication failed: ${response.code()} - $errorBody")
+                Log.e(TAG, "[Backend] ✗ Authentication failed: ${response.code()} - $errorBody")
                 Result.failure(OAuthException("Authentication failed: $errorBody"))
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to authenticate with backend", e)
+            Log.e(TAG, "[Backend] ✗ Exception during backend auth", e)
             Result.failure(OAuthException("Network error: ${e.message}", e))
         }
     }

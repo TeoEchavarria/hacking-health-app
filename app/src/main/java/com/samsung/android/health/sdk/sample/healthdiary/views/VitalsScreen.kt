@@ -1,19 +1,30 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LinkedPatient
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.VitalsViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Vitals Screen - Monitoring & Notifications
@@ -23,6 +34,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.VitalsViewMod
  * - GPS location tracking
  * - Recent notifications
  * - Day summary
+ * - **Caregiver mode**: View linked patient's alerts
  * 
  * Note: Biometric data moved to BiometricsScreen
  */
@@ -36,6 +48,21 @@ fun VitalsScreen(
     val viewModel = remember { VitalsViewModel(context) }
     val uiState by viewModel.uiState.collectAsState()
     
+    // Stop polling when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.stopPolling()
+        }
+    }
+    
+    // Show error message
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -44,6 +71,17 @@ fun VitalsScreen(
             .padding(top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // Caregiver Mode Header
+        if (uiState.isCaregiverMode) {
+            CaregiverModeHeader(
+                selectedPatient = uiState.selectedPatient,
+                linkedPatients = uiState.linkedPatients,
+                lastRefreshTime = uiState.lastRefreshTime,
+                onPatientSelected = { viewModel.selectPatient(it) },
+                onRefresh = { viewModel.refreshPatientData() }
+            )
+        }
+        
         // 1. Urgent Alert Banner (conditional)
         uiState.currentAlert?.let { alert ->
             AlertBannerCard(
@@ -147,6 +185,134 @@ fun VitalsScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.size(32.dp)
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Header shown in caregiver mode with patient selector and refresh button.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CaregiverModeHeader(
+    selectedPatient: LinkedPatient?,
+    linkedPatients: List<LinkedPatient>,
+    lastRefreshTime: Long,
+    onPatientSelected: (LinkedPatient) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var showPatientDropdown by remember { mutableStateOf(false) }
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Mode indicator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Modo Cuidador",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            
+            if (linkedPatients.isEmpty()) {
+                // No linked patients
+                Text(
+                    text = "No tienes pacientes vinculados",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            } else {
+                // Patient selector row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Patient dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = showPatientDropdown,
+                        onExpandedChange = { showPatientDropdown = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = selectedPatient?.patientName ?: "Seleccionar paciente",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Viendo datos de") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showPatientDropdown) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            )
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = showPatientDropdown,
+                            onDismissRequest = { showPatientDropdown = false }
+                        ) {
+                            linkedPatients.forEach { patient ->
+                                DropdownMenuItem(
+                                    text = { Text(patient.patientName) },
+                                    onClick = {
+                                        onPatientSelected(patient)
+                                        showPatientDropdown = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // Refresh button
+                    IconButton(onClick = onRefresh) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                // Last refresh time
+                if (lastRefreshTime > 0) {
+                    val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                    Text(
+                        text = "Última actualización: ${timeFormat.format(Date(lastRefreshTime))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }

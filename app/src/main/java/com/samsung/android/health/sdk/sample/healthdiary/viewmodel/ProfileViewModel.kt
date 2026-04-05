@@ -1,10 +1,15 @@
 package com.samsung.android.health.sdk.sample.healthdiary.viewmodel
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.FullUserProfileResponse
+import com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole
 import com.samsung.android.health.sdk.sample.healthdiary.repository.AuthRepository
 import com.samsung.android.health.sdk.sample.healthdiary.repository.LogoutResult
+import com.samsung.android.health.sdk.sample.healthdiary.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +22,7 @@ data class ConnectionInfo(
     val userId: String,
     val name: String,
     val relationship: String,
+    val profilePicture: String? = null,
     val isActive: Boolean = true
 )
 
@@ -26,6 +32,7 @@ data class ConnectionInfo(
 data class ProfileUiState(
     val userProfile: UserProfile = UserProfile(),
     val connections: List<ConnectionInfo> = emptyList(),
+    val role: String = "none",  // "caregiver", "patient", or "none"
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -43,11 +50,16 @@ sealed class LogoutState {
 /**
  * ViewModel for user profile and logout functionality.
  */
-class ProfileViewModel : ViewModel() {
+class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private const val TAG = "ProfileViewModel"
+    }
 
     private val authRepository = AuthRepository()
+    private val userRepository = UserRepository(application.applicationContext)
 
-    private val _profileUiState = MutableStateFlow(ProfileUiState())
+    private val _profileUiState = MutableStateFlow(ProfileUiState(isLoading = true))
     val profileUiState: StateFlow<ProfileUiState> = _profileUiState.asStateFlow()
 
     private val _logoutState = MutableStateFlow<LogoutState>(LogoutState.Idle)
@@ -55,7 +67,13 @@ class ProfileViewModel : ViewModel() {
 
     init {
         loadProfile()
-        loadConnections()
+    }
+
+    /**
+     * Refresh the profile data.
+     */
+    fun refreshProfile() {
+        loadProfile()
     }
 
     /**
@@ -86,56 +104,80 @@ class ProfileViewModel : ViewModel() {
     }
 
     /**
-     * Load user profile data.
-     * TODO: Integrate with Samsung Health SDK or backend API
+     * Load user profile from API.
      */
     private fun loadProfile() {
         viewModelScope.launch {
-            _profileUiState.value = _profileUiState.value.copy(isLoading = true)
+            _profileUiState.value = _profileUiState.value.copy(isLoading = true, error = null)
             
-            // Mock data for now - matches HomeViewModel
-            val profile = UserProfile(
-                name = "Lucía Méndez",
-                email = "lucia.mendez@serenecare.com",
-                age = 42,
-                gender = "Female",
-                height = 165,
-                weight = 62,
-                role = com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole.CAREGIVER,
-                avatarUrl = null
-            )
+            val result = userRepository.getFullProfile()
             
-            _profileUiState.value = _profileUiState.value.copy(
-                userProfile = profile,
-                isLoading = false
+            result.fold(
+                onSuccess = { fullProfile ->
+                    Log.i(TAG, "Profile loaded: ${fullProfile.name}, role=${fullProfile.role}")
+                    
+                    // Convert API response to UI models
+                    val userProfile = convertToUserProfile(fullProfile)
+                    val connections = convertToConnections(fullProfile)
+                    
+                    _profileUiState.value = ProfileUiState(
+                        userProfile = userProfile,
+                        connections = connections,
+                        role = fullProfile.role,
+                        isLoading = false,
+                        error = null
+                    )
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to load profile: ${error.message}")
+                    _profileUiState.value = _profileUiState.value.copy(
+                        isLoading = false,
+                        error = error.message
+                    )
+                }
             )
         }
     }
 
     /**
-     * Load family connections.
-     * TODO: Query Room database for active PairingEntity records
+     * Convert API response to UserProfile UI model.
      */
-    private fun loadConnections() {
-        viewModelScope.launch {
-            // Mock data for demonstration
-            val connections = listOf(
-                ConnectionInfo(
-                    userId = "marta_id",
-                    name = "Marta García",
-                    relationship = "Madre • Monitoreo Activo",
-                    isActive = true
-                ),
-                ConnectionInfo(
-                    userId = "roberto_id",
-                    name = "Roberto Méndez",
-                    relationship = "Padre • Monitoreo de Signos",
-                    isActive = true
-                )
-            )
+    private fun convertToUserProfile(fullProfile: FullUserProfileResponse): UserProfile {
+        val role = when (fullProfile.role) {
+            "caregiver" -> UserRole.CAREGIVER
+            "patient" -> UserRole.PATIENT
+            else -> UserRole.PATIENT
+        }
+        
+        return UserProfile(
+            name = fullProfile.name ?: "Usuario",
+            email = fullProfile.email ?: "",
+            age = 0,  // Not available from API yet
+            gender = "",  // Not available from API yet
+            height = 0,  // Not available from API yet
+            weight = 0,  // Not available from API yet
+            role = role,
+            avatarUrl = fullProfile.profilePicture
+        )
+    }
+
+    /**
+     * Convert API connections to ConnectionInfo list.
+     */
+    private fun convertToConnections(fullProfile: FullUserProfileResponse): List<ConnectionInfo> {
+        return fullProfile.connections.map { conn ->
+            val relationship = when (conn.role) {
+                "patient" -> "Persona a Cuidar"
+                "caregiver" -> "Cuidador"
+                else -> "Conexión"
+            }
             
-            _profileUiState.value = _profileUiState.value.copy(
-                connections = connections
+            ConnectionInfo(
+                userId = conn.userId,
+                name = conn.name,
+                relationship = relationship,
+                profilePicture = conn.profilePicture,
+                isActive = true
             )
         }
     }

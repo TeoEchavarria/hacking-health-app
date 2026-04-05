@@ -122,6 +122,31 @@ fun ProfileScreen(
                 ) {
                     SandboxLoader(variant = LoaderVariant.Large)
                 }
+            } else if (profileUiState.error != null) {
+                // Error state
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = profileUiState.error ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SandboxError
+                        )
+                        Button(
+                            onClick = { profileViewModel.refreshProfile() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SandboxPrimary
+                            )
+                        ) {
+                            Text("Reintentar")
+                        }
+                    }
+                }
             } else {
                 // Content
                 Column(
