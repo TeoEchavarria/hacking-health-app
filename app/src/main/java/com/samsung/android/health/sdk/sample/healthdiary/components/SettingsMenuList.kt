@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Notifications
@@ -38,6 +39,7 @@ fun SettingsMenuList(
     onAccountClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onSecurityClick: () -> Unit = {},
+    onDebugClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val menuItems = listOf(
@@ -58,10 +60,16 @@ fun SettingsMenuList(
             icon = Icons.Filled.Shield,
             iconBackground = Color(0xFFF0FDF4), // green-50
             iconTint = Color(0xFF16A34A) // green-600
+        ),
+        SettingMenuItem(
+            title = "Debug - Logs",
+            icon = Icons.Filled.BugReport,
+            iconBackground = Color(0xFFFAF5FF), // purple-50
+            iconTint = Color(0xFF9333EA) // purple-600
         )
     )
     
-    val clickHandlers = listOf(onAccountClick, onNotificationsClick, onSecurityClick)
+    val clickHandlers = listOf(onAccountClick, onNotificationsClick, onSecurityClick, onDebugClick)
     
     Card(
         modifier = modifier.fillMaxWidth(),

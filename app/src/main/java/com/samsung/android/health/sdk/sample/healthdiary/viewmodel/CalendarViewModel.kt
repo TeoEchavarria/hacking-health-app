@@ -88,11 +88,9 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                             loadPatientHealthSummary(profile.id, profile.role)
                         }
                         else -> {
-                            _biometricState.value = BiometricAnalysisUiState(
-                                isLoading = false,
-                                role = profile.role,
-                                error = "Vincula un familiar para ver datos biométricos"
-                            )
+                            // No role set - show own health data (user can view their own biometrics)
+                            Log.i(TAG, "No role set, showing own health data for user ${profile.id}")
+                            loadPatientHealthSummary(profile.id, profile.role ?: "none")
                         }
                     }
                 },

@@ -2,8 +2,11 @@ package com.samsung.android.health.sdk.sample.healthdiary.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -161,4 +164,134 @@ enum class BiometricStatus {
     NORMAL,
     WARNING,
     CRITICAL
+}
+
+/**
+ * Biometric Clickable Card
+ * 
+ * Similar to BiometricCompactCard but clickable, with hint and arrow indicator.
+ * Used for expandable metrics like Heart Rate history.
+ */
+@Composable
+fun BiometricClickableCard(
+    icon: String,
+    metricName: String,
+    value: String,
+    status: BiometricStatus,
+    statusLabel: String,
+    trend: String? = null,
+    hint: String? = null,
+    backgroundColor: Color = SandboxPrimaryFixed,
+    iconColor: Color = SandboxPrimary,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
+        border = when (status) {
+            BiometricStatus.CRITICAL -> androidx.compose.foundation.BorderStroke(2.dp, SandboxError.copy(alpha = 0.3f))
+            else -> androidx.compose.foundation.BorderStroke(1.dp, SandboxSurfaceContainer)
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon container
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(backgroundColor.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = icon,
+                    fontSize = 24.sp
+                )
+            }
+            
+            // Content
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Header row: Metric name + Status badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = metricName.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = SandboxSecondary,
+                        letterSpacing = 1.2.sp,
+                        fontSize = 10.sp
+                    )
+                    
+                    StatusBadge(status = status, label = statusLabel)
+                }
+                
+                // Value row
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = when (status) {
+                            BiometricStatus.CRITICAL -> SandboxError
+                            else -> SandboxOnSurface
+                        }
+                    )
+                    
+                    if (trend != null) {
+                        Text(
+                            text = "• $trend",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when (status) {
+                                BiometricStatus.CRITICAL -> SandboxError.copy(alpha = 0.6f)
+                                else -> SandboxSecondary
+                            },
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                
+                // Hint row
+                if (hint != null) {
+                    Text(
+                        text = hint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SandboxPrimary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+            
+            // Arrow indicator
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "Ver más",
+                tint = SandboxSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
 }

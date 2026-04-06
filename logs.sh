@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Hacking Health App - Log Viewer
+# Hacking Health App - Log Viewer (Multi-Device Support)
 # =============================================================================
 # Usage:
 #   ./logs.sh              # Ver logs en tiempo real (filtrados)
@@ -13,6 +13,9 @@
 #   ./logs.sh -d           # Dump: guardar logs a archivo
 #   ./logs.sh -g           # Ver logs de Google Play Services
 #   ./logs.sh -r           # Ver respuestas de API (Retrofit)
+#   ./logs.sh -b           # Ver logs de AMBOS dispositivos (phone + emulator)
+#   ./logs.sh -1           # Forzar primer dispositivo
+#   ./logs.sh -2           # Forzar segundo dispositivo
 # =============================================================================
 
 set -e
@@ -24,6 +27,7 @@ APP_TAGS="AuthViewModel:* AuthRepository:* OAuthRepository:* OAuthRedirectActivi
 OAUTH_TAGS="AuthViewModel:* OAuthRepository:* OAuthRedirectActivity:* GoogleSignatureVerifier:* SignInClient:* Finsky:*"
 SYNC_TAGS="OpenWearablesRepo:* OpenWearablesSDK:* SyncManager:* HealthConnectManager:* SamsungHealthManager:*"
 GMS_TAGS="GoogleSignatureVerifier:* SignInClient:* Finsky:* GoogleAuthUtil:* GmsClient:*"
+HR_TAGS="HeartRate:* WatchReceiver:* SensorData:* HealthData:* WearableReceiver:* Protocol:*"
 
 # Colors
 RED='\033[0;31m'
@@ -31,7 +35,12 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Device selection
+SELECTED_DEVICE=""
+BOTH_DEVICES=false
 
 print_header() {
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
@@ -39,23 +48,150 @@ print_header() {
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 }
 
+get_devices() {
+    adb devices | grep -E "device$|emulator" | awk '{print $1}'
+}
+
+select_device() {
+    local devices=($(get_devices))
+    local count=${#devices[@]}
+    
+    if [ $count -eq 0 ]; then
+        echo -e "${RED}Error: No hay dispositivos conectados${NC}"
+        adb devices
+        exit 1
+    fi
+    
+    if [ $count -eq 1 ]; then
+        SELECTED_DEVICE="${devices[0]}"
+        return
+    fi
+    
+    # Multiple devices - let user choose
+    echo -e "${YELLOW}Múltiples dispositivos detectados:${NC}"
+    echo ""
+    local i=1
+    for device in "${devices[@]}"; do
+        local model=$(adb -s "$device" shell getprop ro.product.model 2>/dev/null || echo "Unknown")
+        local type="📱"
+        [[ "$device" == emulator* ]] && type="💻"
+        echo -e "  ${CYAN}[$i]${NC} $type $device - $model"
+        ((i++))
+    done
+    echo -e "  ${CYAN}[b]${NC} 🔄 Ver AMBOS dispositivos"
+    echo ""
+    
+    read -p "Selecciona dispositivo (1-$count, b=ambos): " choice
+    
+    if [[ "$choice" == "b" || "$choice" == "B" ]]; then
+        BOTH_DEVICES=true
+        return
+    fi
+    
+    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le $count ]; then
+        SELECTED_DEVICE="${devices[$((choice-1))]}"
+    else
+        echo -e "${RED}Selección inválida${NC}"
+        exit 1
+    fi
+}
+
 check_adb() {
     if ! command -v adb &> /dev/null; then
         echo -e "${RED}Error: adb no encontrado. Instala Android SDK Platform Tools${NC}"
         exit 1
     fi
-    
-    # Check device connected
-    if ! adb devices | grep -q "device$"; then
-        echo -e "${RED}Error: No hay dispositivo conectado${NC}"
-        echo "Dispositivos disponibles:"
-        adb devices
-        exit 1
+}
+
+# Wrapper for adb commands with device selection
+adb_cmd() {
+    if [ -n "$SELECTED_DEVICE" ]; then
+        adb -s "$SELECTED_DEVICE" "$@"
+    else
+        adb "$@"
     fi
 }
 
 get_app_pid() {
-    adb shell pidof "$APP_PACKAGE" 2>/dev/null || echo ""
+    adb_cmd shell pidof "$APP_PACKAGE" 2>/dev/null || echo ""
+}
+
+# View logs from TWO selected devices simultaneously
+view_both_devices() {
+    local devices=($(get_devices))
+    local count=${#devices[@]}
+    
+    if [ $count -lt 2 ]; then
+        echo -e "${RED}Se necesitan al menos 2 dispositivos para esta opción${NC}"
+        exit 1
+    fi
+    
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Selecciona los 2 dispositivos a monitorear${NC}"
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    
+    for i in "${!devices[@]}"; do
+        local device="${devices[$i]}"
+        local model=$(adb -s "$device" shell getprop ro.product.model 2>/dev/null || echo "Unknown")
+        local type="📱"
+        [[ "$device" == emulator* ]] && type="💻"
+        echo -e "  [$(($i+1))] $type ${CYAN}$device${NC} - $model"
+    done
+    
+    echo ""
+    read -p "Primer dispositivo (1-$count): " dev1_choice
+    read -p "Segundo dispositivo (1-$count): " dev2_choice
+    
+    # Validate selections
+    if ! [[ "$dev1_choice" =~ ^[0-9]+$ ]] || [ "$dev1_choice" -lt 1 ] || [ "$dev1_choice" -gt $count ]; then
+        echo -e "${RED}Selección inválida para primer dispositivo${NC}"
+        exit 1
+    fi
+    if ! [[ "$dev2_choice" =~ ^[0-9]+$ ]] || [ "$dev2_choice" -lt 1 ] || [ "$dev2_choice" -gt $count ]; then
+        echo -e "${RED}Selección inválida para segundo dispositivo${NC}"
+        exit 1
+    fi
+    if [ "$dev1_choice" -eq "$dev2_choice" ]; then
+        echo -e "${RED}Debes seleccionar dispositivos diferentes${NC}"
+        exit 1
+    fi
+    
+    local device1="${devices[$((dev1_choice-1))]}"
+    local device2="${devices[$((dev2_choice-1))]}"
+    local model1=$(adb -s "$device1" shell getprop ro.product.model 2>/dev/null || echo "Unknown")
+    local model2=$(adb -s "$device2" shell getprop ro.product.model 2>/dev/null || echo "Unknown")
+    
+    echo ""
+    echo -e "${YELLOW}Mostrando logs de:${NC}"
+    echo -e "  ${CYAN}[1]${NC} $device1 - $model1"
+    echo -e "  ${MAGENTA}[2]${NC} $device2 - $model2"
+    echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
+    echo ""
+    
+    # Cleanup on exit
+    trap "kill 0 2>/dev/null" EXIT
+    
+    # Start logcat for both selected devices
+    (adb -s "$device1" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | while read line; do
+        echo -e "${CYAN}[1]${NC} $line"
+    done) &
+    
+    (adb -s "$device2" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | while read line; do
+        echo -e "${MAGENTA}[2]${NC} $line"
+    done) &
+    
+    wait
+}
+
+# View heart rate and wearable data flow logs
+view_hr_data_logs() {
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Heart Rate & Wearable Data Flow Logs${NC}"
+    echo -e "${CYAN}══════════════════════════════════════════════════════════════${NC}"
+    echo -e "Monitoreando: HeartRate, WatchReceiver, SensorData, Wearable, Protocol"
+    echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
+    echo ""
+    adb_cmd logcat | grep --line-buffered -iE "(HeartRate|heartRate|WatchReceiver|WearableReceiver|SensorData|sensor_data|Protocol|health/daily|health/hr|WearableListenerService|DataClient|MessageClient)"
 }
 
 show_help() {
@@ -75,6 +211,12 @@ show_help() {
     echo "  -c, --clear  Limpiar buffer de logs"
     echo "  -d, --dump   Guardar logs a archivo"
     echo "  -f, --full   Ver TODO el flujo de login (OAuth + OW + API)"
+    echo ""
+    echo -e "${CYAN}Multi-dispositivo:${NC}"
+    echo "  -b, --both   Ver logs de AMBOS dispositivos (phone + emulator)"
+    echo "  -hr          Ver flujo de datos de frecuencia cardíaca"
+    echo "  -1           Forzar primer dispositivo"
+    echo "  -2           Forzar segundo dispositivo"
     echo "  -h, --help   Mostrar esta ayuda"
     echo ""
     echo -e "${YELLOW}Para debugear Google Sign-In:${NC}"
@@ -87,6 +229,10 @@ show_help() {
     echo "  2. Intenta login en la app"
     echo "  3. ./logs.sh -w              # Ver credenciales OW"
     echo ""
+    echo -e "${YELLOW}Para debugear flujo Watch → Phone → API:${NC}"
+    echo "  ./logs.sh -b                 # Ver logs de ambos dispositivos"
+    echo "  ./logs.sh -hr                # Ver datos de frecuencia cardíaca"
+    echo ""
     echo -e "${YELLOW}Para ver todo el flujo:${NC}"
     echo "  ./logs.sh -f                 # Ver OAuth + OW + API"
     echo ""
@@ -94,7 +240,7 @@ show_help() {
 
 clear_logs() {
     echo -e "${YELLOW}Limpiando buffer de logs...${NC}"
-    adb logcat -c
+    adb_cmd logcat -c
     echo -e "${GREEN}✓ Logs limpiados. Ahora puedes reproducir el problema.${NC}"
 }
 
@@ -107,18 +253,18 @@ dump_logs() {
     {
         echo "=== Hacking Health App Logs ==="
         echo "Timestamp: $(date)"
-        echo "Device: $(adb shell getprop ro.product.model)"
-        echo "Android: $(adb shell getprop ro.build.version.release)"
+        echo "Device: $(adb_cmd shell getprop ro.product.model)"
+        echo "Android: $(adb_cmd shell getprop ro.build.version.release)"
         echo ""
         echo "=== App Info ==="
         echo "Package: $APP_PACKAGE"
         echo "PID: $(get_app_pid)"
         echo ""
         echo "=== OAuth/Auth Logs ==="
-        adb logcat -d | grep -iE "(AuthViewModel|OAuthRepository|GoogleAuth|Google.*Sign|ApiException|DEVELOPER_ERROR|SignatureVerifier)" | tail -200
+        adb_cmd logcat -d | grep -iE "(AuthViewModel|OAuthRepository|GoogleAuth|Google.*Sign|ApiException|DEVELOPER_ERROR|SignatureVerifier)" | tail -200
         echo ""
         echo "=== Error Logs ==="
-        adb logcat -d | grep -iE "(healthdiary|$APP_PACKAGE)" | grep -iE "(error|exception|fail|crash)" | tail -100
+        adb_cmd logcat -d | grep -iE "(healthdiary|$APP_PACKAGE)" | grep -iE "(error|exception|fail|crash)" | tail -100
     } > "$filename"
     
     echo -e "${GREEN}✓ Logs guardados en: ${filename}${NC}"
@@ -130,12 +276,12 @@ view_all_logs() {
     
     if [ -z "$pid" ]; then
         echo -e "${YELLOW}App no está corriendo. Mostrando logs recientes...${NC}"
-        adb logcat -d | grep -i "healthdiary" | tail -100
+        adb_cmd logcat -d | grep -i "healthdiary" | tail -100
     else
         echo -e "${GREEN}App PID: ${pid}${NC}"
         echo -e "${YELLOW}Mostrando logs en tiempo real (Ctrl+C para salir)...${NC}"
         echo ""
-        adb logcat --pid="$pid"
+        adb_cmd logcat --pid="$pid"
     fi
 }
 
@@ -147,31 +293,31 @@ view_oauth_logs() {
     echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
     echo ""
     # Usar grep en tiempo real con los patrones correctos
-    adb logcat | grep --line-buffered -iE "(AuthViewModel|OAuthRepository|OAuthRedirect|GoogleAuth|Google.*Sign|SignIn|ApiException|DEVELOPER_ERROR|SignatureVerifier|idToken|client.*id)"
+    adb_cmd logcat | grep --line-buffered -iE "(AuthViewModel|OAuthRepository|OAuthRedirect|GoogleAuth|Google.*Sign|SignIn|ApiException|DEVELOPER_ERROR|SignatureVerifier|idToken|client.*id)"
 }
 
 view_sync_logs() {
     echo -e "${YELLOW}Mostrando logs de Sync/OpenWearables (Ctrl+C para salir)...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(OpenWearablesRepo|OpenWearablesSDK|SyncManager|HealthConnect|SamsungHealth)"
+    adb_cmd logcat | grep --line-buffered -iE "(OpenWearablesRepo|OpenWearablesSDK|SyncManager|HealthConnect|SamsungHealth)"
 }
 
 view_error_logs() {
     echo -e "${YELLOW}Mostrando errores y excepciones (Ctrl+C para salir)...${NC}"
     echo ""
-    adb logcat "*:E" | grep --line-buffered -iE "(healthdiary|$APP_PACKAGE|Auth|OAuth|OpenWearables|exception|error|fail|crash)"
+    adb_cmd logcat "*:E" | grep --line-buffered -iE "(healthdiary|$APP_PACKAGE|Auth|OAuth|OpenWearables|exception|error|fail|crash)"
 }
 
 view_filtered_logs() {
     echo -e "${YELLOW}Mostrando logs filtrados de la app (Ctrl+C para salir)...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(AuthViewModel|AuthRepository|OAuthRepository|OpenWearablesRepo|HealthDiaryApp|TokenManager)"
+    adb_cmd logcat | grep --line-buffered -iE "(AuthViewModel|AuthRepository|OAuthRepository|OpenWearablesRepo|HealthDiaryApp|TokenManager)"
 }
 
 view_gms_logs() {
     echo -e "${YELLOW}Mostrando logs de Google Play Services (Ctrl+C para salir)...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(GoogleSignatureVerifier|SignInClient|Finsky|GmsClient|package.*info|SHA)"
+    adb_cmd logcat | grep --line-buffered -iE "(GoogleSignatureVerifier|SignInClient|Finsky|GmsClient|package.*info|SHA)"
 }
 
 view_openwearables_logs() {
@@ -181,7 +327,7 @@ view_openwearables_logs() {
     echo -e "Monitoreando: OpenWearablesRepo, TokenManager, credentials, open_wearables"
     echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(OpenWearables|TokenManager|open_wearables|ow_user|ow_access|owCreds|credentials.*stored|auto.*login|saveOpenWearables|hasOpenWearables)"
+    adb_cmd logcat | grep --line-buffered -iE "(OpenWearables|TokenManager|open_wearables|ow_user|ow_access|owCreds|credentials.*stored|auto.*login|saveOpenWearables|hasOpenWearables)"
 }
 
 view_api_logs() {
@@ -191,7 +337,7 @@ view_api_logs() {
     echo -e "Monitoreando: API_REQUEST, API_RESPONSE, Retrofit, HTTP"
     echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(API_REQUEST|API_RESPONSE|API_ERROR|Retrofit|oauth/token|/login|authenticateWithOAuth|response.*code|status.*code|\{.*access_token|\{.*open_wearables)"
+    adb_cmd logcat | grep --line-buffered -iE "(API_REQUEST|API_RESPONSE|API_ERROR|Retrofit|oauth/token|/login|authenticateWithOAuth|response.*code|status.*code|\{.*access_token|\{.*open_wearables)"
 }
 
 view_full_login_flow() {
@@ -201,7 +347,7 @@ view_full_login_flow() {
     echo -e "Monitoreando todo el flujo de autenticación..."
     echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
     echo ""
-    adb logcat | grep --line-buffered -iE "(AuthViewModel|OAuthRepository|OpenWearables|TokenManager|API_REQUEST|API_RESPONSE|API_ERROR|oauth/token|Google.*Sign|Backend.*auth|saveOpenWearables|hasOpenWearables|credentials|access_token|open_wearables|Network error|timeout|Success|Failed)"
+    adb_cmd logcat | grep --line-buffered -iE "(AuthViewModel|OAuthRepository|OpenWearables|TokenManager|API_REQUEST|API_RESPONSE|API_ERROR|oauth/token|Google.*Sign|Backend.*auth|saveOpenWearables|hasOpenWearables|credentials|access_token|open_wearables|Network error|timeout|Success|Failed)"
 }
 
 # =============================================================================
@@ -210,6 +356,22 @@ view_full_login_flow() {
 
 print_header
 check_adb
+
+# Auto-select device if multiple connected (except for help or both-devices mode)
+if [[ "${1:-}" != "-h" && "${1:-}" != "--help" && "${1:-}" != "-b" && "${1:-}" != "--both" ]]; then
+    devices=($(get_devices))
+    if [ ${#devices[@]} -gt 1 ]; then
+        echo -e "${YELLOW}Múltiples dispositivos detectados${NC}"
+        select_device
+        # If user selected "both", run view_both_devices and exit
+        if [ "$BOTH_DEVICES" = true ]; then
+            view_both_devices
+            exit 0
+        fi
+    elif [ ${#devices[@]} -eq 1 ]; then
+        SELECTED_DEVICE="${devices[0]}"
+    fi
+fi
 
 case "${1:-}" in
     -h|--help)
@@ -244,6 +406,20 @@ case "${1:-}" in
         ;;
     -e|--error)
         view_error_logs
+        ;;
+    -b|--both)
+        view_both_devices
+        ;;
+    -hr)
+        view_hr_data_logs
+        ;;
+    -1)
+        SELECTED_DEVICE=1
+        view_filtered_logs
+        ;;
+    -2)
+        SELECTED_DEVICE=2
+        view_filtered_logs
         ;;
     *)
         view_filtered_logs

@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,10 +20,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,11 +62,19 @@ fun CaregiverPairingScreen(
     
     val uiState by viewModel.uiState.collectAsState()
     val codeInput by viewModel.codeInput.collectAsState()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    
+    // Request focus on launch to show keyboard
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
     
     // Handle success state
     LaunchedEffect(uiState) {
         if (uiState is PairingUiState.PairingSuccess) {
             val successState = uiState as PairingUiState.PairingSuccess
+            keyboardController?.hide()
             onPairingSuccess(
                 successState.pairingId,
                 successState.linkedUserId,
@@ -93,10 +108,17 @@ fun CaregiverPairingScreen(
             
             Spacer(modifier = Modifier.height(48.dp))
             
-            // Code input boxes
-            CodeInputBoxes(
+            // Code input with native numeric keyboard
+            CodeInputWithNativeKeyboard(
                 code = codeInput,
-                isValidating = uiState is PairingUiState.CodeValidating
+                onCodeChange = { newCode ->
+                    // Only accept digits, max 6
+                    val filtered = newCode.filter { it.isDigit() }.take(6)
+                    viewModel.updateCodeInput(filtered)
+                },
+                isValidating = uiState is PairingUiState.CodeValidating,
+                focusRequester = focusRequester,
+                enabled = uiState !is PairingUiState.CodeValidating
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -114,19 +136,12 @@ fun CaregiverPairingScreen(
             
             Spacer(modifier = Modifier.weight(1f))
             
-            // Numeric keypad
-            NumericKeypad(
-                onNumberClick = { digit ->
-                    if (codeInput.length < 6 && uiState !is PairingUiState.CodeValidating) {
-                        viewModel.updateCodeInput(codeInput + digit)
-                    }
-                },
-                onBackspace = {
-                    if (uiState !is PairingUiState.CodeValidating) {
-                        viewModel.deleteLastDigit()
-                    }
-                },
-                enabled = uiState !is PairingUiState.CodeValidating
+            // Hint text
+            Text(
+                text = "Toca los recuadros para ingresar el código",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -214,9 +229,12 @@ private fun HeaderSection() {
 }
 
 @Composable
-private fun CodeInputBoxes(
+private fun CodeInputWithNativeKeyboard(
     code: String,
-    isValidating: Boolean
+    onCodeChange: (String) -> Unit,
+    isValidating: Boolean,
+    focusRequester: FocusRequester,
+    enabled: Boolean
 ) {
     var cursorVisible by remember { mutableStateOf(true) }
     
@@ -228,46 +246,72 @@ private fun CodeInputBoxes(
         }
     }
     
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        repeat(6) { index ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(
-                        width = 2.dp,
-                        color = when {
-                            isValidating -> MaterialTheme.colorScheme.primary
-                            index == code.length -> MaterialTheme.colorScheme.primary
-                            index < code.length -> MaterialTheme.colorScheme.tertiary
-                            else -> Color.Transparent
-                        },
-                        shape = RoundedCornerShape(16.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (index < code.length) {
-                    // Show digit
-                    Text(
-                        text = code[index].toString(),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                } else if (index == code.length && cursorVisible && !isValidating) {
-                    // Show cursor
-                    Box(
-                        modifier = Modifier
-                            .width(3.dp)
-                            .height(32.dp)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
+    // Invisible TextField to capture input with native keyboard
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // The actual input field (invisible but captures focus)
+        BasicTextField(
+            value = code,
+            onValueChange = { newValue ->
+                if (enabled) {
+                    onCodeChange(newValue)
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number
+            ),
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(0.dp) // Make it invisible
+                .focusRequester(focusRequester),
+            cursorBrush = SolidColor(Color.Transparent)
+        )
+        
+        // Visual representation of the code boxes (clickable to focus)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { focusRequester.requestFocus() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(6) { index ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(
+                            width = 2.dp,
+                            color = when {
+                                isValidating -> MaterialTheme.colorScheme.primary
+                                index == code.length -> MaterialTheme.colorScheme.primary
+                                index < code.length -> MaterialTheme.colorScheme.tertiary
+                                else -> Color.Transparent
+                            },
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { focusRequester.requestFocus() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (index < code.length) {
+                        // Show digit
+                        Text(
+                            text = code[index].toString(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    } else if (index == code.length && cursorVisible && !isValidating) {
+                        // Show cursor
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .height(32.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
                 }
             }
         }
@@ -302,128 +346,6 @@ private fun ErrorMessage(message: String) {
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
-    }
-}
-
-@Composable
-private fun NumericKeypad(
-    onNumberClick: (String) -> Unit,
-    onBackspace: () -> Unit,
-    enabled: Boolean
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Row 1: 1, 2, 3
-        KeypadRow(
-            numbers = listOf("1", "2", "3"),
-            onNumberClick = onNumberClick,
-            enabled = enabled
-        )
-        
-        // Row 2: 4, 5, 6
-        KeypadRow(
-            numbers = listOf("4", "5", "6"),
-            onNumberClick = onNumberClick,
-            enabled = enabled
-        )
-        
-        // Row 3: 7, 8, 9
-        KeypadRow(
-            numbers = listOf("7", "8", "9"),
-            onNumberClick = onNumberClick,
-            enabled = enabled
-        )
-        
-        // Row 4: backspace, 0, empty
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Backspace button
-            KeypadButton(
-                content = {
-                    Icon(
-                        imageVector = Icons.Default.Backspace,
-                        contentDescription = "Borrar",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(28.dp)
-                    )
-                },
-                onClick = onBackspace,
-                enabled = enabled,
-                modifier = Modifier.weight(1f)
-            )
-            
-            // 0 button
-            KeypadButton(
-                content = {
-                    Text(
-                        text = "0",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                onClick = { onNumberClick("0") },
-                enabled = enabled,
-                modifier = Modifier.weight(1f)
-            )
-            
-            // Empty space for symmetry
-            Spacer(modifier = Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun KeypadRow(
-    numbers: List<String>,
-    onNumberClick: (String) -> Unit,
-    enabled: Boolean
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        numbers.forEach { number ->
-            KeypadButton(
-                content = {
-                    Text(
-                        text = number,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                onClick = { onNumberClick(number) },
-                enabled = enabled,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun KeypadButton(
-    content: @Composable () -> Unit,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .aspectRatio(1.5f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (enabled) MaterialTheme.colorScheme.surface
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
     }
 }
 

@@ -41,6 +41,7 @@ fun ProfileScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToSecurity: () -> Unit = {},
+    onNavigateToLogs: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     profileViewModel: ProfileViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -194,7 +195,8 @@ fun ProfileScreen(
                     SettingsMenuList(
                         onAccountClick = onNavigateToSettings,
                         onNotificationsClick = onNavigateToNotifications,
-                        onSecurityClick = onNavigateToSecurity
+                        onSecurityClick = onNavigateToSecurity,
+                        onDebugClick = onNavigateToLogs
                     )
                     
                     // Logout Button

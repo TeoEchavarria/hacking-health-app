@@ -25,6 +25,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.model.DaySummary
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricAnalysisUiState
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricsViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.CalendarViewModel
 
 /**
@@ -43,7 +44,9 @@ fun CalendarScreen(
     calendarViewModel: CalendarViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val biometricsViewModel = remember { BiometricsViewModel(context) }
     val biometricState by calendarViewModel.biometricState.collectAsState()
+    val biometricsUiState by biometricsViewModel.uiState.collectAsState()
     
     // Mock data states
     var medicationsTaken by remember { mutableStateOf(setOf<Int>()) }
@@ -139,6 +142,25 @@ fun CalendarScreen(
             }
         }
         
+        // Alert Banner (only if there's a critical alert from BiometricsViewModel)
+        biometricsUiState.currentAlert?.let { alert ->
+            AlertBannerCard(
+                alert = alert,
+                onViewClick = {
+                    Toast.makeText(context, "Detalles de alerta próximamente", Toast.LENGTH_SHORT).show()
+                },
+                onDismiss = { biometricsViewModel.dismissAlert() }
+            )
+        }
+        
+        // Health Tip Card (personalized health tip from BiometricsViewModel)
+        HealthTipCard(
+            tip = biometricsUiState.healthTip,
+            onActionClick = {
+                Toast.makeText(context, "Próximamente", Toast.LENGTH_SHORT).show()
+            }
+        )
+        
         // Two Column Layout
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -203,18 +225,22 @@ fun CalendarScreen(
             }
         )
         
-        // Biometric Analysis Section
+        // Biometric Analysis Section (Heart Rate only with history)
         BiometricAnalysisSection(
             state = biometricState,
-            onRefresh = { calendarViewModel.refreshBiometricData() }
+            onRefresh = { calendarViewModel.refreshBiometricData() },
+            onHeartRateClick = {
+                // TODO: Navigate to heart rate history or show bottom sheet
+                Toast.makeText(context, "Ver historial de frecuencia cardíaca", Toast.LENGTH_SHORT).show()
+            }
         )
         
-        // Day Summary
+        // Day Summary - Shows Steps and Sleep from real data
         DaySummaryCard(
             summary = DaySummary(
-                steps = 2450,
-                sleepHours = 7.7f,
-                description = "Estado general estable. Tendencia de presión sugiere evitar esfuerzos intensos."
+                steps = biometricState.healthSummary?.steps?.total,
+                sleepHours = biometricState.healthSummary?.sleep?.totalMinutes?.let { it / 60f },
+                description = generateDaySummaryDescription(biometricState)
             )
         )
         
@@ -294,13 +320,15 @@ private fun MedicationsSection(
  * Biometric Analysis Section
  * 
  * Shows health metrics from the patient's wearable device.
- * - Available metrics: Heart rate, Steps, Sleep
+ * - Heart Rate: clickable to see 24h history
+ * - Steps & Sleep: moved to Day Summary section
  * - Unavailable metrics: SpO2, Blood Pressure, Temperature (shown with device limitation message)
  */
 @Composable
 private fun BiometricAnalysisSection(
     state: BiometricAnalysisUiState,
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onHeartRateClick: () -> Unit = {}
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -373,11 +401,9 @@ private fun BiometricAnalysisSection(
         } else {
             val summary = state.healthSummary
             
-            // Available metrics from wearable
-            
-            // Heart Rate
+            // Heart Rate - Clickable for history
             if (summary?.hasHeartRate() == true) {
-                BiometricCompactCard(
+                BiometricClickableCard(
                     icon = "💓",
                     metricName = "Frecuencia Cardíaca",
                     value = "${summary.heartRate.average} BPM",
@@ -392,71 +418,15 @@ private fun BiometricAnalysisSection(
                         else -> "Normal"
                     },
                     trend = "Min: ${summary.heartRate.min} • Max: ${summary.heartRate.max}",
+                    hint = "Toca para ver historial 24h",
                     backgroundColor = SandboxPrimaryFixed,
-                    iconColor = SandboxPrimary
+                    iconColor = SandboxPrimary,
+                    onClick = onHeartRateClick
                 )
             } else {
                 BiometricUnavailableCard(
                     icon = "💓",
                     metricName = "Frecuencia Cardíaca",
-                    reason = "Sin datos del reloj"
-                )
-            }
-            
-            // Steps
-            if (summary?.hasSteps() == true) {
-                BiometricCompactCard(
-                    icon = "👟",
-                    metricName = "Pasos (Hoy)",
-                    value = "${summary.steps.total} pasos",
-                    status = when {
-                        summary.steps.total!! >= 10000 -> BiometricStatus.OPTIMAL
-                        summary.steps.total >= 5000 -> BiometricStatus.NORMAL
-                        else -> BiometricStatus.WARNING
-                    },
-                    statusLabel = when {
-                        summary.steps.total >= 10000 -> "Excelente"
-                        summary.steps.total >= 5000 -> "Bien"
-                        else -> "Bajo"
-                    },
-                    trend = null,
-                    backgroundColor = Color(0xFFE8F5E9),
-                    iconColor = Color(0xFF4CAF50)
-                )
-            } else {
-                BiometricUnavailableCard(
-                    icon = "👟",
-                    metricName = "Pasos (Hoy)",
-                    reason = "Sin datos del reloj"
-                )
-            }
-            
-            // Sleep
-            if (summary?.hasSleep() == true) {
-                val sleepHours = (summary.sleep.totalMinutes ?: 0) / 60
-                val sleepMins = (summary.sleep.totalMinutes ?: 0) % 60
-                BiometricCompactCard(
-                    icon = "😴",
-                    metricName = "Sueño (Anoche)",
-                    value = "${sleepHours}h ${sleepMins}m",
-                    status = when {
-                        sleepHours >= 7 -> BiometricStatus.OPTIMAL
-                        sleepHours >= 5 -> BiometricStatus.NORMAL
-                        else -> BiometricStatus.WARNING
-                    },
-                    statusLabel = when {
-                        sleepHours >= 7 -> "Óptimo"
-                        sleepHours >= 5 -> "Regular"
-                        else -> "Poco"
-                    },
-                    trend = null,
-                    backgroundColor = Color(0xFFE8EAF6),
-                    iconColor = Color(0xFF5C6BC0)
-                )
-            } else {
-                BiometricUnavailableCard(
-                    icon = "😴",
-                    metricName = "Sueño (Anoche)",
                     reason = "Sin datos del reloj"
                 )
             }
@@ -555,6 +525,50 @@ private fun BiometricUnavailableCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * Generate description for day summary based on health data
+ */
+private fun generateDaySummaryDescription(state: BiometricAnalysisUiState): String {
+    val summary = state.healthSummary ?: return "Sin datos disponibles aún. Conecta tu reloj para ver tu resumen diario."
+    
+    val parts = mutableListOf<String>()
+    
+    // Heart rate status
+    summary.heartRate.average?.let { hr ->
+        parts.add(when {
+            hr > 100 -> "Frecuencia cardíaca elevada"
+            hr < 50 -> "Frecuencia cardíaca baja"
+            else -> "Frecuencia cardíaca normal"
+        })
+    }
+    
+    // Steps status
+    summary.steps.total?.let { steps ->
+        parts.add(when {
+            steps >= 10000 -> "Excelente actividad física"
+            steps >= 5000 -> "Buena actividad física"
+            steps >= 2000 -> "Actividad física moderada"
+            else -> "Poca actividad física hoy"
+        })
+    }
+    
+    // Sleep status
+    summary.sleep.totalMinutes?.let { minutes ->
+        val hours = minutes / 60
+        parts.add(when {
+            hours >= 7 -> "Sueño reparador"
+            hours >= 5 -> "Sueño regular"
+            else -> "Sueño insuficiente"
+        })
+    }
+    
+    return if (parts.isNotEmpty()) {
+        parts.joinToString(". ") + "."
+    } else {
+        "Estado general estable."
     }
 }
 

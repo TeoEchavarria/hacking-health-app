@@ -2,9 +2,13 @@ package com.samsung.android.health.sdk.sample.healthdiary.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.HealthMetricsRequest
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.HeartRateSampleApi
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.dao.WatchHealthDao
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.*
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.model.HealthDailySummary
 import com.samsung.android.health.sdk.sample.healthdiary.wearable.model.HeartRateSample
 import kotlinx.coroutines.Dispatchers
@@ -115,11 +119,58 @@ class WatchHealthIngestionRepository(private val context: Context) {
                 Log.d(TAG, "[DIAGNOSTIC][DB] Persistence verified - Steps rows: $stepsRowCount, Sleep rows: $sleepRowCount, HR rows: $hrRowCount")
                 
                 Log.d(TAG, "Daily summary stored successfully")
+                
+                // === IMMEDIATE SYNC TO BACKEND ===
+                try {
+                    uploadToBackend(summary)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Backend sync failed (will retry via periodic worker): ${e.message}")
+                    // Data is already in local DB, will be synced by HealthSyncWorker
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "DB_WRITE_ERROR: Failed to persist daily summary", e)
                 Log.e(TAG, "DB_WRITE_ERROR: ${e.javaClass.simpleName}: ${e.message}")
                 throw e
             }
+        }
+    }
+    
+    /**
+     * Upload health data to backend API (immediate sync).
+     */
+    private suspend fun uploadToBackend(summary: HealthDailySummary) {
+        val token = TokenManager.getToken()
+        val userId = TokenManager.getUserIdFromToken()
+        
+        if (token == null || userId == null) {
+            Log.w(TAG, "BACKEND_SYNC: Skipped - not authenticated (token=$token, userId=$userId)")
+            return
+        }
+        
+        Log.i(TAG, "BACKEND_SYNC: Starting upload for date=${summary.date}")
+        
+        val request = HealthMetricsRequest(
+            userId = userId,
+            date = summary.date,
+            steps = if (summary.steps > 0) summary.steps else null,
+            sleepMinutes = summary.sleepMinutes,
+            heartRateSamples = summary.heartRateSamples.map { 
+                HeartRateSampleApi(it.bpm, it.timestamp, it.accuracy.name) 
+            }.takeIf { it.isNotEmpty() },
+            avgHeartRate = summary.avgHeartRate,
+            minHeartRate = summary.minHeartRate,
+            maxHeartRate = summary.maxHeartRate,
+            syncTimestamp = summary.syncTimestamp
+        )
+        
+        val api = RetrofitClient.healthMetricsApiService
+        val response = api.uploadHealthMetrics("Bearer $token", request)
+        
+        if (response.success) {
+            Log.i(TAG, "BACKEND_SYNC: ✅ Success - ${response.metricsStored} metrics stored")
+        } else {
+            Log.w(TAG, "BACKEND_SYNC: ❌ Failed - ${response.message}")
+            throw Exception(response.message)
         }
     }
     
@@ -141,6 +192,9 @@ class WatchHealthIngestionRepository(private val context: Context) {
                 )
             }
             watchHealthDao.insertHeartRates(entities)
+            
+            // Trigger sync to backend (debounced via WorkManager)
+            com.samsung.android.health.sdk.sample.healthdiary.worker.HealthSyncWorker.triggerNow(context)
         }
     }
     
@@ -346,6 +400,46 @@ class WatchHealthIngestionRepository(private val context: Context) {
             )
         }
     }
+    
+    /**
+     * Get latest data for today for periodic backend sync.
+     * Returns a simplified summary that can be uploaded to backend.
+     */
+    suspend fun getLatestDataForSync(date: String): SyncableHealthData? {
+        return withContext(Dispatchers.IO) {
+            val steps = watchHealthDao.getStepsForDate(date)
+            val sleep = watchHealthDao.getSleepForDate(date)
+            val dailySummary = watchHealthDao.getDailySummary(date)
+            
+            if (steps == null && sleep == null && dailySummary == null) {
+                return@withContext null
+            }
+            
+            SyncableHealthData(
+                date = date,
+                steps = steps?.steps,
+                sleepMinutes = sleep?.sleepMinutes,
+                avgHeartRate = dailySummary?.avgHeartRate,
+                minHeartRate = dailySummary?.minHeartRate,
+                maxHeartRate = dailySummary?.maxHeartRate
+            )
+        }
+    }
+}
+
+/**
+ * Simplified health data ready for backend sync.
+ */
+data class SyncableHealthData(
+    val date: String,
+    val steps: Int?,
+    val sleepMinutes: Int?,
+    val avgHeartRate: Int?,
+    val minHeartRate: Int?,
+    val maxHeartRate: Int?
+) {
+    val hasData: Boolean
+        get() = steps != null || sleepMinutes != null || avgHeartRate != null
 }
 
 /**

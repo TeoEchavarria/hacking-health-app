@@ -21,11 +21,10 @@ import kotlinx.coroutines.launch
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Profile : Screen("profile")
-    object LegacyHome : Screen("legacy_home")
-    object PreviousVersion : Screen("previous_version")
     object Logs : Screen("logs")
     object TxAgent : Screen("txagent")
     object Settings : Screen("settings")
+    object WatchOnboarding : Screen("watch_onboarding")
     object Training : Screen("training")
     object Habits : Screen("habits")
     object HeartRateHistory : Screen("heart_rate_history")
@@ -78,7 +77,7 @@ fun NavGraph() {
     NavHost(navController = navController, startDestination = Screen.Home.route) {
         composable(Screen.Home.route) {
             MainScaffold(
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToSettings = { navController.navigate(Screen.WatchOnboarding.route) },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onNavigateToTraining = { navController.navigate(Screen.Training.route) },
                 onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
@@ -107,54 +106,8 @@ fun NavGraph() {
                 onNavigateToSecurity = { 
                     // TODO: Navigate to security screen when implemented
                 },
+                onNavigateToLogs = { navController.navigate(Screen.Settings.route) },
                 onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        // Previous Version - Old DeviceHomeScreen for Settings access
-        composable(Screen.PreviousVersion.route) {
-            PreviousVersionScreen(
-                onNavigateToLogs = { navController.navigate(Screen.Logs.route) },
-                onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToTraining = { navController.navigate(Screen.Training.route) },
-                onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
-                onUploadPdf = { pdfLauncher.launch("application/pdf") },
-                onLogout = {
-                    val intent = Intent(context, LoginActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    context.startActivity(intent)
-                    activity?.finish()
-                },
-                onReturnToNewVersion = { navController.popBackStack() },
-                onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
-                    { navController.navigate(Screen.SandboxGallery.route) }
-                } else null
-            )
-        }
-        
-        composable(Screen.LegacyHome.route) {
-            LegacyHomeScreen(
-                onNavigateToLogs = { navController.navigate(Screen.Logs.route) },
-                onNavigateToTxAgent = { navController.navigate(Screen.TxAgent.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToTraining = { navController.navigate(Screen.Training.route) },
-                onNavigateToHabits = { navController.navigate(Screen.Habits.route) },
-                onUploadPdf = { pdfLauncher.launch("application/pdf") },
-                onReturnToNewVersion = { navController.popBackStack() },
-                onLogout = {
-                    // Navigate to LoginActivity and clear task stack
-                    val intent = Intent(context, LoginActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    context.startActivity(intent)
-                    // Finish current activity
-                    activity?.finish()
-                },
-                onNavigateToSandboxGallery = if (com.samsung.android.health.sdk.sample.healthdiary.BuildConfig.DEBUG) {
-                    { navController.navigate(Screen.SandboxGallery.route) }
-                } else null
             )
         }
         
@@ -172,9 +125,15 @@ fun NavGraph() {
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToLegacyHome = { navController.navigate(Screen.PreviousVersion.route) },
-                onNavigateToOpenWearables = { navController.navigate(Screen.OpenWearables.route) }
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Watch Onboarding Screen
+        composable(Screen.WatchOnboarding.route) {
+            com.samsung.android.health.sdk.sample.healthdiary.wearable.ui.WatchOnboardingScreen(
+                onComplete = { navController.popBackStack() },
+                onSkip = { navController.popBackStack() }
             )
         }
         

@@ -52,6 +52,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.BuildConfig
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.samsung.android.health.sdk.sample.healthdiary.update.worker.UpdateWorker
+import com.samsung.android.health.sdk.sample.healthdiary.worker.HealthSyncWorker
 import java.util.concurrent.TimeUnit
 import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateDialog
 import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateViewModel
@@ -102,6 +103,9 @@ class HealthMainActivity : AppCompatActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             updateRequest
         )
+        
+        // Schedule periodic health data sync (every 15 min)
+        HealthSyncWorker.schedule(applicationContext)
 
         // Verificar autenticación antes de continuar
         // #region agent log

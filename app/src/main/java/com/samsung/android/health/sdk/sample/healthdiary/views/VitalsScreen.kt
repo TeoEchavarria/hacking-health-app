@@ -36,7 +36,7 @@ import java.util.Locale
  * - Day summary
  * - **Caregiver mode**: View linked patient's alerts
  * 
- * Note: Biometric data moved to BiometricsScreen
+ * Note: Biometric data available in CalendarScreen (Calendar - Análisis Biométrico)
  */
 @Composable
 fun VitalsScreen(
@@ -191,9 +191,9 @@ fun VitalsScreen(
 }
 
 /**
- * Header shown in caregiver mode with patient selector and refresh button.
+ * Header shown in caregiver mode with patient info and refresh button.
+ * Shows a static display of the patient being viewed (no dropdown).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CaregiverModeHeader(
     selectedPatient: LinkedPatient?,
@@ -202,8 +202,6 @@ private fun CaregiverModeHeader(
     onPatientSelected: (LinkedPatient) -> Unit,
     onRefresh: () -> Unit
 ) {
-    var showPatientDropdown by remember { mutableStateOf(false) }
-    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -243,56 +241,28 @@ private fun CaregiverModeHeader(
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
             } else {
-                // Patient selector row
+                // Patient info row (static, no dropdown)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Patient dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = showPatientDropdown,
-                        onExpandedChange = { showPatientDropdown = it },
+                    // Patient name display
+                    Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        OutlinedTextField(
-                            value = selectedPatient?.patientName ?: "Seleccionar paciente",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Viendo datos de") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showPatientDropdown) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                            )
+                        Text(
+                            text = "Viendo datos de",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
-                        
-                        ExposedDropdownMenu(
-                            expanded = showPatientDropdown,
-                            onDismissRequest = { showPatientDropdown = false }
-                        ) {
-                            linkedPatients.forEach { patient ->
-                                DropdownMenuItem(
-                                    text = { Text(patient.patientName) },
-                                    onClick = {
-                                        onPatientSelected(patient)
-                                        showPatientDropdown = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                            }
-                        }
+                        Text(
+                            text = selectedPatient?.patientName ?: "Sin paciente seleccionado",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
                     
                     // Refresh button
                     IconButton(onClick = onRefresh) {
