@@ -41,6 +41,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.CalendarViewM
 @Composable
 fun CalendarScreen(
     modifier: Modifier = Modifier,
+    onNavigateToHeartRateHistory: () -> Unit = {},
     calendarViewModel: CalendarViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -230,8 +231,8 @@ fun CalendarScreen(
             state = biometricState,
             onRefresh = { calendarViewModel.refreshBiometricData() },
             onHeartRateClick = {
-                // TODO: Navigate to heart rate history or show bottom sheet
-                Toast.makeText(context, "Ver historial de frecuencia cardíaca", Toast.LENGTH_SHORT).show()
+                // Navigate to heart rate history screen
+                onNavigateToHeartRateHistory()
             }
         )
         

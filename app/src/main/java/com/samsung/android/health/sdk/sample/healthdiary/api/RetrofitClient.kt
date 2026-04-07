@@ -168,11 +168,14 @@ object RetrofitClient {
         response
     }
     
+    // Authenticator for automatic token refresh on 401 responses
+    private val tokenAuthenticator = TokenAuthenticator()
+    
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(contentTypeInterceptor)
         .addInterceptor(customLoggingInterceptor)
         .addInterceptor(loggingInterceptor)
-        // No authenticator - auth disabled for dev/testing
+        .authenticator(tokenAuthenticator)
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

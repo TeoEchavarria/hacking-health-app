@@ -115,7 +115,9 @@ fun MainScaffold(
                         )
                     }
                     BottomNavTab.CALENDAR -> {
-                        CalendarScreen()
+                        CalendarScreen(
+                            onNavigateToHeartRateHistory = onNavigateToHeartRateHistory
+                        )
                     }
                 }
             } else {

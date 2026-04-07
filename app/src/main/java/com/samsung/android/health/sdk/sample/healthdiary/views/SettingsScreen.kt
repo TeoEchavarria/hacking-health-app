@@ -98,7 +98,34 @@ fun SettingsScreen(
                             Text(
                                 text = log.formattedTime,
                                 color = Color.Gray,
- 
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.width(60.dp)
+                            )
+                            Text(
+                                text = "[${log.tag}] ",
+                                color = Color(0xFFBB86FC),
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = log.message,
+                                color = when(log.type) {
+                                    LogType.ERROR -> Color(0xFFFF5252)
+                                    LogType.SUCCESS -> Color(0xFF4CAF50)
+                                    LogType.TRAFFIC -> Color(0xFF64B5F6)
+                                    else -> Color(0xFF424242)
+                                },
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * Test watch connectivity by sending a ping message and waiting for pong.
@@ -145,33 +172,6 @@ suspend fun testWatchConnectivity(context: android.content.Context): String {
         } catch (e: Exception) {
             ConnectionLogManager.log(LogType.ERROR, "WatchTest", "Test failed: ${e.message}")
             "❌ Error: ${e.message}"
-        }
-    }
-}                               fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(60.dp)
-                            )
-                            Text(
-                                text = "[${log.tag}] ",
-                                color = Color(0xFFBB86FC),
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(
-                                text = log.message,
-                                color = when(log.type) {
-                                    LogType.ERROR -> Color(0xFFFF5252)
-                                    LogType.SUCCESS -> Color(0xFF4CAF50)
-                                    LogType.TRAFFIC -> Color(0xFF64B5F6)
-                                    else -> Color(0xFF424242)
-                                },
-                                fontSize = 11.sp,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
