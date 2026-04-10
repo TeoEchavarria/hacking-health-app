@@ -71,9 +71,9 @@ data class BiometricsUiState(
     // Health tip
     val healthTip: HealthTip = HealthTip(
         title = "Consejo de Salud",
-        subtitle = "Sugerencia personalizada para hoy",
-        description = "Realizar 5 minutos de respiración guiada puede ayudar a normalizar su presión arterial actual y reducir el estrés acumulado.",
-        actionText = "Iniciar Respiración Guiada"
+        subtitle = "",
+        description = "Tus signos vitales están estables. Continúa con tu rutina saludable y mantén la hidratación.",
+        actionText = ""
     ),
     
     // Biometric readings - Available from watch
@@ -969,9 +969,9 @@ class BiometricsViewModel(private val context: Context) : ViewModel() {
             else -> {
                 HealthTip(
                     title = "Consejo de Salud",
-                    subtitle = "Mantén tu bienestar",
+                    subtitle = "",
                     description = "Tus signos vitales están estables. Continúa con tu rutina saludable y mantén la hidratación.",
-                    actionText = "Ver Más Consejos"
+                    actionText = ""
                 )
             }
         }

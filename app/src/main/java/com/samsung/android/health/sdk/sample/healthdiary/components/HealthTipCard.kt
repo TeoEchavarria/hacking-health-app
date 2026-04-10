@@ -73,8 +73,8 @@ fun HealthTipCard(
                 // Icon container
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(SandboxPrimary),
                     contentAlignment = Alignment.Center
                 ) {
@@ -82,23 +82,25 @@ fun HealthTipCard(
                         imageVector = Icons.Default.Lightbulb,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 
                 Column {
                     Text(
                         text = tip.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         color = SandboxPrimary
                     )
-                    Text(
-                        text = tip.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontStyle = FontStyle.Italic,
-                        color = SandboxSecondary
-                    )
+                    if (tip.subtitle.isNotEmpty()) {
+                        Text(
+                            text = tip.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic,
+                            color = SandboxSecondary
+                        )
+                    }
                 }
             }
             
@@ -113,32 +115,34 @@ fun HealthTipCard(
                 modifier = Modifier.widthIn(max = 320.dp)
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Action Button
-            Button(
-                onClick = onActionClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = SandboxPrimary.copy(alpha = 0.2f),
-                        spotColor = SandboxPrimary.copy(alpha = 0.2f)
+            // Action Button (only show if actionText is not empty)
+            if (tip.actionText.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onActionClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            ambientColor = SandboxPrimary.copy(alpha = 0.2f),
+                            spotColor = SandboxPrimary.copy(alpha = 0.2f)
+                        ),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SandboxPrimary,
+                        contentColor = Color.White
                     ),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SandboxPrimary,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = tip.actionText,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = tip.actionText,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
             }
         }
     }

@@ -154,14 +154,6 @@ fun CalendarScreen(
             )
         }
         
-        // Health Tip Card (personalized health tip from BiometricsViewModel)
-        HealthTipCard(
-            tip = biometricsUiState.healthTip,
-            onActionClick = {
-                Toast.makeText(context, "Próximamente", Toast.LENGTH_SHORT).show()
-            }
-        )
-        
         // Two Column Layout
         Row(
             modifier = Modifier.fillMaxWidth(),

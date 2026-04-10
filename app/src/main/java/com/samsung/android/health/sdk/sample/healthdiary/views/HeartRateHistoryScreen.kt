@@ -53,30 +53,13 @@ fun HeartRateHistoryScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Range Selector
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SandboxButton(
-                    text = "7 Days",
-                    onClick = { viewModel.setRange(7) },
-                    modifier = Modifier.weight(1f),
-                    variant = if (uiState.selectedRange == 7) ButtonVariant.Primary else ButtonVariant.Secondary
-                )
-                SandboxButton(
-                    text = "14 Days",
-                    onClick = { viewModel.setRange(14) },
-                    modifier = Modifier.weight(1f),
-                    variant = if (uiState.selectedRange == 14) ButtonVariant.Primary else ButtonVariant.Secondary
-                )
-                SandboxButton(
-                    text = "30 Days",
-                    onClick = { viewModel.setRange(30) },
-                    modifier = Modifier.weight(1f),
-                    variant = if (uiState.selectedRange == 30) ButtonVariant.Primary else ButtonVariant.Secondary
-                )
-            }
+            // Header: Últimas 24 horas
+            Text(
+                text = "Últimas 24 horas",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             
             // Chart
             if (uiState.isLoading) {

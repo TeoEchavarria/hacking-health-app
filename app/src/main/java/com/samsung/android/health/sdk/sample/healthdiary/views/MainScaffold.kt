@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.activity.LoginActivity
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxBackground
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricsViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HomeViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogoutState
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.ProfileViewModel
@@ -159,6 +160,10 @@ fun DashboardTabContent(
     onNavigateToSleepHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val biometricsViewModel = remember { BiometricsViewModel(context) }
+    val biometricsUiState by biometricsViewModel.uiState.collectAsState()
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -166,10 +171,10 @@ fun DashboardTabContent(
             .padding(top = 16.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Section: Health Tip Nudge
-        HealthTipNudgeCard(
-            userName = userName,
-            tipText = "Un pequeño paseo de 5 min te vendría genial ahora."
+        // Top Section: Health Tip Card (personalized from BiometricsViewModel)
+        HealthTipCard(
+            tip = biometricsUiState.healthTip,
+            onActionClick = { /* TODO: Navigate to breathing exercise */ }
         )
         
         // Middle Section: AI Interaction

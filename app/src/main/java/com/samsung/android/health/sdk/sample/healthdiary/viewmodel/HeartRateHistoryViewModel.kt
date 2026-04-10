@@ -29,7 +29,7 @@ data class HeartRateDataPoint(
  */
 data class HeartRateHistoryUiState(
     val dataPoints: List<HeartRateDataPoint> = emptyList(),
-    val selectedRange: Int = 7, // days
+    val selectedRange: Int = 1, // 24 hours (1 day)
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -52,7 +52,7 @@ class HeartRateHistoryViewModel(private val context: Context) : ViewModel() {
         loadHeartRateHistory()
     }
     
-    fun loadHeartRateHistory(days: Int = 7) {
+    fun loadHeartRateHistory(days: Int = 1) {
         _uiState.value = _uiState.value.copy(isLoading = true, selectedRange = days)
         
         viewModelScope.launch {
@@ -77,12 +77,6 @@ class HeartRateHistoryViewModel(private val context: Context) : ViewModel() {
                     error = e.message ?: "Failed to load heart rate history"
                 )
             }
-        }
-    }
-    
-    fun setRange(days: Int) {
-        if (days != _uiState.value.selectedRange) {
-            loadHeartRateHistory(days)
         }
     }
     
