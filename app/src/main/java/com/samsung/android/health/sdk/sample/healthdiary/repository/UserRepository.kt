@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.FullUserProfileResponse
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.PairingEntity
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +20,42 @@ class UserRepository(private val context: Context) {
     }
     
     private val apiService = RetrofitClient.userApiService
+    private val pairingDao = AppDatabase.getDatabase(context).pairingDao()
+    
+    /**
+     * Get the currently active pairing (if any).
+     * Returns the first active pairing found (priority: caregiver, then patient).
+     */
+    suspend fun getActivePairing(): PairingEntity? = withContext(Dispatchers.IO) {
+        try {
+            val activePairings = pairingDao.getAllActiveSync()
+            if (activePairings.isEmpty()) {
+                Log.d(TAG, "No active pairings found")
+                return@withContext null
+            }
+            
+            // Priority: caregiver role first (since they need to see patient data)
+            val caregiverPairing = activePairings.find { it.userRole == "caregiver" }
+            if (caregiverPairing != null) {
+                Log.d(TAG, "Found active caregiver pairing: ${caregiverPairing.pairingId}")
+                return@withContext caregiverPairing
+            }
+            
+            // Fall back to patient pairing
+            val patientPairing = activePairings.find { it.userRole == "patient" }
+            if (patientPairing != null) {
+                Log.d(TAG, "Found active patient pairing: ${patientPairing.pairingId}")
+                return@withContext patientPairing
+            }
+            
+            // Return first pairing as fallback
+            Log.d(TAG, "Returning first active pairing: ${activePairings[0].pairingId}")
+            return@withContext activePairings[0]
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting active pairing", e)
+            return@withContext null
+        }
+    }
     
     /**
      * Get full user profile with role and connections.

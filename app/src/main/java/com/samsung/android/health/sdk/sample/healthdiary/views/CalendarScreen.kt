@@ -21,19 +21,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealthSummaryResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.MedicationWithTakes
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 import com.samsung.android.health.sdk.sample.healthdiary.model.DaySummary
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricAnalysisUiState
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BiometricsViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.CalendarViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.CalendarEventStatus
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * Calendar Screen - Medical Calendar
  * 
  * Health calendar with:
- * - Monthly calendar view
- * - Medication reminders
+ * - Monthly calendar view (dynamic)
+ * - Medication reminders (from database)
  * - Upcoming appointments
  * - Biometric analysis summary
  * - Day summary
@@ -48,40 +54,33 @@ fun CalendarScreen(
     val biometricsViewModel = remember { BiometricsViewModel(context) }
     val biometricState by calendarViewModel.biometricState.collectAsState()
     val biometricsUiState by biometricsViewModel.uiState.collectAsState()
+    val medicationsState by calendarViewModel.medicationsState.collectAsState()
+    val calendarState by calendarViewModel.calendarState.collectAsState()
     
-    // Mock data states
-    var medicationsTaken by remember { mutableStateOf(setOf<Int>()) }
-    
-    // Mock calendar events
-    val calendarEvents = remember {
-        mapOf(
-            2 to EventType.MEDICATION,
-            4 to EventType.APPOINTMENT,
-            23 to EventType.APPOINTMENT,
-            24 to EventType.APPOINTMENT // Today
-        )
+    // Generate today's date text
+    val todayText = remember {
+        val today = LocalDate.now()
+        val dayOfWeek = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+            .replaceFirstChar { it.uppercase() }
+        val dayOfMonth = today.dayOfMonth
+        val month = today.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+            .replaceFirstChar { it.uppercase() }
+        "Hoy es $dayOfWeek, $dayOfMonth de $month"
     }
     
-    // Mock medications
-    val medications = remember {
-        listOf(
-            MedicationData(
-                id = 1,
-                name = "Atorvastatina",
-                dosage = "20mg",
-                time = "08:00 AM",
-                instructions = "Con el desayuno",
-                type = MedicationType.PILL
-            ),
-            MedicationData(
-                id = 2,
-                name = "Insulina Basal",
-                dosage = "",
-                time = "09:30 PM",
-                instructions = "Antes de dormir",
-                type = MedicationType.INJECTION
-            )
-        )
+    // Convert calendar events to EventType map for CalendarGrid
+    val calendarEvents: Map<Int, EventType> = remember(calendarState.calendarEvents) {
+        calendarState.calendarEvents.mapNotNull { (day, status) ->
+            when {
+                status.totalMedications > 0 && status.medicationsTaken < status.totalMedications -> {
+                    day to EventType.MEDICATION
+                }
+                status.hasAppointment -> {
+                    day to EventType.APPOINTMENT
+                }
+                else -> null
+            }
+        }.toMap()
     }
     
     Column(
@@ -109,7 +108,7 @@ fun CalendarScreen(
                         color = SandboxOnSurface
                     )
                     Text(
-                        text = "Hoy es Jueves, 24 de Octubre",
+                        text = todayText,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = SandboxOnSurfaceVariant
@@ -166,38 +165,32 @@ fun CalendarScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Monthly Calendar
-                CalendarGrid(
-                    month = "Octubre 2024",
-                    currentDay = 24,
+                CalendarGridDynamic(
+                    month = calendarState.monthName,
+                    currentDay = calendarState.currentDay,
+                    daysInMonth = calendarState.daysInMonth,
+                    startDayOffset = calendarState.startDayOffset,
                     eventsOnDays = calendarEvents,
-                    onPreviousMonth = {
-                        Toast.makeText(context, "Mes anterior", Toast.LENGTH_SHORT).show()
-                    },
-                    onNextMonth = {
-                        Toast.makeText(context, "Mes siguiente", Toast.LENGTH_SHORT).show()
-                    },
+                    onPreviousMonth = { calendarViewModel.previousMonth() },
+                    onNextMonth = { calendarViewModel.nextMonth() },
                     onDayClick = { day ->
                         Toast.makeText(context, "Día $day seleccionado", Toast.LENGTH_SHORT).show()
                     }
                 )
                 
-                // Medications Section
-                MedicationsSection(
-                    medications = medications,
-                    takenIds = medicationsTaken,
-                    onMarkAsTaken = { id ->
-                        medicationsTaken = if (medicationsTaken.contains(id)) {
-                            medicationsTaken - id
+                // Medications Section (from database)
+                MedicationsSectionReal(
+                    medications = medicationsState.medications,
+                    isLoading = medicationsState.isLoading,
+                    error = medicationsState.error,
+                    onMarkAsTaken = { medicationId, isTaken ->
+                        if (isTaken) {
+                            calendarViewModel.untakeMedication(medicationId)
                         } else {
-                            medicationsTaken + id
+                            calendarViewModel.takeMedication(medicationId)
                         }
-                        val med = medications.find { it.id == id }
-                        Toast.makeText(
-                            context,
-                            "${med?.name} marcado como tomado",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    },
+                    onRefresh = { calendarViewModel.loadMedications() }
                 )
             }
         }
@@ -242,13 +235,15 @@ fun CalendarScreen(
 }
 
 /**
- * Medications Section
+ * Medications Section (Real data from database)
  */
 @Composable
-private fun MedicationsSection(
-    medications: List<MedicationData>,
-    takenIds: Set<Int>,
-    onMarkAsTaken: (Int) -> Unit
+private fun MedicationsSectionReal(
+    medications: List<MedicationWithTakes>,
+    isLoading: Boolean,
+    error: String?,
+    onMarkAsTaken: (String, Boolean) -> Unit,
+    onRefresh: () -> Unit
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -277,7 +272,7 @@ private fun MedicationsSection(
             }
             
             // Pending badge
-            val pending = medications.size - takenIds.size
+            val pending = medications.count { !it.isTakenToday }
             if (pending > 0) {
                 Surface(
                     color = SandboxPrimaryFixed,
@@ -294,19 +289,123 @@ private fun MedicationsSection(
             }
         }
         
-        // Medication cards
-        medications.forEach { med ->
-            MedicationReminderCard(
-                medicationName = med.name,
-                dosage = med.dosage,
-                time = med.time,
-                instructions = med.instructions,
-                medicationType = med.type,
-                isTaken = takenIds.contains(med.id),
-                onMarkAsTaken = { onMarkAsTaken(med.id) }
-            )
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = SandboxPrimary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+            error != null -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SandboxErrorContainer)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SandboxError
+                        )
+                        TextButton(onClick = onRefresh) {
+                            Text("Reintentar", color = SandboxError)
+                        }
+                    }
+                }
+            }
+            medications.isEmpty() -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SandboxSurfaceContainer)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "💊",
+                            fontSize = 32.sp
+                        )
+                        Text(
+                            text = "Sin medicamentos",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SandboxOnSurface
+                        )
+                        Text(
+                            text = "Agrega tus medicamentos para recibir recordatorios",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SandboxOnSurfaceVariant
+                        )
+                    }
+                }
+            }
+            else -> {
+                // Medication cards
+                medications.forEach { medWithTakes ->
+                    val med = medWithTakes.medication
+                    val medType = when (med.medicationType.lowercase()) {
+                        "injection" -> MedicationType.INJECTION
+                        else -> MedicationType.PILL
+                    }
+                    
+                    MedicationReminderCard(
+                        medicationName = med.name,
+                        dosage = med.dosage,
+                        time = med.time,
+                        instructions = med.instructions,
+                        medicationType = medType,
+                        isTaken = medWithTakes.isTakenToday,
+                        onMarkAsTaken = { onMarkAsTaken(med.id, medWithTakes.isTakenToday) }
+                    )
+                }
+            }
         }
     }
+}
+
+/**
+ * Dynamic Calendar Grid - supports dynamic month data
+ */
+@Composable
+private fun CalendarGridDynamic(
+    month: String,
+    currentDay: Int,
+    daysInMonth: Int,
+    startDayOffset: Int,
+    eventsOnDays: Map<Int, EventType>,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onDayClick: (Int) -> Unit
+) {
+    CalendarGrid(
+        month = month,
+        currentDay = currentDay,
+        daysInMonth = daysInMonth,
+        startDayOffset = startDayOffset,
+        eventsOnDays = eventsOnDays,
+        onPreviousMonth = onPreviousMonth,
+        onNextMonth = onNextMonth,
+        onDayClick = onDayClick
+    )
 }
 
 /**
@@ -564,15 +663,3 @@ private fun generateDaySummaryDescription(state: BiometricAnalysisUiState): Stri
         "Estado general estable."
     }
 }
-
-/**
- * Medication data model
- */
-private data class MedicationData(
-    val id: Int,
-    val name: String,
-    val dosage: String,
-    val time: String,
-    val instructions: String,
-    val type: MedicationType
-)

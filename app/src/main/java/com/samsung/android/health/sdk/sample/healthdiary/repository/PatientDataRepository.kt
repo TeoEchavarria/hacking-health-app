@@ -6,6 +6,9 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientAlertsResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientDataResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealthSummaryResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.HeartRateHistoryResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestCreate
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestResponse
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -254,6 +257,111 @@ class PatientDataRepository(private val context: Context) {
                 is java.net.UnknownHostException -> "Sin conexión a internet"
                 is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
                 else -> e.message ?: "Error al obtener resumen de salud"
+            }
+            Result.failure(Exception(friendlyMessage))
+        }
+    }
+    
+    /**
+     * Get heart rate history for a patient.
+     * 
+     * Fetches daily aggregated heart rate data.
+     * 
+     * @param patientId ID of the patient
+     * @param days Number of days of history to fetch (1-30)
+     * @return Result containing heart rate history or error
+     */
+    suspend fun getPatientHeartRateHistory(
+        patientId: String,
+        days: Int = 7
+    ): Result<HeartRateHistoryResponse> = withContext(Dispatchers.IO) {
+        try {
+            val token = TokenManager.getToken()
+            if (token.isNullOrEmpty()) {
+                Log.e(TAG, "No auth token available")
+                return@withContext Result.failure(Exception("No has iniciado sesión"))
+            }
+            
+            val response = apiService.getPatientHeartRateHistory(
+                authorization = "Bearer $token",
+                patientId = patientId,
+                days = days
+            )
+            
+            if (response.isSuccessful && response.body() != null) {
+                val data = response.body()!!
+                Log.i(TAG, "Fetched heart rate history for patient $patientId: ${data.count} data points")
+                Result.success(data)
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                val errorMessage = when (response.code()) {
+                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    403 -> "No tienes permiso para ver el historial de este paciente"
+                    404 -> "Paciente no encontrado"
+                    500 -> "Error del servidor"
+                    else -> "Error ${response.code()}"
+                }
+                Log.e(TAG, "Failed to get heart rate history: $errorMessage ($errorBody)")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching heart rate history", e)
+            val friendlyMessage = when (e) {
+                is java.net.UnknownHostException -> "Sin conexión a internet"
+                is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
+                else -> e.message ?: "Error al obtener historial de frecuencia cardíaca"
+            }
+            Result.failure(Exception(friendlyMessage))
+        }
+    }
+    
+    /**
+     * Create a sync request for a patient.
+     * 
+     * Requests immediate sync from the patient's device.
+     * 
+     * @param patientId ID of the patient to sync
+     * @param priority Request priority (normal|urgent)
+     * @return Result containing sync request response or error
+     */
+    suspend fun requestSync(
+        patientId: String,
+        priority: String = "normal"
+    ): Result<SyncRequestResponse> = withContext(Dispatchers.IO) {
+        try {
+            val token = TokenManager.getToken()
+            if (token.isNullOrEmpty()) {
+                Log.e(TAG, "No auth token available")
+                return@withContext Result.failure(Exception("No has iniciado sesión"))
+            }
+            
+            val response = apiService.createSyncRequest(
+                authorization = "Bearer $token",
+                patientId = patientId,
+                request = SyncRequestCreate(priority = priority)
+            )
+            
+            if (response.isSuccessful && response.body() != null) {
+                val data = response.body()!!
+                Log.i(TAG, "Sync request created for patient $patientId: ${data.requestId}")
+                Result.success(data)
+            } else {
+                val errorMessage = when (response.code()) {
+                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    403 -> "No tienes permiso para solicitar sync de este paciente"
+                    404 -> "Paciente no encontrado"
+                    500 -> "Error del servidor"
+                    else -> "Error ${response.code()}"
+                }
+                Log.e(TAG, "Failed to create sync request: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating sync request", e)
+            val friendlyMessage = when (e) {
+                is java.net.UnknownHostException -> "Sin conexión a internet"
+                is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
+                else -> e.message ?: "Error al solicitar sincronización"
             }
             Result.failure(Exception(friendlyMessage))
         }

@@ -5,9 +5,12 @@ import android.util.Log
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.CreatePairingCodeRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.CreatePairingCodeResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.ListUserPairingsResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PairingStatusResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.ValidatePairingCodeRequest
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.ValidatePairingCodeResponse
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
+import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.PairingEntity
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -175,6 +178,145 @@ class PairingRepository(private val context: Context) {
                 is java.net.UnknownHostException -> "Sin conexión a internet"
                 is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
                 else -> e.message ?: "Error al verificar estado"
+            }
+            Result.failure(Exception(friendlyMessage))
+        }
+    }
+    
+    /**
+     * Sync pairings from the backend to the local Room database.
+     * Fetches all active pairings where the user is either patient or caregiver.
+     * 
+     * This should be called on app startup to ensure local DB is in sync
+     * with the backend, especially after app reinstall or data clear.
+     * 
+     * @return Result containing the number of pairings synced
+     */
+    suspend fun syncPairingsFromBackend(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val token = TokenManager.getToken()
+            if (token.isNullOrEmpty()) {
+                Log.w(TAG, "No auth token available for pairing sync")
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+            
+            val pairingDao = AppDatabase.getDatabase(context).pairingDao()
+            var totalSynced = 0
+            
+            // Fetch pairings where user is a patient
+            val patientResponse = apiService.listUserPairings(
+                authorization = "Bearer $token",
+                role = "patient"
+            )
+            
+            if (patientResponse.isSuccessful && patientResponse.body() != null) {
+                val patientPairings = patientResponse.body()!!.pairings
+                Log.d(TAG, "Fetched ${patientPairings.size} pairings as patient")
+                
+                for (pairing in patientPairings) {
+                    val entity = PairingEntity(
+                        pairingId = pairing.id,
+                        patientId = pairing.patientId,
+                        patientName = pairing.patientName,
+                        caregiverId = pairing.caregiverId,
+                        caregiverName = pairing.caregiverName,
+                        status = pairing.status,
+                        userRole = "patient",
+                        createdAt = pairing.createdAt ?: System.currentTimeMillis(),
+                        activatedAt = pairing.activatedAt
+                    )
+                    pairingDao.insert(entity)
+                    totalSynced++
+                }
+            }
+            
+            // Fetch pairings where user is a caregiver
+            val caregiverResponse = apiService.listUserPairings(
+                authorization = "Bearer $token",
+                role = "caregiver"
+            )
+            
+            if (caregiverResponse.isSuccessful && caregiverResponse.body() != null) {
+                val caregiverPairings = caregiverResponse.body()!!.pairings
+                Log.d(TAG, "Fetched ${caregiverPairings.size} pairings as caregiver")
+                
+                for (pairing in caregiverPairings) {
+                    val entity = PairingEntity(
+                        pairingId = pairing.id,
+                        patientId = pairing.patientId,
+                        patientName = pairing.patientName,
+                        caregiverId = pairing.caregiverId,
+                        caregiverName = pairing.caregiverName,
+                        status = pairing.status,
+                        userRole = "caregiver",
+                        createdAt = pairing.createdAt ?: System.currentTimeMillis(),
+                        activatedAt = pairing.activatedAt
+                    )
+                    pairingDao.insert(entity)
+                    totalSynced++
+                }
+            }
+            
+            Log.i(TAG, "Successfully synced $totalSynced pairings from backend")
+            Result.success(totalSynced)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error syncing pairings from backend", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Revoke an active pairing.
+     * This marks the pairing as "revoked" on the backend.
+     * 
+     * @param pairingId ID of the pairing to revoke
+     * @return Result containing success status
+     */
+    suspend fun revokePairing(pairingId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val token = TokenManager.getToken()
+            if (token.isNullOrEmpty()) {
+                Log.e(TAG, "No auth token available for revoking pairing")
+                return@withContext Result.failure(Exception("Not authenticated"))
+            }
+            
+            val response = apiService.revokePairing(
+                authorization = "Bearer $token",
+                pairingId = pairingId
+            )
+            
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                if (result.success) {
+                    Log.i(TAG, "Pairing $pairingId revoked successfully")
+                    
+                    // Also update local database
+                    val pairingDao = AppDatabase.getDatabase(context).pairingDao()
+                    pairingDao.updateStatus(pairingId, "revoked")
+                    
+                    Result.success(true)
+                } else {
+                    Log.w(TAG, "Failed to revoke pairing: ${result.error}")
+                    Result.failure(Exception(result.error ?: "Error al revocar vinculación"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                val errorMessage = when (response.code()) {
+                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    403 -> "No tienes permiso para revocar esta vinculación"
+                    404 -> "Vinculación no encontrada"
+                    500 -> "Error del servidor: $errorBody"
+                    else -> "Error ${response.code()}: $errorBody"
+                }
+                Log.e(TAG, "Failed to revoke pairing: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error revoking pairing", e)
+            val friendlyMessage = when (e) {
+                is java.net.UnknownHostException -> "Sin conexión a internet"
+                is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
+                else -> e.message ?: "Error al revocar vinculación"
             }
             Result.failure(Exception(friendlyMessage))
         }

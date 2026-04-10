@@ -29,6 +29,9 @@ SYNC_TAGS="OpenWearablesRepo:* OpenWearablesSDK:* SyncManager:* HealthConnectMan
 GMS_TAGS="GoogleSignatureVerifier:* SignInClient:* Finsky:* GoogleAuthUtil:* GmsClient:*"
 HR_TAGS="HeartRate:* WatchReceiver:* SensorData:* HealthData:* WearableReceiver:* Protocol:*"
 
+# Patterns to exclude (noisy SDK/system logs)
+EXCLUDE_NOISE="SHD#|\\[SHD\\]|PrivilegedHealthService|SingleCallbackDistributor|TelephonyConfigUpdate|word_detector|APM::Audio|enrollment_storage|enrollment_manager|TISID|soda\\.speaker"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -171,12 +174,12 @@ view_both_devices() {
     # Cleanup on exit
     trap "kill 0 2>/dev/null" EXIT
     
-    # Start logcat for both selected devices
-    (adb -s "$device1" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | while read line; do
+    # Start logcat for both selected devices (excluding Samsung Health SDK noise)
+    (adb -s "$device1" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | grep -vE "$EXCLUDE_NOISE" | while read line; do
         echo -e "${CYAN}[1]${NC} $line"
     done) &
     
-    (adb -s "$device2" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | while read line; do
+    (adb -s "$device2" logcat | grep --line-buffered -iE "(healthdiary|HeartRate|WatchReceiver|SensorData|Wearable|OpenWearables|AUTH|SYNC|API)" | grep -vE "$EXCLUDE_NOISE" | while read line; do
         echo -e "${MAGENTA}[2]${NC} $line"
     done) &
     
@@ -191,7 +194,7 @@ view_hr_data_logs() {
     echo -e "Monitoreando: HeartRate, WatchReceiver, SensorData, Wearable, Protocol"
     echo -e "${YELLOW}Presiona Ctrl+C para salir...${NC}"
     echo ""
-    adb_cmd logcat | grep --line-buffered -iE "(HeartRate|heartRate|WatchReceiver|WearableReceiver|SensorData|sensor_data|Protocol|health/daily|health/hr|WearableListenerService|DataClient|MessageClient)"
+    adb_cmd logcat | grep --line-buffered -iE "(HeartRate|heartRate|WatchReceiver|WearableReceiver|SensorData|sensor_data|Protocol|health/daily|health/hr|WearableListenerService|DataClient|MessageClient)" | grep -vE "$EXCLUDE_NOISE"
 }
 
 show_help() {
@@ -304,8 +307,9 @@ view_sync_logs() {
 
 view_error_logs() {
     echo -e "${YELLOW}Mostrando errores y excepciones (Ctrl+C para salir)...${NC}"
+    echo -e "${CYAN}(Excluyendo ruido de Samsung Health SDK)${NC}"
     echo ""
-    adb_cmd logcat "*:E" | grep --line-buffered -iE "(healthdiary|$APP_PACKAGE|Auth|OAuth|OpenWearables|exception|error|fail|crash)"
+    adb_cmd logcat "*:E" | grep --line-buffered -iE "(healthdiary|$APP_PACKAGE|Auth|OAuth|OpenWearables|exception|error|fail|crash)" | grep -vE "$EXCLUDE_NOISE"
 }
 
 view_filtered_logs() {
@@ -422,6 +426,6 @@ case "${1:-}" in
         view_filtered_logs
         ;;
     *)
-        view_filtered_logs
+        view_error_logs
         ;;
 esac

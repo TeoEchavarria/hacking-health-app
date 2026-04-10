@@ -303,34 +303,20 @@ private fun GoogleSignInButton(
 }
 
 /**
- * Navigate to the main activity (optionally through role selection and onboarding) and clear the back stack.
+ * Navigate to the main activity through RoleSelectionActivity which handles:
+ * 1. Check for existing active pairings → if found, go to RoleContinuationActivity
+ * 2. Check if role already selected → if so, skip to appropriate onboarding/main screen
+ * 3. If new user, show role selection screen
  * 
- * Navigation flow:
- * 1. Check role selection completion → if not complete, go to RoleSelectionActivity
- * 2. If role selected, check watch onboarding → if not complete, go to WatchOnboardingActivity (for PATIENT role)
- * 3. If all completed, go to HealthMainActivity
+ * Always routing through RoleSelectionActivity ensures existing pairings are detected
+ * even for returning users who previously completed role selection.
  */
 private fun navigateToMainActivity(context: android.content.Context) {
-    // Step 1: Check if role selection has been completed
-    val isRoleSelected = UserRole.isRoleSelectionComplete(context)
-    
-    val targetActivity = when {
-        // Role not selected yet - show role selection screen first
-        !isRoleSelected -> {
-            RoleSelectionActivity::class.java
-        }
-        // Role selected, check if watch onboarding needed (only for PATIENT role)
-        // NOTE: CAREGIVER users go through FamilyLinkActivity, which is handled in RoleSelectionActivity
-        !isWatchOnboardingComplete(context) -> {
-            WatchOnboardingActivity::class.java
-        }
-        // All onboarding completed
-        else -> {
-            HealthMainActivity::class.java
-        }
-    }
-    
-    val intent = android.content.Intent(context, targetActivity)
+    // Always go to RoleSelectionActivity - it handles:
+    // - Existing pairings detection → RoleContinuationActivity
+    // - Role already selected → WatchOnboarding or HealthMain
+    // - New user → RoleSelectionScreen
+    val intent = android.content.Intent(context, RoleSelectionActivity::class.java)
     intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or 
                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
     context.startActivity(intent)

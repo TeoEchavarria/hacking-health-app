@@ -3,9 +3,17 @@ package com.samsung.android.health.sdk.sample.healthdiary.api
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientAlertsResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientDataResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealthSummaryResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestCreate
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.PendingSyncResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncCompleteRequest
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncCompleteResponse
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.HeartRateHistoryResponse
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -82,4 +90,70 @@ interface PatientHealthApiService {
         @Header("Authorization") authorization: String,
         @Path("patientId") patientId: String
     ): Response<PatientHealthSummaryResponse>
+    
+    // =========================================
+    // Sync Request Endpoints (On-Demand Sync)
+    // =========================================
+    
+    /**
+     * Create a sync request for a patient.
+     * Called by caregiver to request immediate sync from patient's device.
+     * 
+     * @param authorization Bearer token
+     * @param patientId ID of the patient to sync
+     * @param request Request body with priority
+     * @return Sync request details
+     */
+    @POST("/health/sync/request/{patientId}")
+    suspend fun createSyncRequest(
+        @Header("Authorization") authorization: String,
+        @Path("patientId") patientId: String,
+        @Body request: SyncRequestCreate = SyncRequestCreate()
+    ): Response<SyncRequestResponse>
+    
+    /**
+     * Check for pending sync requests for the current user.
+     * Called by patient's device to check if sync is needed.
+     * 
+     * @param authorization Bearer token
+     * @return Pending sync request if any
+     */
+    @GET("/health/sync/pending")
+    suspend fun getPendingSyncRequest(
+        @Header("Authorization") authorization: String
+    ): Response<PendingSyncResponse>
+    
+    /**
+     * Mark a sync request as complete.
+     * Called by patient's device after syncing data.
+     * 
+     * @param authorization Bearer token
+     * @param request Request body with request_id and metrics_synced
+     * @return Completion status
+     */
+    @POST("/health/sync/complete")
+    suspend fun completeSyncRequest(
+        @Header("Authorization") authorization: String,
+        @Body request: SyncCompleteRequest
+    ): Response<SyncCompleteResponse>
+    
+    // =========================================
+    // Heart Rate History Endpoint
+    // =========================================
+    
+    /**
+     * Get heart rate history for a patient.
+     * Returns daily aggregated heart rate data.
+     * 
+     * @param authorization Bearer token
+     * @param patientId ID of the patient
+     * @param days Number of days of history (1-30, default 7)
+     * @return Heart rate history with data points
+     */
+    @GET("/health/patient/{patientId}/heart-rate-history")
+    suspend fun getPatientHeartRateHistory(
+        @Header("Authorization") authorization: String,
+        @Path("patientId") patientId: String,
+        @Query("days") days: Int = 7
+    ): Response<HeartRateHistoryResponse>
 }

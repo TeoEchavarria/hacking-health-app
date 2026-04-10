@@ -8,15 +8,24 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealt
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.HeartRateSummary
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.StepsSummary
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SleepSummary
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.Medication
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.MedicationWithTakes
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.CalendarEvent
+import com.samsung.android.health.sdk.sample.healthdiary.api.models.MonthlyReportResponse
 import com.samsung.android.health.sdk.sample.healthdiary.data.repository.WatchHealthIngestionRepository
 import com.samsung.android.health.sdk.sample.healthdiary.repository.PatientDataRepository
 import com.samsung.android.health.sdk.sample.healthdiary.repository.UserRepository
+import com.samsung.android.health.sdk.sample.healthdiary.repository.MedicationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 /**
  * UI state for calendar biometric analysis.
@@ -31,12 +40,47 @@ data class BiometricAnalysisUiState(
 )
 
 /**
+ * UI state for medications.
+ */
+data class MedicationsUiState(
+    val isLoading: Boolean = true,
+    val medications: List<MedicationWithTakes> = emptyList(),
+    val error: String? = null
+)
+
+/**
+ * UI state for calendar.
+ */
+data class CalendarUiState(
+    val currentYear: Int = LocalDate.now().year,
+    val currentMonth: Int = LocalDate.now().monthValue,
+    val currentDay: Int = LocalDate.now().dayOfMonth,
+    val monthName: String = "",
+    val daysInMonth: Int = 0,
+    val startDayOffset: Int = 0, // 0 = Monday, 6 = Sunday
+    val calendarEvents: Map<Int, CalendarEventStatus> = emptyMap(),
+    val monthlyReport: MonthlyReportResponse? = null
+)
+
+/**
+ * Status of events for a calendar day.
+ */
+data class CalendarEventStatus(
+    val hasMedication: Boolean = false,
+    val medicationsTaken: Int = 0,
+    val totalMedications: Int = 0,
+    val hasAppointment: Boolean = false // Future: integrate appointments
+)
+
+/**
  * ViewModel for Calendar screen biometric analysis.
  * 
  * Loads health summary based on user role:
  * - Caregiver: Fetches health summary for their primary patient
  * - Patient: Fetches their own health summary
  * - None: Shows empty state
+ * 
+ * Also manages medications and calendar events.
  */
 class CalendarViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -47,13 +91,199 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     private val userRepository = UserRepository(application.applicationContext)
     private val patientDataRepository = PatientDataRepository(application.applicationContext)
     private val watchHealthRepository = WatchHealthIngestionRepository(application.applicationContext)
+    private val medicationRepository = MedicationRepository(application.applicationContext)
 
     private val _biometricState = MutableStateFlow(BiometricAnalysisUiState())
     val biometricState: StateFlow<BiometricAnalysisUiState> = _biometricState.asStateFlow()
 
+    private val _medicationsState = MutableStateFlow(MedicationsUiState())
+    val medicationsState: StateFlow<MedicationsUiState> = _medicationsState.asStateFlow()
+
+    private val _calendarState = MutableStateFlow(CalendarUiState())
+    val calendarState: StateFlow<CalendarUiState> = _calendarState.asStateFlow()
+
     init {
         loadBiometricData()
         observeLocalHealthData()
+        loadMedications()
+        initializeCalendar()
+    }
+
+    /**
+     * Initialize calendar with current month.
+     */
+    private fun initializeCalendar() {
+        val now = LocalDate.now()
+        updateCalendarMonth(now.year, now.monthValue)
+    }
+
+    /**
+     * Update calendar to a specific month.
+     */
+    fun updateCalendarMonth(year: Int, month: Int) {
+        val yearMonth = YearMonth.of(year, month)
+        val firstDayOfMonth = yearMonth.atDay(1)
+        
+        // Get the day of week (1 = Monday, 7 = Sunday) and convert to offset (0-6)
+        val startDayOffset = firstDayOfMonth.dayOfWeek.value - 1
+        
+        val monthName = yearMonth.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+            .replaceFirstChar { it.uppercase() }
+        
+        _calendarState.value = _calendarState.value.copy(
+            currentYear = year,
+            currentMonth = month,
+            currentDay = if (year == LocalDate.now().year && month == LocalDate.now().monthValue) {
+                LocalDate.now().dayOfMonth
+            } else {
+                -1 // No current day highlight for other months
+            },
+            monthName = "$monthName $year",
+            daysInMonth = yearMonth.lengthOfMonth(),
+            startDayOffset = startDayOffset
+        )
+        
+        // Load calendar events for this month
+        loadCalendarEvents(year, month)
+    }
+
+    /**
+     * Navigate to previous month.
+     */
+    fun previousMonth() {
+        val current = _calendarState.value
+        val yearMonth = YearMonth.of(current.currentYear, current.currentMonth).minusMonths(1)
+        updateCalendarMonth(yearMonth.year, yearMonth.monthValue)
+    }
+
+    /**
+     * Navigate to next month.
+     */
+    fun nextMonth() {
+        val current = _calendarState.value
+        val yearMonth = YearMonth.of(current.currentYear, current.currentMonth).plusMonths(1)
+        updateCalendarMonth(yearMonth.year, yearMonth.monthValue)
+    }
+
+    /**
+     * Load calendar events from API.
+     */
+    private fun loadCalendarEvents(year: Int, month: Int) {
+        viewModelScope.launch {
+            val result = medicationRepository.getCalendarEvents(year, month)
+            
+            result.fold(
+                onSuccess = { events ->
+                    val eventsMap = events.associate { event ->
+                        val day = event.date.split("-").last().toIntOrNull() ?: 0
+                        day to CalendarEventStatus(
+                            hasMedication = event.hasMedication,
+                            medicationsTaken = event.medicationsTaken,
+                            totalMedications = event.totalMedications
+                        )
+                    }
+                    
+                    _calendarState.value = _calendarState.value.copy(
+                        calendarEvents = eventsMap
+                    )
+                    
+                    Log.i(TAG, "Loaded ${events.size} calendar events for $year-$month")
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to load calendar events: ${error.message}")
+                }
+            )
+            
+            // Also load monthly report
+            val reportResult = medicationRepository.getMonthlyReport(year, month)
+            reportResult.fold(
+                onSuccess = { report ->
+                    _calendarState.value = _calendarState.value.copy(
+                        monthlyReport = report
+                    )
+                    Log.i(TAG, "Monthly adherence: ${report.overallAdherence}%")
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to load monthly report: ${error.message}")
+                }
+            )
+        }
+    }
+
+    /**
+     * Load medications with today's status.
+     */
+    fun loadMedications() {
+        viewModelScope.launch {
+            _medicationsState.value = MedicationsUiState(isLoading = true)
+            
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val result = medicationRepository.getMedicationsWithTodayStatus(today)
+            
+            result.fold(
+                onSuccess = { medications ->
+                    _medicationsState.value = MedicationsUiState(
+                        isLoading = false,
+                        medications = medications
+                    )
+                    Log.i(TAG, "Loaded ${medications.size} medications")
+                },
+                onFailure = { error ->
+                    _medicationsState.value = MedicationsUiState(
+                        isLoading = false,
+                        error = error.message
+                    )
+                    Log.e(TAG, "Failed to load medications: ${error.message}")
+                }
+            )
+        }
+    }
+
+    /**
+     * Mark a medication as taken.
+     */
+    fun takeMedication(medicationId: String) {
+        viewModelScope.launch {
+            val result = medicationRepository.takeMedication(medicationId)
+            
+            result.fold(
+                onSuccess = {
+                    Log.i(TAG, "Medication $medicationId marked as taken")
+                    // Refresh medications list
+                    loadMedications()
+                    // Refresh calendar events
+                    val current = _calendarState.value
+                    loadCalendarEvents(current.currentYear, current.currentMonth)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to mark medication as taken: ${error.message}")
+                }
+            )
+        }
+    }
+
+    /**
+     * Remove medication take.
+     */
+    fun untakeMedication(medicationId: String) {
+        viewModelScope.launch {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val result = medicationRepository.untakeMedication(medicationId, today)
+            
+            result.fold(
+                onSuccess = {
+                    Log.i(TAG, "Medication $medicationId unmarked")
+                    // Refresh medications list
+                    loadMedications()
+                    // Refresh calendar events
+                    val current = _calendarState.value
+                    loadCalendarEvents(current.currentYear, current.currentMonth)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to unmark medication: ${error.message}")
+                }
+            )
+        }
     }
 
     /**

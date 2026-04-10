@@ -106,6 +106,13 @@
             android:theme="@style/Theme.MyApplication"
             android:screenOrientation="portrait" />
 
+        <!-- Role continuation screen - shown when user has existing links -->
+        <activity
+            android:name=".activity.RoleContinuationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication"
+            android:screenOrientation="portrait" />
+
         <!-- Family linking screen - for caregivers -->
         <activity
             android:name=".activity.FamilyLinkActivity"

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
 import com.google.android.gms.wearable.Node
@@ -47,6 +48,10 @@ object DeviceConnectionMonitor {
     private const val CAPABILITY_WATCH_APP = "sensor_data_sender"
     private const val CAPABILITY_HEALTH_SYNC = "wear_health_sync"
     private const val REACHABILITY_CHECK_INTERVAL_MS = 10_000L // 10 seconds
+    private const val API_UNAVAILABLE_STATUS_CODE = 17
+    
+    // Track if Wearable API is available on this device
+    private var isWearableApiAvailable = true
     
     private var context: Context? = null
     private var monitorJob: Job? = null
@@ -215,6 +220,11 @@ object DeviceConnectionMonitor {
     private fun registerCapabilityListener() {
         val ctx = context ?: return
         
+        if (!isWearableApiAvailable) {
+            Log.d(TAG, "Skipping capability listener - Wearable API not available")
+            return
+        }
+        
         capabilityListener = CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
             handleCapabilityChanged(capabilityInfo)
         }
@@ -231,17 +241,28 @@ object DeviceConnectionMonitor {
             Log.d(TAG, "Capability listeners registered")
             ConnectionLogManager.log(LogType.INFO, TAG, "Capability listeners registered")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register capability listener", e)
+            if ((e as? ApiException)?.statusCode == API_UNAVAILABLE_STATUS_CODE) {
+                isWearableApiAvailable = false
+                Log.i(TAG, "Wearable API not available on this device - skipping capability listener")
+            } else {
+                Log.e(TAG, "Failed to register capability listener", e)
+            }
         }
     }
     
     private fun unregisterCapabilityListener() {
         val ctx = context ?: return
+        
+        if (!isWearableApiAvailable) return
+        
         capabilityListener?.let { listener ->
             try {
                 Wearable.getCapabilityClient(ctx).removeListener(listener)
             } catch (e: Exception) {
-                Log.w(TAG, "Error removing capability listener", e)
+                // Silently ignore if API is not available
+                if ((e as? ApiException)?.statusCode != API_UNAVAILABLE_STATUS_CODE) {
+                    Log.w(TAG, "Error removing capability listener", e)
+                }
             }
         }
         capabilityListener = null
@@ -284,6 +305,11 @@ object DeviceConnectionMonitor {
     private suspend fun checkReachability() {
         val ctx = context ?: return
         
+        if (!isWearableApiAvailable) {
+            Log.d(TAG, "Skipping reachability check - Wearable API not available")
+            return
+        }
+        
         if (!_bluetoothEnabled.value) {
             Log.d(TAG, "Skipping reachability check - Bluetooth disabled")
             return
@@ -320,8 +346,14 @@ object DeviceConnectionMonitor {
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Reachability check failed", e)
-            ConnectionLogManager.log(LogType.ERROR, TAG, "Reachability check failed: ${e.message}")
+            if ((e as? ApiException)?.statusCode == API_UNAVAILABLE_STATUS_CODE) {
+                isWearableApiAvailable = false
+                Log.i(TAG, "Wearable API not available on this device")
+                // Don't log as error - this is expected on non-Wear devices
+            } else {
+                Log.e(TAG, "Reachability check failed", e)
+                ConnectionLogManager.log(LogType.ERROR, TAG, "Reachability check failed: ${e.message}")
+            }
         }
     }
     

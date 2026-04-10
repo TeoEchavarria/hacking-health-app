@@ -66,3 +66,49 @@ data class PairingStatusResponse(
     val caregiverName: String? = null
 )
 
+/**
+ * Response for listing user pairings.
+ */
+data class ListUserPairingsResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("count")
+    val count: Int,
+    @SerializedName("pairings")
+    val pairings: List<PairingItem>
+)
+
+/**
+ * Individual pairing item from the backend.
+ */
+data class PairingItem(
+    @SerializedName("_id")
+    val id: String,
+    @SerializedName("patientId")
+    val patientId: String?,
+    @SerializedName("patientName")
+    val patientName: String?,
+    @SerializedName("caregiverId")
+    val caregiverId: String?,
+    @SerializedName("caregiverName")
+    val caregiverName: String?,
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("createdAt")
+    val createdAt: Long?,
+    @SerializedName("activatedAt")
+    val activatedAt: Long?
+)
+
+/**
+ * Response after revoking a pairing.
+ */
+data class RevokePairingResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String? = null,
+    @SerializedName("error")
+    val error: String? = null
+)
+

@@ -68,4 +68,30 @@ interface PairingApiService {
         @Header("Authorization") authorization: String,
         @Path("pairingId") pairingId: String
     ): Response<PairingStatusResponse>
+    
+    /**
+     * List all active pairings for the current user.
+     * Used to sync pairings from backend to local database on startup.
+     * 
+     * @param role "patient" or "caregiver" - determines which pairings to fetch
+     * @return List of active pairings for the user
+     */
+    @GET("/api/pairing/user/list")
+    suspend fun listUserPairings(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Query("role") role: String
+    ): Response<com.samsung.android.health.sdk.sample.healthdiary.api.models.ListUserPairingsResponse>
+    
+    /**
+     * Revoke an active pairing.
+     * User must be either the patient or caregiver in the pairing.
+     * 
+     * @param pairingId ID of the pairing to revoke
+     * @return Success status and message
+     */
+    @POST("/api/pairing/{pairingId}/revoke")
+    suspend fun revokePairing(
+        @Header("Authorization") authorization: String,
+        @Path("pairingId") pairingId: String
+    ): Response<com.samsung.android.health.sdk.sample.healthdiary.api.models.RevokePairingResponse>
 }

@@ -26,11 +26,19 @@ import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
  * - Month navigation header
  * - Day names
  * - Calendar grid with event indicators
+ * 
+ * @param month The month name to display (e.g., "Abril 2026")
+ * @param currentDay The current day of the month to highlight (-1 for no highlight)
+ * @param daysInMonth Total days in the month (28-31)
+ * @param startDayOffset Day of week the month starts on (0=Monday, 6=Sunday)
+ * @param eventsOnDays Map of day numbers to event types
  */
 @Composable
 fun CalendarGrid(
     month: String = "Octubre 2024",
     currentDay: Int = 24,
+    daysInMonth: Int = 31,
+    startDayOffset: Int = 0,
     eventsOnDays: Map<Int, EventType> = emptyMap(),
     onPreviousMonth: () -> Unit = {},
     onNextMonth: () -> Unit = {},
@@ -120,9 +128,11 @@ fun CalendarGrid(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Calendar grid (October 2024 - static)
+            // Calendar grid (dynamic)
             CalendarGridContent(
                 currentDay = currentDay,
+                daysInMonth = daysInMonth,
+                startDayOffset = startDayOffset,
                 eventsOnDays = eventsOnDays,
                 onDayClick = onDayClick
             )
@@ -133,20 +143,21 @@ fun CalendarGrid(
 @Composable
 private fun CalendarGridContent(
     currentDay: Int,
+    daysInMonth: Int,
+    startDayOffset: Int,
     eventsOnDays: Map<Int, EventType>,
     onDayClick: (Int) -> Unit
 ) {
-    // October 2024 starts on Tuesday (index 1)
-    val daysInMonth = 31
-    val startDayOffset = 1 // Tuesday
+    // Calculate number of weeks needed
+    val totalCells = startDayOffset + daysInMonth
+    val weeksNeeded = (totalCells + 6) / 7 // Ceiling division
     
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         var dayCounter = 1
         
-        // 5 weeks for October 2024
-        for (week in 0..4) {
+        for (week in 0 until weeksNeeded) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -159,32 +170,22 @@ private fun CalendarGridContent(
                     }
                     
                     if (shouldShowDay && dayCounter <= daysInMonth) {
+                        val currentDayValue = dayCounter
                         CalendarDayCell(
                             day = dayCounter,
                             isToday = dayCounter == currentDay,
                             eventType = eventsOnDays[dayCounter],
-                            onClick = { onDayClick(dayCounter) },
+                            onClick = { onDayClick(currentDayValue) },
                             modifier = Modifier.weight(1f)
                         )
                         dayCounter++
                     } else {
-                        // Empty cell or previous month days
+                        // Empty cell
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
-                        ) {
-                            if (week == 0 && dayOfWeek < startDayOffset) {
-                                // Show previous month's last days
-                                val prevMonthDay = 30 - (startDayOffset - dayOfWeek - 1)
-                                Text(
-                                    text = prevMonthDay.toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = SandboxOnSurfaceVariant.copy(alpha = 0.3f),
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
-                        }
+                        )
                     }
                 }
             }

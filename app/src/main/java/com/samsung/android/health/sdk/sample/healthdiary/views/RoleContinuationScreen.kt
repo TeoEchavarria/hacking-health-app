@@ -3,15 +3,15 @@ package com.samsung.android.health.sdk.sample.healthdiary.views
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HealthAndSafety
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,16 +26,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole
-import androidx.compose.material.icons.filled.Groups
 
 /**
- * Role selection screen for Digital Sanctuary onboarding.
- * Users choose between Caregiver (monitor) or Patient (monitored) roles.
+ * Data class representing an existing link for continuation.
+ */
+data class ExistingLink(
+    val role: UserRole,
+    val linkedPersonName: String,
+    val pairingId: String
+)
+
+/**
+ * Role continuation screen - shown when user has existing links.
+ * Allows continuing with previous role or choosing a new one.
  */
 @Composable
-fun RoleSelectionScreen(
-    onRoleSelected: (UserRole) -> Unit,
-    onHelp: () -> Unit
+fun RoleContinuationScreen(
+    existingLink: ExistingLink,
+    onContinueWithRole: (UserRole) -> Unit,
+    onChooseNewRole: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -43,43 +52,45 @@ fun RoleSelectionScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Background Aesthetic Elements
-        BackgroundDecorations()
+        ContinuationBackgroundDecorations()
         
         // Main Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(32.dp))
             
             // Brand Identity
-            BrandIdentity()
+            ContinuationBrandIdentity()
             
             Spacer(modifier = Modifier.height(48.dp))
             
-            // Header Section
-            HeaderSection()
+            // Welcome Back Header
+            WelcomeBackHeader(existingLink = existingLink)
             
             Spacer(modifier = Modifier.height(48.dp))
             
-            // Role Cards
-            RoleCardsSection(onRoleSelected = onRoleSelected)
+            // Continue Card
+            ContinueRoleCard(
+                existingLink = existingLink,
+                onContinue = { onContinueWithRole(existingLink.role) }
+            )
             
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.weight(1f))
             
-            // Social Proof & Help
-            BottomSection(onHelp = onHelp)
+            // Change Role Option
+            ChangeRoleSection(onChooseNewRole = onChooseNewRole)
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
 @Composable
-private fun BackgroundDecorations() {
+private fun ContinuationBackgroundDecorations() {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -121,7 +132,7 @@ private fun BackgroundDecorations() {
 }
 
 @Composable
-private fun BrandIdentity() {
+private fun ContinuationBrandIdentity() {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
@@ -145,12 +156,12 @@ private fun BrandIdentity() {
 }
 
 @Composable
-private fun HeaderSection() {
+private fun WelcomeBackHeader(existingLink: ExistingLink) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "¿Quién usará este dispositivo?",
+            text = "¡Bienvenido de nuevo!",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
@@ -159,7 +170,10 @@ private fun HeaderSection() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Selecciona tu rol",
+            text = when (existingLink.role) {
+                UserRole.CAREGIVER -> "Tienes una cuenta vinculada como cuidador"
+                UserRole.PATIENT -> "Tienes una cuenta vinculada como persona cuidada"
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -168,39 +182,9 @@ private fun HeaderSection() {
 }
 
 @Composable
-private fun RoleCardsSection(onRoleSelected: (UserRole) -> Unit) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        RoleCard(
-            title = "Cuidador",
-            description = "Monitorea salud y recibe alertas en tiempo real",
-            icon = Icons.Default.Groups,
-            iconBackgroundColor = MaterialTheme.colorScheme.primaryContainer,
-            iconTint = MaterialTheme.colorScheme.primary,
-            onClick = { onRoleSelected(UserRole.CAREGIVER) }
-        )
-        
-        RoleCard(
-            title = "Persona a cuidar",
-            description = "Comparte tus signos vitales automáticamente",
-            icon = Icons.Default.HealthAndSafety,
-            iconBackgroundColor = MaterialTheme.colorScheme.secondaryContainer,
-            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
-            onClick = { onRoleSelected(UserRole.PATIENT) }
-        )
-    }
-}
-
-@Composable
-private fun RoleCard(
-    title: String,
-    description: String,
-    icon: ImageVector,
-    iconBackgroundColor: Color,
-    iconTint: Color,
-    onClick: () -> Unit
+private fun ContinueRoleCard(
+    existingLink: ExistingLink,
+    onContinue: () -> Unit
 ) {
     var isHovered by remember { mutableStateOf(false) }
     
@@ -216,10 +200,27 @@ private fun RoleCard(
         label = "card_elevation"
     )
     
+    val (icon, iconBackgroundColor, iconTint, title, description) = when (existingLink.role) {
+        UserRole.CAREGIVER -> ContinueCardData(
+            icon = Icons.Default.Groups,
+            iconBackgroundColor = MaterialTheme.colorScheme.primaryContainer,
+            iconTint = MaterialTheme.colorScheme.primary,
+            title = "Continuar como Cuidador",
+            description = "de ${existingLink.linkedPersonName}"
+        )
+        UserRole.PATIENT -> ContinueCardData(
+            icon = Icons.Default.HealthAndSafety,
+            iconBackgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+            title = "Continuar siendo cuidado/a",
+            description = "por ${existingLink.linkedPersonName}"
+        )
+    }
+    
     Card(
         onClick = {
             isHovered = true
-            onClick()
+            onContinue()
         },
         modifier = Modifier
             .fillMaxWidth()
@@ -268,15 +269,15 @@ private fun RoleCard(
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Description
+            // Description (linked person name)
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -305,7 +306,7 @@ private fun RoleCard(
                         tint = if (isHovered) {
                             MaterialTheme.colorScheme.onPrimary
                         } else {
-                            MaterialTheme.colorScheme.outline
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         modifier = Modifier.size(24.dp)
                     )
@@ -315,97 +316,74 @@ private fun RoleCard(
     }
 }
 
+/**
+ * Helper data class for card content.
+ */
+private data class ContinueCardData(
+    val icon: ImageVector,
+    val iconBackgroundColor: Color,
+    val iconTint: Color,
+    val title: String,
+    val description: String
+)
+
 @Composable
-private fun BottomSection(onHelp: () -> Unit) {
+private fun ChangeRoleSection(onChooseNewRole: () -> Unit) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Social Proof Badge
-        SocialProofBadge()
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Help Button
-        TextButton(
-            onClick = onHelp,
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
-            )
+        // Divider with text
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Necesito ayuda con la configuración",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.outlineVariant
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Outlined.HelpOutline,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
+            Text(
+                text = "  o  ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.outlineVariant
             )
         }
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Footer
-        Box(
-            modifier = Modifier
-                .width(96.dp)
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant)
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "SEGURIDAD · PRIVACIDAD · CONFIANZA",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-            letterSpacing = 2.sp,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun SocialProofBadge() {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.padding(8.dp)
-    ) {
+        // Change role button
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 20.dp)
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .clickable(onClick = onChooseNewRole)
+                .padding(vertical = 12.dp, horizontal = 16.dp)
         ) {
-            // Avatar stack placeholder (using colored circles)
-            Row(
-                modifier = Modifier.padding(end = 16.dp)
-            ) {
-                listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.tertiary
-                ).forEachIndexed { index, color ->
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .offset(x = (-8 * index).dp)
-                            .background(color, CircleShape)
-                            .background(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
-                                CircleShape
-                            )
-                    )
-                }
-            }
-            
+            Icon(
+                imageVector = Icons.Default.SwapHoriz,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "+500 familias ya usan Sanctuary",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Elegir un rol diferente",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
             )
         }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Esto eliminará tu vínculo actual",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     }
 }

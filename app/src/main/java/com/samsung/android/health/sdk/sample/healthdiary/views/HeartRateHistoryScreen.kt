@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,29 +15,54 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HeartRateHistoryViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HeartRateHistoryScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: HeartRateHistoryViewModel = viewModel()
 ) {
-    val context = LocalContext.current
-    val viewModel = remember { HeartRateHistoryViewModel(context) }
     val uiState by viewModel.uiState.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Heart Rate History") },
+                title = { 
+                    Column {
+                        Text("Historial de Frecuencia Cardíaca")
+                        uiState.patientName?.let { name ->
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
+                        Icon(Icons.Default.ArrowBack, "Volver")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.refresh() },
+                        enabled = !uiState.isRefreshing
+                    ) {
+                        if (uiState.isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Refresh, "Actualizar")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -81,7 +107,7 @@ fun HeartRateHistoryScreen(
             } else if (uiState.dataPoints.isEmpty()) {
                 SandboxCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "No heart rate data available for the selected period.",
+                        text = "No hay datos de frecuencia cardíaca disponibles para el período seleccionado.",
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(32.dp)
                     )
@@ -90,7 +116,7 @@ fun HeartRateHistoryScreen(
                 SandboxCard(modifier = Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "Average Heart Rate",
+                            text = "Frecuencia Cardíaca Promedio",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -102,9 +128,9 @@ fun HeartRateHistoryScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            ChartLegendItem(color = Color(0xFFFF5252), label = "Max")
-                            ChartLegendItem(color = Color(0xFF4CAF50), label = "Avg")
-                            ChartLegendItem(color = Color(0xFF64B5F6), label = "Min")
+                            ChartLegendItem(color = Color(0xFFFF5252), label = "Máx")
+                            ChartLegendItem(color = Color(0xFF4CAF50), label = "Prom")
+                            ChartLegendItem(color = Color(0xFF64B5F6), label = "Mín")
                         }
                     }
                 }

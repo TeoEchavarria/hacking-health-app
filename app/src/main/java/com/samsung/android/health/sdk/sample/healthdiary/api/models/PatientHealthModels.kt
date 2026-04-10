@@ -96,3 +96,103 @@ data class PatientAlertsResponse(
     @SerializedName("has_more")
     val hasMore: Boolean
 )
+
+// =========================================
+// Sync Request Models (On-Demand Sync)
+// =========================================
+
+/**
+ * Request body for creating a sync request.
+ */
+data class SyncRequestCreate(
+    @SerializedName("priority")
+    val priority: String = "normal"
+)
+
+/**
+ * Response for sync request creation.
+ */
+data class SyncRequestResponse(
+    @SerializedName("request_id")
+    val requestId: String,
+    @SerializedName("patient_id")
+    val patientId: String,
+    @SerializedName("requested_by")
+    val requestedBy: String,
+    @SerializedName("status")
+    val status: String,
+    @SerializedName("created_at")
+    val createdAt: Long
+)
+
+/**
+ * Response for checking pending sync requests.
+ */
+data class PendingSyncResponse(
+    @SerializedName("has_pending")
+    val hasPending: Boolean,
+    @SerializedName("request_id")
+    val requestId: String? = null,
+    @SerializedName("requested_by")
+    val requestedBy: String? = null,
+    @SerializedName("priority")
+    val priority: String? = null,
+    @SerializedName("created_at")
+    val createdAt: Long? = null
+)
+
+/**
+ * Request body for completing a sync request.
+ */
+data class SyncCompleteRequest(
+    @SerializedName("request_id")
+    val requestId: String,
+    @SerializedName("metrics_synced")
+    val metricsSynced: Int = 0
+)
+
+/**
+ * Response for sync completion.
+ */
+data class SyncCompleteResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String
+)
+
+// =========================================
+// Heart Rate History Models
+// =========================================
+
+/**
+ * Single data point for heart rate history.
+ */
+data class HeartRateHistoryDataPoint(
+    @SerializedName("date")
+    val date: String,
+    @SerializedName("avg_bpm")
+    val avgBpm: Int? = null,
+    @SerializedName("min_bpm")
+    val minBpm: Int? = null,
+    @SerializedName("max_bpm")
+    val maxBpm: Int? = null,
+    @SerializedName("sample_count")
+    val sampleCount: Int = 0
+)
+
+/**
+ * Response for heart rate history request.
+ */
+data class HeartRateHistoryResponse(
+    @SerializedName("patient_id")
+    val patientId: String,
+    @SerializedName("patient_name")
+    val patientName: String? = null,
+    @SerializedName("days_requested")
+    val daysRequested: Int,
+    @SerializedName("data_points")
+    val dataPoints: List<HeartRateHistoryDataPoint>,
+    @SerializedName("count")
+    val count: Int
+)

@@ -155,6 +155,11 @@ class BiometricsViewModel(private val context: Context) : ViewModel() {
     companion object {
         private const val TAG = "BiometricsViewModel"
         private const val REFRESH_INTERVAL_MS = 30_000L // 30 seconds
+        
+        // Track if Samsung Health SDK is authorized (shared across instances)
+        // Once we detect AuthorizationException 2003, we stop trying Samsung Health
+        @Volatile
+        private var isSamsungHealthAuthorized: Boolean? = null // null = unknown, true = yes, false = no
     }
     
     private val watchHealthRepo: WatchHealthIngestionRepository by lazy {
@@ -163,6 +168,22 @@ class BiometricsViewModel(private val context: Context) : ViewModel() {
     
     private val healthDataStore: HealthDataStore by lazy {
         HealthDataService.getStore(context)
+    }
+    
+    /**
+     * Check if exception is Samsung Health AuthorizationException (code 2003).
+     * When detected, mark Samsung Health as unavailable to avoid repeated failed calls.
+     */
+    private fun handleSamsungHealthException(e: Exception, operation: String): Boolean {
+        if (e is com.samsung.android.sdk.health.data.error.AuthorizationException) {
+            if (isSamsungHealthAuthorized != false) {
+                isSamsungHealthAuthorized = false
+                Log.i(TAG, "[SAMSUNG_HEALTH] Not authorized - will use Watch data only. Register at Samsung Health Partner Program for SDK access.")
+            }
+            return true // Exception handled, don't log as error
+        }
+        Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] $operation failed", e)
+        return false
     }
     
     private val json = Json {
@@ -255,25 +276,36 @@ class BiometricsViewModel(private val context: Context) : ViewModel() {
                 Log.d(TAG, "[VITALS] Loading health data - Samsung Health PRIMARY, Watch DB fallback")
                 
                 // PRIMARY: Load data from Samsung Health (más completo: teléfono + reloj + mediciones manuales)
-                var stepsResult = try {
-                    loadTodaySteps(startOfToday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Steps read failed", e)
-                    null
-                }
+                // Skip if we already know Samsung Health is not authorized
+                var stepsResult: Int? = null
+                var sleepResult: Float? = null  
+                var heartRateResult: Pair<Int, Long>? = null
                 
-                var sleepResult = try {
-                    loadSleepData(startOfYesterday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Sleep read failed", e)
-                    null
-                }
-                
-                var heartRateResult = try {
-                    loadLatestHeartRate(startOfToday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Heart Rate read failed", e)
-                    null
+                if (isSamsungHealthAuthorized != false) {
+                    stepsResult = try {
+                        loadTodaySteps(startOfToday, endOfDay).also {
+                            if (it != null) isSamsungHealthAuthorized = true
+                        }
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "Steps read")
+                        null
+                    }
+                    
+                    sleepResult = try {
+                        loadSleepData(startOfYesterday, endOfDay)
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "Sleep read")
+                        null
+                    }
+                    
+                    heartRateResult = try {
+                        loadLatestHeartRate(startOfToday, endOfDay)
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "Heart Rate read")
+                        null
+                    }
+                } else {
+                    Log.d(TAG, "[VITALS] Skipping Samsung Health - not authorized, using Watch data only")
                 }
                 
                 Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] Steps: ${stepsResult ?: "NULL"}")
@@ -302,26 +334,33 @@ class BiometricsViewModel(private val context: Context) : ViewModel() {
                 }
                 
                 // Load SpO2, Blood Pressure, and Skin Temperature from Samsung Health
-                Log.d(TAG, "[VITALS] Loading SpO2, BP, Temperature from Samsung Health")
-                val spO2Result = try {
-                    loadLatestSpO2(startOfToday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] SpO2 read failed", e)
-                    null
-                }
+                // Only attempt if Samsung Health is authorized
+                var spO2Result: Pair<Int, Long>? = null
+                var bpResult: Triple<Int, Int, Long>? = null
+                var tempResult: Pair<Float, Long>? = null
                 
-                val bpResult = try {
-                    loadLatestBloodPressure(startOfToday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Blood Pressure read failed", e)
-                    null
-                }
-                
-                val tempResult = try {
-                    loadLatestSkinTemperature(startOfToday, endOfDay)
-                } catch (e: Exception) {
-                    Log.w(TAG, "[VITALS][SAMSUNG_HEALTH] Temperature read failed", e)
-                    null
+                if (isSamsungHealthAuthorized == true) {
+                    Log.d(TAG, "[VITALS] Loading SpO2, BP, Temperature from Samsung Health")
+                    spO2Result = try {
+                        loadLatestSpO2(startOfToday, endOfDay)
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "SpO2 read")
+                        null
+                    }
+                    
+                    bpResult = try {
+                        loadLatestBloodPressure(startOfToday, endOfDay)
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "Blood Pressure read")
+                        null
+                    }
+                    
+                    tempResult = try {
+                        loadLatestSkinTemperature(startOfToday, endOfDay)
+                    } catch (e: Exception) {
+                        handleSamsungHealthException(e, "Temperature read")
+                        null
+                    }
                 }
                 
                 Log.d(TAG, "[VITALS][SAMSUNG_HEALTH] SpO2: ${spO2Result?.first ?: "NULL"}%")

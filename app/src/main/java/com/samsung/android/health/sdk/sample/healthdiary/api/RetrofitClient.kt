@@ -213,6 +213,7 @@ object RetrofitClient {
     val patientHealthApiService: PatientHealthApiService by lazy { retrofit.create(PatientHealthApiService::class.java) }
     val userApiService: UserApiService by lazy { retrofit.create(UserApiService::class.java) }
     val healthMetricsApiService: HealthMetricsApiService by lazy { retrofit.create(HealthMetricsApiService::class.java) }
+    val medicationApiService: MedicationApiService by lazy { retrofit.create(MedicationApiService::class.java) }
     
     // GitHub API client for releases (OTA updates)
     private val githubOkHttpClient = OkHttpClient.Builder()
