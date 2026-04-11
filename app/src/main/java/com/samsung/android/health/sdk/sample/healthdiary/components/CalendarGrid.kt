@@ -228,12 +228,14 @@ private fun CalendarDayCell(
                 Spacer(modifier = Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
-                        .size(4.dp)
+                        .size(5.dp)
                         .clip(CircleShape)
                         .background(
                             when (eventType) {
                                 EventType.APPOINTMENT -> SandboxPrimary
                                 EventType.MEDICATION -> SandboxTertiary
+                                EventType.MEDICATION_COMPLETE -> SandboxPrimary
+                                EventType.MEDICATION_PENDING -> SandboxError
                             }
                         )
                 )
@@ -241,9 +243,15 @@ private fun CalendarDayCell(
                 Spacer(modifier = Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
-                        .size(4.dp)
+                        .size(5.dp)
                         .clip(CircleShape)
-                        .background(Color.White)
+                        .background(
+                            when (eventType) {
+                                EventType.MEDICATION_COMPLETE -> SandboxPrimaryFixed
+                                EventType.MEDICATION_PENDING -> Color.White
+                                else -> Color.White
+                            }
+                        )
                 )
             }
         }
@@ -255,5 +263,7 @@ private fun CalendarDayCell(
  */
 enum class EventType {
     APPOINTMENT,
-    MEDICATION
+    MEDICATION,           // Generic medication (for backward compat)
+    MEDICATION_COMPLETE,  // All medications taken
+    MEDICATION_PENDING    // Some medications not taken
 }

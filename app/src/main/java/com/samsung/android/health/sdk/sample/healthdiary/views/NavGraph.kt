@@ -31,6 +31,8 @@ sealed class Screen(val route: String) {
     object StepsHistory : Screen("steps_history")
     object SleepHistory : Screen("sleep_history")
     object OpenWearables : Screen("open_wearables")
+    object AddMedication : Screen("add_medication")
+    data class AddMedicationForPatient(val patientId: String) : Screen("add_medication/$patientId")
     data class WorkoutPlayer(val routineId: String? = null, val sessionId: String? = null) : Screen("workout_player?routineId=$routineId&sessionId=$sessionId")
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
@@ -84,6 +86,7 @@ fun NavGraph() {
                 onNavigateToHeartRateHistory = { navController.navigate(Screen.HeartRateHistory.route) },
                 onNavigateToStepsHistory = { navController.navigate(Screen.StepsHistory.route) },
                 onNavigateToSleepHistory = { navController.navigate(Screen.SleepHistory.route) },
+                onNavigateToAddMedication = { navController.navigate(Screen.AddMedication.route) },
                 onLogout = {
                     // Navigate to LoginActivity and clear task stack
                     val intent = Intent(context, LoginActivity::class.java).apply {
@@ -177,6 +180,30 @@ fun NavGraph() {
                 }
             )
         }
+        
+        // Add Medication Screen
+        composable(Screen.AddMedication.route) {
+            AddMedicationScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Add Medication for Patient (caregiver mode)
+        composable(
+            route = "add_medication/{patientId}",
+            arguments = listOf(
+                navArgument("patientId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getString("patientId")
+            AddMedicationScreen(
+                onNavigateBack = { navController.popBackStack() },
+                patientId = patientId
+            )
+        }
+        
         composable("habit_editor/{habitId}") { backStackEntry ->
             val hid = backStackEntry.arguments?.getString("habitId")
             HabitEditorScreen(

@@ -17,12 +17,14 @@ interface MedicationApiService {
      * 
      * @param authorization Bearer token
      * @param includeInactive Include inactive medications (default false)
+     * @param patientId Optional patient ID for caregivers viewing patient's medications
      * @return List of medications sorted by time
      */
     @GET("/medications")
     suspend fun getMedications(
         @Header("Authorization") authorization: String,
-        @Query("include_inactive") includeInactive: Boolean = false
+        @Query("include_inactive") includeInactive: Boolean = false,
+        @Query("patient_id") patientId: String? = null
     ): Response<List<Medication>>
     
     /**
@@ -35,6 +37,21 @@ interface MedicationApiService {
     @POST("/medications")
     suspend fun createMedication(
         @Header("Authorization") authorization: String,
+        @Body request: MedicationCreateRequest
+    ): Response<Medication>
+    
+    /**
+     * Create a new medication reminder for a patient (caregiver mode).
+     * 
+     * @param authorization Bearer token
+     * @param patientId ID of the patient
+     * @param request Medication creation request
+     * @return Created medication
+     */
+    @POST("/medications/patient/{patientId}")
+    suspend fun createMedicationForPatient(
+        @Header("Authorization") authorization: String,
+        @Path("patientId") patientId: String,
         @Body request: MedicationCreateRequest
     ): Response<Medication>
     
@@ -112,12 +129,14 @@ interface MedicationApiService {
      * 
      * @param authorization Bearer token
      * @param date Date to check (YYYY-MM-DD). Defaults to today.
+     * @param patientId Optional patient ID for caregivers viewing patient's status
      * @return List of medications with take status
      */
     @GET("/medications/today/status")
     suspend fun getTodayStatus(
         @Header("Authorization") authorization: String,
-        @Query("date") date: String? = null
+        @Query("date") date: String? = null,
+        @Query("patient_id") patientId: String? = null
     ): Response<List<MedicationWithTakes>>
     
     /**
@@ -128,13 +147,15 @@ interface MedicationApiService {
      * @param authorization Bearer token
      * @param year Year of the report
      * @param month Month of the report (1-12)
+     * @param patientId Optional patient ID for caregivers viewing patient's report
      * @return Monthly report with adherence statistics
      */
     @GET("/medications/report/monthly")
     suspend fun getMonthlyReport(
         @Header("Authorization") authorization: String,
         @Query("year") year: Int,
-        @Query("month") month: Int
+        @Query("month") month: Int,
+        @Query("patient_id") patientId: String? = null
     ): Response<MonthlyReportResponse>
     
     /**
@@ -145,12 +166,14 @@ interface MedicationApiService {
      * @param authorization Bearer token
      * @param year Year
      * @param month Month (1-12)
+     * @param patientId Optional patient ID for caregivers viewing patient's calendar
      * @return List of calendar events for each day
      */
     @GET("/medications/calendar/events")
     suspend fun getCalendarEvents(
         @Header("Authorization") authorization: String,
         @Query("year") year: Int,
-        @Query("month") month: Int
+        @Query("month") month: Int,
+        @Query("patient_id") patientId: String? = null
     ): Response<List<CalendarEvent>>
 }

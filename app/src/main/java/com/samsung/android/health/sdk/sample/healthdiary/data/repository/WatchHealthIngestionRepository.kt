@@ -306,6 +306,28 @@ class WatchHealthIngestionRepository(private val context: Context) {
     }
     
     /**
+     * Get real-time heart rate samples from watch_heart_rate table.
+     * This includes incremental HR updates that haven't been batched into daily summaries yet.
+     */
+    suspend fun getRealtimeHeartRates(days: Int = 1): List<WatchHeartRateEntity> {
+        return withContext(Dispatchers.IO) {
+            val calendar = java.util.Calendar.getInstance()
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, -days)
+            calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            calendar.set(java.util.Calendar.MINUTE, 0)
+            calendar.set(java.util.Calendar.SECOND, 0)
+            calendar.set(java.util.Calendar.MILLISECOND, 0)
+            val startTimestamp = calendar.timeInMillis
+            val endTimestamp = System.currentTimeMillis()
+            
+            Log.d(TAG, "[REALTIME_HR] Querying watch_heart_rate from $startTimestamp to $endTimestamp")
+            val samples = watchHealthDao.getHeartRatesInRange(startTimestamp, endTimestamp)
+            Log.d(TAG, "[REALTIME_HR] Found ${samples.size} real-time HR samples")
+            samples
+        }
+    }
+    
+    /**
      * Get all heart rate samples for a specific date (for detailed view).
      */
     suspend fun getHeartRatesForDate(date: String): List<WatchHeartRateEntity> {

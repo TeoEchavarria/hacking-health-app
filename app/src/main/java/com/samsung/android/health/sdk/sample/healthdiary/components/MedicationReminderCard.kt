@@ -24,7 +24,9 @@ import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.*
  * - Medication icon and type
  * - Name and dosage
  * - Time and instructions
- * - Mark as taken button
+ * - Mark as taken button (only if editable)
+ * 
+ * @param isEditable If false, the check button is disabled (for caregivers viewing patient's medications)
  */
 @Composable
 fun MedicationReminderCard(
@@ -34,6 +36,7 @@ fun MedicationReminderCard(
     instructions: String,
     medicationType: MedicationType = MedicationType.PILL,
     isTaken: Boolean = false,
+    isEditable: Boolean = true,
     onMarkAsTaken: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -104,22 +107,35 @@ fun MedicationReminderCard(
             // Right: Check button
             IconButton(
                 onClick = onMarkAsTaken,
+                enabled = isEditable,
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
-                        if (isTaken) SandboxPrimary else SandboxSurfaceContainer
+                        when {
+                            isTaken -> SandboxPrimary
+                            !isEditable -> SandboxSurfaceContainer.copy(alpha = 0.5f)
+                            else -> SandboxSurfaceContainer
+                        }
                     )
                     .border(
                         width = 1.dp,
-                        color = if (isTaken) SandboxPrimary else SandboxOutlineVariant,
+                        color = when {
+                            isTaken -> SandboxPrimary
+                            !isEditable -> SandboxOutlineVariant.copy(alpha = 0.5f)
+                            else -> SandboxOutlineVariant
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Marcar como tomado",
-                    tint = if (isTaken) Color.White else SandboxOnSurface,
+                    contentDescription = if (isEditable) "Marcar como tomado" else "Estado de toma",
+                    tint = when {
+                        isTaken -> Color.White
+                        !isEditable -> SandboxOnSurface.copy(alpha = 0.4f)
+                        else -> SandboxOnSurface
+                    },
                     modifier = Modifier.size(20.dp)
                 )
             }

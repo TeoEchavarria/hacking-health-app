@@ -139,17 +139,21 @@ class PhoneWearableService : LifecycleService(),
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Use DATA_SYNC as default - safer and doesn't require Bluetooth runtime permissions
+            // CONNECTED_DEVICE requires BLUETOOTH_CONNECT granted at runtime on Android 12+
             try {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                Log.d(TAG, "✅ Started foreground service with DATA_SYNC type")
             } catch (e: Exception) {
                 if (Build.VERSION.SDK_INT >= 31 && e is android.app.ForegroundServiceStartNotAllowedException) {
                     Log.e(TAG, "❌ Failed to start foreground service: Start not allowed from background", e)
                 } else {
-                    Log.w(TAG, "⚠️ Failed to start with type, retrying without type", e)
+                    Log.w(TAG, "⚠️ Failed to start with DATA_SYNC, trying without type", e)
                     try {
                         startForeground(NOTIFICATION_ID, notification)
+                        Log.d(TAG, "✅ Started foreground service without type")
                     } catch (e2: Exception) {
-                        Log.e(TAG, "❌ Failed to start foreground service even without type", e2)
+                        Log.e(TAG, "❌ Failed to start foreground service", e2)
                     }
                 }
             }

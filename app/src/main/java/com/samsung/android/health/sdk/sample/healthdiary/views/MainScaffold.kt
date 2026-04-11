@@ -3,6 +3,8 @@ package com.samsung.android.health.sdk.sample.healthdiary.views
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -37,6 +39,7 @@ fun MainScaffold(
     onNavigateToHeartRateHistory: () -> Unit = {},
     onNavigateToStepsHistory: () -> Unit = {},
     onNavigateToSleepHistory: () -> Unit = {},
+    onNavigateToAddMedication: () -> Unit = {},
     onLogout: () -> Unit = {},
     profileViewModel: ProfileViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel()
@@ -117,7 +120,8 @@ fun MainScaffold(
                     }
                     BottomNavTab.CALENDAR -> {
                         CalendarScreen(
-                            onNavigateToHeartRateHistory = onNavigateToHeartRateHistory
+                            onNavigateToHeartRateHistory = onNavigateToHeartRateHistory,
+                            onNavigateToAddMedication = onNavigateToAddMedication
                         )
                     }
                 }
@@ -164,42 +168,57 @@ fun DashboardTabContent(
     val biometricsViewModel = remember { BiometricsViewModel(context) }
     val biometricsUiState by biometricsViewModel.uiState.collectAsState()
     
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp)
-            .padding(top = 16.dp, bottom = 8.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            .padding(top = 16.dp, bottom = 8.dp)
     ) {
-        // Top Section: Health Tip Card (personalized from BiometricsViewModel)
-        HealthTipCard(
-            tip = biometricsUiState.healthTip,
-            onActionClick = { /* TODO: Navigate to breathing exercise */ }
-        )
+        val minContentHeight = 450.dp // Minimum height needed for content
+        val needsScroll = maxHeight < minContentHeight
         
-        // Middle Section: AI Interaction
-        Box(
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
+                .fillMaxSize()
+                .then(
+                    if (needsScroll) Modifier.verticalScroll(rememberScrollState())
+                    else Modifier
+                ),
+            verticalArrangement = if (needsScroll) Arrangement.spacedBy(24.dp) else Arrangement.SpaceBetween
         ) {
-            AiInteractionButton(
-                userName = userName,
-                isListening = false, // Placeholder - no functionality yet
-                onTap = {
-                    // Placeholder - no action yet
+            // Top Section: Health Tip Card (personalized from BiometricsViewModel)
+            HealthTipCard(
+                tip = biometricsUiState.healthTip,
+                onActionClick = { /* TODO: Navigate to breathing exercise */ }
+            )
+            
+            // Middle Section: AI Interaction
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (needsScroll) Modifier.heightIn(min = 200.dp)
+                        else Modifier.weight(1f)
+                    ),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                AiInteractionButton(
+                    userName = userName,
+                    isListening = false, // Placeholder - no functionality yet
+                    onTap = {
+                        // Placeholder - no action yet
+                    }
+                )
+            }
+            
+            // Bottom Section: Emergency Button (fixed size)
+            EmergencyButton(
+                onClick = {
+                    // Placeholder - no emergency action yet
                 }
             )
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        
-        // Bottom Section: Emergency Button
-        EmergencyButton(
-            onClick = {
-                // Placeholder - no emergency action yet
-            }
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

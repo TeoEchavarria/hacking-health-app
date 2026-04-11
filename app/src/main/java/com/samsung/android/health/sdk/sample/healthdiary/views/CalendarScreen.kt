@@ -48,6 +48,7 @@ import java.util.Locale
 fun CalendarScreen(
     modifier: Modifier = Modifier,
     onNavigateToHeartRateHistory: () -> Unit = {},
+    onNavigateToAddMedication: () -> Unit = {},
     calendarViewModel: CalendarViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -56,6 +57,13 @@ fun CalendarScreen(
     val biometricsUiState by biometricsViewModel.uiState.collectAsState()
     val medicationsState by calendarViewModel.medicationsState.collectAsState()
     val calendarState by calendarViewModel.calendarState.collectAsState()
+    val dayMedicationsState by calendarViewModel.dayMedicationsState.collectAsState()
+    
+    // State for day medication history sheet
+    var showDayHistorySheet by remember { mutableStateOf(false) }
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
+    var selectedDateText by remember { mutableStateOf("") }
+    var selectedDateStr by remember { mutableStateOf("") }
     
     // Generate today's date text
     val todayText = remember {
@@ -72,9 +80,15 @@ fun CalendarScreen(
     val calendarEvents: Map<Int, EventType> = remember(calendarState.calendarEvents) {
         calendarState.calendarEvents.mapNotNull { (day, status) ->
             when {
-                status.totalMedications > 0 && status.medicationsTaken < status.totalMedications -> {
-                    day to EventType.MEDICATION
+                // All medications taken
+                status.totalMedications > 0 && status.medicationsTaken == status.totalMedications -> {
+                    day to EventType.MEDICATION_COMPLETE
                 }
+                // Some medications pending
+                status.totalMedications > 0 && status.medicationsTaken < status.totalMedications -> {
+                    day to EventType.MEDICATION_PENDING
+                }
+                // Appointment
                 status.hasAppointment -> {
                     day to EventType.APPOINTMENT
                 }
@@ -174,7 +188,19 @@ fun CalendarScreen(
                     onPreviousMonth = { calendarViewModel.previousMonth() },
                     onNextMonth = { calendarViewModel.nextMonth() },
                     onDayClick = { day ->
-                        Toast.makeText(context, "Día $day seleccionado", Toast.LENGTH_SHORT).show()
+                        // Build date string
+                        val year = calendarState.currentYear
+                        val month = calendarState.currentMonth
+                        val dateStr = String.format("%04d-%02d-%02d", year, month, day)
+                        val monthName = calendarState.monthName.split(" ").firstOrNull() ?: ""
+                        
+                        selectedDay = day
+                        selectedDateStr = dateStr
+                        selectedDateText = "$day de $monthName"
+                        
+                        // Load medications for this date
+                        calendarViewModel.loadMedicationsForDate(dateStr)
+                        showDayHistorySheet = true
                     }
                 )
                 
@@ -183,6 +209,7 @@ fun CalendarScreen(
                     medications = medicationsState.medications,
                     isLoading = medicationsState.isLoading,
                     error = medicationsState.error,
+                    isEditable = medicationsState.isEditable,
                     onMarkAsTaken = { medicationId, isTaken ->
                         if (isTaken) {
                             calendarViewModel.untakeMedication(medicationId)
@@ -190,7 +217,8 @@ fun CalendarScreen(
                             calendarViewModel.takeMedication(medicationId)
                         }
                     },
-                    onRefresh = { calendarViewModel.loadMedications() }
+                    onRefresh = { calendarViewModel.loadMedications() },
+                    onAddMedication = onNavigateToAddMedication
                 )
             }
         }
@@ -232,6 +260,28 @@ fun CalendarScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
     }
+    
+    // Day Medication History Bottom Sheet
+    if (showDayHistorySheet) {
+        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val isToday = selectedDateStr == today
+        
+        DayMedicationHistorySheet(
+            dateText = selectedDateText,
+            medications = dayMedicationsState.medications,
+            isLoading = dayMedicationsState.isLoading,
+            isToday = isToday,
+            isEditable = dayMedicationsState.isEditable,
+            onDismiss = { showDayHistorySheet = false },
+            onMarkAsTaken = { medicationId, currentlyTaken ->
+                if (currentlyTaken) {
+                    calendarViewModel.untakeMedicationForDate(medicationId, selectedDateStr)
+                } else {
+                    calendarViewModel.takeMedicationForDate(medicationId, selectedDateStr)
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -242,8 +292,10 @@ private fun MedicationsSectionReal(
     medications: List<MedicationWithTakes>,
     isLoading: Boolean,
     error: String?,
+    isEditable: Boolean = true,
     onMarkAsTaken: (String, Boolean) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onAddMedication: () -> Unit = {}
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -271,19 +323,36 @@ private fun MedicationsSectionReal(
                 )
             }
             
-            // Pending badge
-            val pending = medications.count { !it.isTakenToday }
-            if (pending > 0) {
-                Surface(
-                    color = SandboxPrimaryFixed,
-                    shape = RoundedCornerShape(12.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Pending badge
+                val pending = medications.count { !it.isTakenToday }
+                if (pending > 0) {
+                    Surface(
+                        color = SandboxPrimaryFixed,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "$pending Pendiente${if (pending > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = SandboxPrimary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                
+                // Add medication button
+                IconButton(
+                    onClick = onAddMedication,
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    Text(
-                        text = "$pending Pendiente${if (pending > 1) "s" else ""}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = SandboxPrimary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Añadir medicamento",
+                        tint = SandboxPrimary
                     )
                 }
             }
@@ -374,6 +443,7 @@ private fun MedicationsSectionReal(
                         instructions = med.instructions,
                         medicationType = medType,
                         isTaken = medWithTakes.isTakenToday,
+                        isEditable = isEditable,
                         onMarkAsTaken = { onMarkAsTaken(med.id, medWithTakes.isTakenToday) }
                     )
                 }

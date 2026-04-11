@@ -26,10 +26,12 @@ class MedicationRepository(private val context: Context) {
      * Get all medications for the current user.
      * 
      * @param includeInactive Include inactive medications
+     * @param patientId Optional patient ID for caregivers viewing patient's medications
      * @return Result containing list of medications or error
      */
     suspend fun getMedications(
-        includeInactive: Boolean = false
+        includeInactive: Boolean = false,
+        patientId: String? = null
     ): Result<List<Medication>> = withContext(Dispatchers.IO) {
         try {
             val token = TokenManager.getToken()
@@ -40,7 +42,8 @@ class MedicationRepository(private val context: Context) {
             
             val response = apiService.getMedications(
                 authorization = "Bearer $token",
-                includeInactive = includeInactive
+                includeInactive = includeInactive,
+                patientId = patientId
             )
             
             if (response.isSuccessful && response.body() != null) {
@@ -63,6 +66,7 @@ class MedicationRepository(private val context: Context) {
      * @param time Time of day (HH:MM)
      * @param instructions Additional instructions
      * @param medicationType Type of medication ("pill" or "injection")
+     * @param patientId Optional patient ID when caregiver is creating for patient
      * @return Result containing created medication or error
      */
     suspend fun createMedication(
@@ -70,7 +74,8 @@ class MedicationRepository(private val context: Context) {
         dosage: String = "",
         time: String,
         instructions: String = "",
-        medicationType: String = "pill"
+        medicationType: String = "pill",
+        patientId: String? = null
     ): Result<Medication> = withContext(Dispatchers.IO) {
         try {
             val token = TokenManager.getToken()
@@ -87,10 +92,19 @@ class MedicationRepository(private val context: Context) {
                 medicationType = medicationType
             )
             
-            val response = apiService.createMedication(
-                authorization = "Bearer $token",
-                request = request
-            )
+            // Choose endpoint based on whether it's for a patient
+            val response = if (patientId != null) {
+                apiService.createMedicationForPatient(
+                    authorization = "Bearer $token",
+                    patientId = patientId,
+                    request = request
+                )
+            } else {
+                apiService.createMedication(
+                    authorization = "Bearer $token",
+                    request = request
+                )
+            }
             
             if (response.isSuccessful && response.body() != null) {
                 val medication = response.body()!!
@@ -273,10 +287,12 @@ class MedicationRepository(private val context: Context) {
      * Get medications with their take status for a specific date.
      * 
      * @param date Date to check (YYYY-MM-DD). Defaults to today.
+     * @param patientId Optional patient ID for caregivers viewing patient's status
      * @return Result containing list of medications with status or error
      */
     suspend fun getMedicationsWithTodayStatus(
-        date: String? = null
+        date: String? = null,
+        patientId: String? = null
     ): Result<List<MedicationWithTakes>> = withContext(Dispatchers.IO) {
         try {
             val token = TokenManager.getToken()
@@ -287,7 +303,8 @@ class MedicationRepository(private val context: Context) {
             
             val response = apiService.getTodayStatus(
                 authorization = "Bearer $token",
-                date = date
+                date = date,
+                patientId = patientId
             )
             
             if (response.isSuccessful && response.body() != null) {
@@ -307,11 +324,13 @@ class MedicationRepository(private val context: Context) {
      * 
      * @param year Year of the report
      * @param month Month of the report (1-12)
+     * @param patientId Optional patient ID for caregivers viewing patient's report
      * @return Result containing monthly report or error
      */
     suspend fun getMonthlyReport(
         year: Int,
-        month: Int
+        month: Int,
+        patientId: String? = null
     ): Result<MonthlyReportResponse> = withContext(Dispatchers.IO) {
         try {
             val token = TokenManager.getToken()
@@ -323,7 +342,8 @@ class MedicationRepository(private val context: Context) {
             val response = apiService.getMonthlyReport(
                 authorization = "Bearer $token",
                 year = year,
-                month = month
+                month = month,
+                patientId = patientId
             )
             
             if (response.isSuccessful && response.body() != null) {
@@ -343,11 +363,13 @@ class MedicationRepository(private val context: Context) {
      * 
      * @param year Year
      * @param month Month (1-12)
+     * @param patientId Optional patient ID for caregivers viewing patient's calendar
      * @return Result containing calendar events or error
      */
     suspend fun getCalendarEvents(
         year: Int,
-        month: Int
+        month: Int,
+        patientId: String? = null
     ): Result<List<CalendarEvent>> = withContext(Dispatchers.IO) {
         try {
             val token = TokenManager.getToken()
@@ -359,7 +381,8 @@ class MedicationRepository(private val context: Context) {
             val response = apiService.getCalendarEvents(
                 authorization = "Bearer $token",
                 year = year,
-                month = month
+                month = month,
+                patientId = patientId
             )
             
             if (response.isSuccessful && response.body() != null) {

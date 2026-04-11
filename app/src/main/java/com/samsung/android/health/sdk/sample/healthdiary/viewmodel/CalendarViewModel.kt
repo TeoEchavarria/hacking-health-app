@@ -45,7 +45,9 @@ data class BiometricAnalysisUiState(
 data class MedicationsUiState(
     val isLoading: Boolean = true,
     val medications: List<MedicationWithTakes> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val userRole: String = "none",  // "caregiver", "patient", or "none"
+    val isEditable: Boolean = true  // false for caregivers viewing patient's medications
 )
 
 /**
@@ -98,6 +100,10 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     private val _medicationsState = MutableStateFlow(MedicationsUiState())
     val medicationsState: StateFlow<MedicationsUiState> = _medicationsState.asStateFlow()
+    
+    // Store current patient ID for caregiver mode
+    private var currentPatientId: String? = null
+    private var currentUserRole: String = "none"
 
     private val _calendarState = MutableStateFlow(CalendarUiState())
     val calendarState: StateFlow<CalendarUiState> = _calendarState.asStateFlow()
@@ -167,10 +173,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Load calendar events from API.
+     * Uses currentPatientId if set (caregiver viewing patient's calendar).
      */
     private fun loadCalendarEvents(year: Int, month: Int) {
         viewModelScope.launch {
-            val result = medicationRepository.getCalendarEvents(year, month)
+            val result = medicationRepository.getCalendarEvents(year, month, currentPatientId)
             
             result.fold(
                 onSuccess = { events ->
@@ -195,7 +202,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
             )
             
             // Also load monthly report
-            val reportResult = medicationRepository.getMonthlyReport(year, month)
+            val reportResult = medicationRepository.getMonthlyReport(year, month, currentPatientId)
             reportResult.fold(
                 onSuccess = { report ->
                     _calendarState.value = _calendarState.value.copy(
@@ -212,28 +219,168 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * Load medications with today's status.
+     * 
+     * For caregivers: loads patient's medications (read-only)
+     * For patients: loads own medications (editable)
      */
     fun loadMedications() {
         viewModelScope.launch {
             _medicationsState.value = MedicationsUiState(isLoading = true)
             
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val result = medicationRepository.getMedicationsWithTodayStatus(today)
+            // First, get user profile to determine role
+            val profileResult = userRepository.getFullProfile()
+            
+            profileResult.fold(
+                onSuccess = { profile ->
+                    currentUserRole = profile.role ?: "none"
+                    
+                    when (profile.role) {
+                        "caregiver" -> {
+                            // Load patient's medications (read-only)
+                            val patientId = profile.getPrimaryPatientId()
+                            if (patientId != null) {
+                                currentPatientId = patientId
+                                loadMedicationsForUser(patientId, isEditable = false, role = "caregiver")
+                            } else {
+                                _medicationsState.value = MedicationsUiState(
+                                    isLoading = false,
+                                    userRole = "caregiver",
+                                    isEditable = false,
+                                    error = "No tienes pacientes vinculados"
+                                )
+                            }
+                        }
+                        else -> {
+                            // Patient or none: load own medications (editable)
+                            currentPatientId = null
+                            loadMedicationsForUser(null, isEditable = true, role = profile.role ?: "none")
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to load profile: ${error.message}")
+                    // Fallback: load own medications
+                    loadMedicationsForUser(null, isEditable = true, role = "none")
+                }
+            )
+        }
+    }
+    
+    /**
+     * Internal helper to load medications for a user.
+     */
+    private suspend fun loadMedicationsForUser(patientId: String?, isEditable: Boolean, role: String) {
+        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val result = medicationRepository.getMedicationsWithTodayStatus(today, patientId)
+        
+        result.fold(
+            onSuccess = { medications ->
+                _medicationsState.value = MedicationsUiState(
+                    isLoading = false,
+                    medications = medications,
+                    userRole = role,
+                    isEditable = isEditable
+                )
+                Log.i(TAG, "Loaded ${medications.size} medications for ${patientId ?: "self"}, editable=$isEditable")
+            },
+            onFailure = { error ->
+                _medicationsState.value = MedicationsUiState(
+                    isLoading = false,
+                    error = error.message,
+                    userRole = role,
+                    isEditable = isEditable
+                )
+                Log.e(TAG, "Failed to load medications: ${error.message}")
+            }
+        )
+    }
+    
+    // State for day medication history sheet
+    private val _dayMedicationsState = MutableStateFlow(MedicationsUiState())
+    val dayMedicationsState: StateFlow<MedicationsUiState> = _dayMedicationsState.asStateFlow()
+    
+    /**
+     * Load medications for a specific date (for history view).
+     * 
+     * @param dateStr Date in YYYY-MM-DD format
+     */
+    fun loadMedicationsForDate(dateStr: String) {
+        viewModelScope.launch {
+            _dayMedicationsState.value = MedicationsUiState(isLoading = true)
+            
+            val result = medicationRepository.getMedicationsWithTodayStatus(dateStr, currentPatientId)
             
             result.fold(
                 onSuccess = { medications ->
-                    _medicationsState.value = MedicationsUiState(
+                    _dayMedicationsState.value = MedicationsUiState(
                         isLoading = false,
-                        medications = medications
+                        medications = medications,
+                        userRole = currentUserRole,
+                        isEditable = _medicationsState.value.isEditable
                     )
-                    Log.i(TAG, "Loaded ${medications.size} medications")
+                    Log.i(TAG, "Loaded ${medications.size} medications for date $dateStr")
                 },
                 onFailure = { error ->
-                    _medicationsState.value = MedicationsUiState(
+                    _dayMedicationsState.value = MedicationsUiState(
                         isLoading = false,
-                        error = error.message
+                        error = error.message,
+                        userRole = currentUserRole,
+                        isEditable = _medicationsState.value.isEditable
                     )
-                    Log.e(TAG, "Failed to load medications: ${error.message}")
+                    Log.e(TAG, "Failed to load medications for date: ${error.message}")
+                }
+            )
+        }
+    }
+    
+    /**
+     * Mark a medication as taken for a specific date.
+     */
+    fun takeMedicationForDate(medicationId: String, dateStr: String) {
+        viewModelScope.launch {
+            // For now, only allow marking for today
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            if (dateStr != today) {
+                Log.w(TAG, "Cannot mark medication for past/future date")
+                return@launch
+            }
+            
+            val result = medicationRepository.takeMedication(medicationId)
+            result.fold(
+                onSuccess = {
+                    loadMedicationsForDate(dateStr)
+                    loadMedications()
+                    val current = _calendarState.value
+                    loadCalendarEvents(current.currentYear, current.currentMonth)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to mark medication as taken: ${error.message}")
+                }
+            )
+        }
+    }
+    
+    /**
+     * Unmark a medication as taken for a specific date.
+     */
+    fun untakeMedicationForDate(medicationId: String, dateStr: String) {
+        viewModelScope.launch {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            if (dateStr != today) {
+                Log.w(TAG, "Cannot unmark medication for past date")
+                return@launch
+            }
+            
+            val result = medicationRepository.untakeMedication(medicationId, dateStr)
+            result.fold(
+                onSuccess = {
+                    loadMedicationsForDate(dateStr)
+                    loadMedications()
+                    val current = _calendarState.value
+                    loadCalendarEvents(current.currentYear, current.currentMonth)
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to unmark medication: ${error.message}")
                 }
             )
         }

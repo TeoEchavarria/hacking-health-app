@@ -13,13 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HeartRateHistoryViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HourlyHeartRateData
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,7 +104,7 @@ fun HeartRateHistoryScreen(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-            } else if (uiState.dataPoints.isEmpty()) {
+            } else if (uiState.hourlyData.isEmpty() && uiState.dataPoints.isEmpty()) {
                 SandboxCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "No hay datos de frecuencia cardíaca disponibles para el período seleccionado.",
@@ -116,21 +116,19 @@ fun HeartRateHistoryScreen(
                 SandboxCard(modifier = Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "Frecuencia Cardíaca Promedio",
+                            text = "Frecuencia Cardíaca por Hora",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         
-                        HeartRateChart(data = uiState.dataPoints)
+                        HourlyHeartRateChart(data = uiState.hourlyData)
                         
                         // Legend
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            ChartLegendItem(color = Color(0xFFFF5252), label = "Máx")
-                            ChartLegendItem(color = Color(0xFF4CAF50), label = "Prom")
-                            ChartLegendItem(color = Color(0xFF64B5F6), label = "Mín")
+                            ChartLegendItem(color = Color(0xFFE91E63), label = "Rango (Mín - Máx)")
                         }
                     }
                 }
@@ -139,48 +137,133 @@ fun HeartRateHistoryScreen(
     }
 }
 
+/**
+ * Hourly heart rate chart with vertical bars showing min-max range.
+ * X-axis: Hours (00:00 - 23:00)
+ * Y-axis: BPM values
+ */
 @Composable
-private fun HeartRateChart(data: List<com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HeartRateDataPoint>) {
+private fun HourlyHeartRateChart(data: List<HourlyHeartRateData>) {
     Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(250.dp)
-            .padding(vertical = 16.dp)
+            .height(280.dp)
+            .padding(top = 8.dp, bottom = 8.dp)
     ) {
-        if (data.isEmpty()) return@Canvas
+        val leftPadding = 50f  // Space for Y-axis labels
+        val rightPadding = 20f
+        val topPadding = 20f
+        val bottomPadding = 50f // Space for X-axis labels
         
-        val maxBpm = data.mapNotNull { it.maxBpm }.maxOrNull() ?: 100
-        val minBpm = data.mapNotNull { it.minBpm }.minOrNull() ?: 50
-        val range = (maxBpm - minBpm).coerceAtLeast(20)
+        val chartWidth = size.width - leftPadding - rightPadding
+        val chartHeight = size.height - topPadding - bottomPadding
         
-        val padding = 40f
-        val chartWidth = size.width - padding * 2
-        val chartHeight = size.height - padding * 2
-        val stepX = chartWidth / (data.size - 1).coerceAtLeast(1)
+        // Calculate BPM range
+        val allMinBpm = data.minOfOrNull { it.minBpm } ?: 50
+        val allMaxBpm = data.maxOfOrNull { it.maxBpm } ?: 120
+        val bpmRange = (allMaxBpm - allMinBpm).coerceAtLeast(20)
+        val bpmMin = (allMinBpm - 10).coerceAtLeast(40)
+        val bpmMax = allMaxBpm + 10
+        val adjustedRange = bpmMax - bpmMin
         
-        // Draw avg line
-        val avgPath = Path()
-        data.forEachIndexed { index, point ->
-            val x = padding + index * stepX
-            val y = if (point.avgBpm != null) {
-                size.height - padding - ((point.avgBpm!! - minBpm).toFloat() / range * chartHeight)
-            } else return@forEachIndexed
-            
-            if (index == 0) avgPath.moveTo(x, y) else avgPath.lineTo(x, y)
+        // Draw Y-axis
+        drawLine(
+            color = Color.Gray,
+            start = Offset(leftPadding, topPadding),
+            end = Offset(leftPadding, topPadding + chartHeight),
+            strokeWidth = 2f
+        )
+        
+        // Draw X-axis
+        drawLine(
+            color = Color.Gray,
+            start = Offset(leftPadding, topPadding + chartHeight),
+            end = Offset(leftPadding + chartWidth, topPadding + chartHeight),
+            strokeWidth = 2f
+        )
+        
+        // Draw Y-axis labels (BPM values)
+        val yLabelCount = 5
+        val paint = android.graphics.Paint().apply {
+            color = android.graphics.Color.DKGRAY
+            textSize = 28f
+            textAlign = android.graphics.Paint.Align.RIGHT
         }
-        drawPath(avgPath, Color(0xFF4CAF50), style = Stroke(width = 3f))
         
-        // Draw data points
-        data.forEachIndexed { index, point ->
-            val x = padding + index * stepX
+        for (i in 0..yLabelCount) {
+            val bpmValue = bpmMin + (adjustedRange * i / yLabelCount)
+            val y = topPadding + chartHeight - (chartHeight * i / yLabelCount)
             
-            point.maxBpm?.let { max ->
-                val y = size.height - padding - ((max - minBpm).toFloat() / range * chartHeight)
-                drawCircle(Color(0xFFFF5252), radius = 4f, center = Offset(x, y))
+            // Draw horizontal grid line
+            drawLine(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                start = Offset(leftPadding, y),
+                end = Offset(leftPadding + chartWidth, y),
+                strokeWidth = 1f
+            )
+            
+            // Draw label
+            drawContext.canvas.nativeCanvas.drawText(
+                "$bpmValue",
+                leftPadding - 8f,
+                y + 10f,
+                paint
+            )
+        }
+        
+        // Draw X-axis labels (hours) and bars
+        val xLabelPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.DKGRAY
+            textSize = 24f
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+        
+        // Create 24-hour slots
+        val barWidth = chartWidth / 24f
+        val barColor = Color(0xFFE91E63) // Pink/Red for heart rate
+        
+        for (hour in 0..23) {
+            val x = leftPadding + (hour * barWidth) + (barWidth / 2)
+            
+            // Draw X-axis label every 4 hours
+            if (hour % 4 == 0) {
+                drawContext.canvas.nativeCanvas.drawText(
+                    String.format("%02d:00", hour),
+                    x,
+                    topPadding + chartHeight + 35f,
+                    xLabelPaint
+                )
             }
-            point.minBpm?.let { min ->
-                val y = size.height - padding - ((min - minBpm).toFloat() / range * chartHeight)
-                drawCircle(Color(0xFF64B5F6), radius = 4f, center = Offset(x, y))
+            
+            // Find data for this hour
+            val hourData = data.find { it.hourIndex == hour }
+            
+            if (hourData != null) {
+                // Calculate Y positions for min and max
+                val yMax = topPadding + chartHeight - ((hourData.maxBpm - bpmMin).toFloat() / adjustedRange * chartHeight)
+                val yMin = topPadding + chartHeight - ((hourData.minBpm - bpmMin).toFloat() / adjustedRange * chartHeight)
+                
+                // Draw vertical bar (min to max)
+                drawLine(
+                    color = barColor,
+                    start = Offset(x, yMax),
+                    end = Offset(x, yMin),
+                    strokeWidth = 8f
+                )
+                
+                // Draw caps on the bar
+                drawLine(
+                    color = barColor,
+                    start = Offset(x - 4f, yMax),
+                    end = Offset(x + 4f, yMax),
+                    strokeWidth = 3f
+                )
+                drawLine(
+                    color = barColor,
+                    start = Offset(x - 4f, yMin),
+                    end = Offset(x + 4f, yMin),
+                    strokeWidth = 3f
+                )
             }
         }
     }
