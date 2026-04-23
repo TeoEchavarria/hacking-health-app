@@ -38,6 +38,7 @@ sealed class Screen(val route: String) {
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
     object DailyChallenge : Screen("daily_challenge")
+    object SharedMap : Screen("shared_map")
     object NumbersChallenge : Screen("numbers_challenge")
     object WordsChallenge : Screen("words_challenge")
     object DrawingChallenge : Screen("drawing_challenge")
@@ -92,6 +93,7 @@ fun NavGraph() {
                 onNavigateToSleepHistory = { navController.navigate(Screen.SleepHistory.route) },
                 onNavigateToAddMedication = { navController.navigate(Screen.AddMedication.route) },
                 onNavigateToDailyChallenge = { navController.navigate(Screen.DailyChallenge.route) },
+                onNavigateToSharedMap = { navController.navigate(Screen.SharedMap.route) },
                 onLogout = {
                     // Navigate to LoginActivity and clear task stack
                     val intent = Intent(context, LoginActivity::class.java).apply {
@@ -275,6 +277,13 @@ fun NavGraph() {
                 onNavigateToNumbers = { navController.navigate(Screen.NumbersChallenge.route) },
                 onNavigateToWords = { navController.navigate(Screen.WordsChallenge.route) },
                 onNavigateToDrawing = { navController.navigate(Screen.DrawingChallenge.route) }
+            )
+        }
+        
+        // Shared Map Screen
+        composable(Screen.SharedMap.route) {
+            SharedMapScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         

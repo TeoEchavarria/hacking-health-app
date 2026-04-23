@@ -1,5 +1,8 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views.challenges
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,32 +21,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.samsung.android.health.sdk.sample.healthdiary.R
-import com.samsung.android.health.sdk.sample.healthdiary.components.SandboxButton
+import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.components.SandboxTopBar
-import com.samsung.android.health.sdk.sample.healthdiary.components.ButtonVariant
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 /**
  * Drawing Challenge Screen
  * 
- * Displays a random image/pattern that the user must memorize.
+ * Displays a random Quick Draw image that the user must memorize.
  * Features:
- * - Random drawing selection
+ * - Fetches random drawings from Quick Draw API
+ * - Falls back to local drawings if API fails
  * - 15-second countdown timer
  * - Auto-hide when timer ends
  * - Hide/Reveal/Next controls
  */
 
-// Available challenge drawings
-private val challengeDrawings = listOf(
+// Fallback challenge drawings (used when API is unavailable)
+private val fallbackDrawings = listOf(
     R.drawable.challenge_drawing_house,
     R.drawable.challenge_drawing_tree,
     R.drawable.challenge_drawing_pattern,
@@ -51,7 +58,7 @@ private val challengeDrawings = listOf(
     R.drawable.challenge_drawing_night
 )
 
-private val drawingNames = mapOf(
+private val fallbackDrawingNames = mapOf(
     R.drawable.challenge_drawing_house to "Casa con sol",
     R.drawable.challenge_drawing_tree to "Árbol con manzanas",
     R.drawable.challenge_drawing_pattern to "Patrón geométrico",
@@ -59,19 +66,71 @@ private val drawingNames = mapOf(
     R.drawable.challenge_drawing_night to "Cielo nocturno"
 )
 
+/**
+ * Result of fetching a drawing from the API
+ */
+private sealed class DrawingState {
+    object Loading : DrawingState()
+    data class FromApi(val bitmap: Bitmap, val categoryName: String) : DrawingState()
+    data class FromFallback(val drawableRes: Int, val name: String) : DrawingState()
+    data class Error(val message: String) : DrawingState()
+}
+
+/**
+ * Select a random fallback drawing when API is unavailable
+ */
+private fun useFallbackDrawing(): DrawingState {
+    val index = Random.nextInt(fallbackDrawings.size)
+    val drawableRes = fallbackDrawings[index]
+    val name = fallbackDrawingNames[drawableRes] ?: "Dibujo"
+    return DrawingState.FromFallback(drawableRes, name)
+}
+
 @Composable
 fun DrawingChallengeScreen(
     onNavigateBack: () -> Unit
 ) {
-    // State
-    var currentDrawingIndex by remember { mutableStateOf(Random.nextInt(challengeDrawings.size)) }
+    // Coroutine scope for API calls
+    val scope = rememberCoroutineScope()
+    
+    // Drawing state
+    var drawingState by remember { mutableStateOf<DrawingState>(DrawingState.Loading) }
+    
+    // Timer state
     var isHidden by remember { mutableStateOf(false) }
     var timeRemaining by remember { mutableStateOf(15) }
     var isTimerRunning by remember { mutableStateOf(false) }
     var hasTimerStarted by remember { mutableStateOf(false) }
     
-    val currentDrawing = challengeDrawings[currentDrawingIndex]
-    val currentDrawingName = drawingNames[currentDrawing] ?: "Dibujo"
+    // Get current drawing name for display
+    val currentDrawingName = when (val state = drawingState) {
+        is DrawingState.Loading -> "Cargando..."
+        is DrawingState.FromApi -> state.categoryName.replaceFirstChar { it.uppercase() }
+        is DrawingState.FromFallback -> state.name
+        is DrawingState.Error -> "Error"
+    }
+    
+    // Function to fetch drawing from API
+    suspend fun fetchDrawingFromApi(): DrawingState {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = RetrofitClient.drawingApiService.getRandomDrawing()
+                if (response.isSuccessful && response.body() != null) {
+                    val bytes = response.body()!!.bytes()
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    val category = response.headers()["X-Drawing-Category"] ?: "dibujo"
+                    Log.d("DrawingChallenge", "Loaded drawing from API: $category")
+                    DrawingState.FromApi(bitmap, category)
+                } else {
+                    Log.w("DrawingChallenge", "API error: ${response.code()}, falling back to local")
+                    useFallbackDrawing()
+                }
+            } catch (e: Exception) {
+                Log.e("DrawingChallenge", "Failed to fetch from API: ${e.message}", e)
+                useFallbackDrawing()
+            }
+        }
+    }
     
     // Timer effect
     LaunchedEffect(isTimerRunning, timeRemaining) {
@@ -84,13 +143,21 @@ fun DrawingChallengeScreen(
         }
     }
     
+    // Initial load
+    LaunchedEffect(Unit) {
+        drawingState = fetchDrawingFromApi()
+    }
+    
     // Generate new challenge
     fun generateNewChallenge() {
-        currentDrawingIndex = Random.nextInt(challengeDrawings.size)
         isHidden = false
         timeRemaining = 15
         isTimerRunning = false
         hasTimerStarted = false
+        drawingState = DrawingState.Loading
+        scope.launch {
+            drawingState = fetchDrawingFromApi()
+        }
     }
     
     // Start timer
@@ -213,13 +280,38 @@ fun DrawingChallengeScreen(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Image(
-                                            painter = painterResource(id = currentDrawing),
-                                            contentDescription = currentDrawingName,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(16.dp)
-                                        )
+                                        when (val state = drawingState) {
+                                            is DrawingState.Loading -> {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(48.dp),
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            is DrawingState.FromApi -> {
+                                                Image(
+                                                    bitmap = state.bitmap.asImageBitmap(),
+                                                    contentDescription = state.categoryName,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(16.dp)
+                                                )
+                                            }
+                                            is DrawingState.FromFallback -> {
+                                                Image(
+                                                    painter = painterResource(id = state.drawableRes),
+                                                    contentDescription = state.name,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(16.dp)
+                                                )
+                                            }
+                                            is DrawingState.Error -> {
+                                                Text(
+                                                    text = "Error loading drawing",
+                                                    color = Color.Red
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             } else {

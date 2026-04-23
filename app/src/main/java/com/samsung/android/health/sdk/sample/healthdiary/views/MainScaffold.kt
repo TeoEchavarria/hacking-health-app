@@ -46,6 +46,7 @@ fun MainScaffold(
     onNavigateToSleepHistory: () -> Unit = {},
     onNavigateToAddMedication: () -> Unit = {},
     onNavigateToDailyChallenge: () -> Unit = {},
+    onNavigateToSharedMap: () -> Unit = {},
     onLogout: () -> Unit = {},
     profileViewModel: ProfileViewModel = viewModel(),
     homeViewModel: HomeViewModel = viewModel()
@@ -122,7 +123,7 @@ fun MainScaffold(
                     }
                     BottomNavTab.VITALS -> {
                         VitalsScreen(
-                            onNavigateToTracking = { showTrackingScreen = true }
+                            onNavigateToTracking = onNavigateToSharedMap
                         )
                     }
                     BottomNavTab.CALENDAR -> {
