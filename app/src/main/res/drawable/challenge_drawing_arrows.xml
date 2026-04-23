@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Challenge Drawing: Arrow Sequence -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Arrow 1: Up (top-left) -->
+    <path
+        android:fillColor="#E74C3C"
+        android:pathData="M50,70 L50,30 L30,50 L45,50 L45,70 L55,70 L55,50 L70,50 Z" />
+    <!-- Arrow 2: Right (top-right) -->
+    <path
+        android:fillColor="#3498DB"
+        android:pathData="M130,50 L170,50 L150,30 L150,45 L130,45 L130,55 L150,55 L150,70 Z" />
+    <!-- Arrow 3: Down (bottom-left) -->
+    <path
+        android:fillColor="#2ECC71"
+        android:pathData="M50,130 L50,170 L70,150 L55,150 L55,130 L45,130 L45,150 L30,150 Z" />
+    <!-- Arrow 4: Left (bottom-right) -->
+    <path
+        android:fillColor="#F39C12"
+        android:pathData="M170,150 L130,150 L150,170 L150,155 L170,155 L170,145 L150,145 L150,130 Z" />
+    <!-- Center circle -->
+    <path
+        android:fillColor="#9B59B6"
+        android:pathData="M100,100 m-25,0 a25,25 0 1,1 50,0 a25,25 0 1,1 -50,0" />
+</vector>

@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.samsung.android.health.sdk.sample.healthdiary.activity.LoginActivity
 import com.samsung.android.health.sdk.sample.healthdiary.repository.DocumentRepository
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
@@ -37,6 +38,10 @@ sealed class Screen(val route: String) {
     data class RoutineEditor(val routineId: String? = null) : Screen("routine_editor/${routineId ?: "new"}")
     data class HabitEditor(val habitId: String? = null) : Screen("habit_editor/${habitId ?: "new"}")
     object SandboxGallery : Screen("sandbox_gallery")
+    object DailyChallenge : Screen("daily_challenge")
+    object NumbersChallenge : Screen("numbers_challenge")
+    object WordsChallenge : Screen("words_challenge")
+    object DrawingChallenge : Screen("drawing_challenge")
 }
 
 @Composable
@@ -63,6 +68,18 @@ fun NavGraph() {
             }
         }
     }
+    
+    // Observe session expired events and redirect to login
+    LaunchedEffect(Unit) {
+        AuthEventBus.sessionExpired.collect { reason ->
+            android.util.Log.w("NavGraph", "🔐 Session expired ($reason), redirecting to login")
+            val intent = Intent(context, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            context.startActivity(intent)
+            activity?.finish()
+        }
+    }
 
     val pdfLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -87,6 +104,7 @@ fun NavGraph() {
                 onNavigateToStepsHistory = { navController.navigate(Screen.StepsHistory.route) },
                 onNavigateToSleepHistory = { navController.navigate(Screen.SleepHistory.route) },
                 onNavigateToAddMedication = { navController.navigate(Screen.AddMedication.route) },
+                onNavigateToDailyChallenge = { navController.navigate(Screen.DailyChallenge.route) },
                 onLogout = {
                     // Navigate to LoginActivity and clear task stack
                     val intent = Intent(context, LoginActivity::class.java).apply {
@@ -261,6 +279,34 @@ fun NavGraph() {
                     navController.popBackStack()
                 }
             }
+        }
+        
+        // Daily Challenge Screens
+        composable(Screen.DailyChallenge.route) {
+            DailyChallengeScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNumbers = { navController.navigate(Screen.NumbersChallenge.route) },
+                onNavigateToWords = { navController.navigate(Screen.WordsChallenge.route) },
+                onNavigateToDrawing = { navController.navigate(Screen.DrawingChallenge.route) }
+            )
+        }
+        
+        composable(Screen.NumbersChallenge.route) {
+            com.samsung.android.health.sdk.sample.healthdiary.views.challenges.NumbersChallengeScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.WordsChallenge.route) {
+            com.samsung.android.health.sdk.sample.healthdiary.views.challenges.WordsChallengeScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.DrawingChallenge.route) {
+            com.samsung.android.health.sdk.sample.healthdiary.views.challenges.DrawingChallengeScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

@@ -54,6 +54,7 @@ import androidx.work.WorkManager
 import com.samsung.android.health.sdk.sample.healthdiary.update.worker.UpdateWorker
 import com.samsung.android.health.sdk.sample.healthdiary.worker.HealthSyncWorker
 import com.samsung.android.health.sdk.sample.healthdiary.worker.SyncPollingWorker
+import com.samsung.android.health.sdk.sample.healthdiary.worker.TokenRefreshWorker
 import java.util.concurrent.TimeUnit
 import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateDialog
 import com.samsung.android.health.sdk.sample.healthdiary.update.ui.UpdateViewModel
@@ -119,17 +120,20 @@ class HealthMainActivity : AppCompatActivity() {
         // #region agent log
         debugLog("H1", "TokenManager initialized")
         // #endregion
-        if (!TokenManager.hasToken()) {
+        if (!TokenManager.hasToken() || TokenManager.isTokenExpired()) {
             // #region agent log
-            debugLog("H1", "Token missing, redirecting to LoginActivity")
+            debugLog("H1", "Token missing or expired, redirecting to LoginActivity")
             // #endregion
-            // No hay token, navegar a LoginActivity
+            // No hay token o está expirado, navegar a LoginActivity
             val intent = Intent(this, LoginActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
             return
         }
+        
+        // Schedule proactive token refresh worker (keeps session alive for 30+ days)
+        TokenRefreshWorker.schedule(applicationContext)
 
         try {
             val factory = HealthViewModelFactory(this)

@@ -1,0 +1,99 @@
+# Lista de palabras para el reto de memorización
+# Palabras comunes en español, fáciles de recordar y pronunciar
+
+palabras:
+  # Animales
+  - gato
+  - perro
+  - pájaro
+  - caballo
+  - vaca
+  - león
+  - tigre
+  - oso
+  - pez
+  - rana
+  
+  # Comida
+  - manzana
+  - naranja
+  - plátano
+  - leche
+  - pan
+  - queso
+  - agua
+  - arroz
+  - huevo
+  - carne
+  
+  # Casa
+  - mesa
+  - silla
+  - cama
+  - puerta
+  - ventana
+  - cocina
+  - baño
+  - casa
+  - techo
+  - piso
+  
+  # Naturaleza
+  - árbol
+  - flor
+  - sol
+  - luna
+  - nube
+  - lluvia
+  - río
+  - mar
+  - montaña
+  - playa
+  
+  # Colores
+  - rojo
+  - azul
+  - verde
+  - amarillo
+  - blanco
+  - negro
+  - rosa
+  - morado
+  - naranja
+  - gris
+  
+  # Cuerpo
+  - mano
+  - pie
+  - cabeza
+  - ojo
+  - boca
+  - nariz
+  - oreja
+  - brazo
+  - pierna
+  - dedo
+  
+  # Objetos cotidianos
+  - libro
+  - lápiz
+  - papel
+  - reloj
+  - teléfono
+  - llave
+  - bolsa
+  - zapato
+  - ropa
+  - gorra
+  
+  # Transporte
+  - carro
+  - bus
+  - avión
+  - barco
+  - moto
+  - tren
+  - bici
+  - taxi
+  - metro
+  - camión

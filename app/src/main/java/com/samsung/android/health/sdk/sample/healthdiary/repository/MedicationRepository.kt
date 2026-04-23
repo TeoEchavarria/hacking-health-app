@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.*
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -403,7 +404,10 @@ class MedicationRepository(private val context: Context) {
     
     private fun <T> handleError(code: Int, errorBody: String?): Result<T> {
         val errorMessage = when (code) {
-            401 -> "No autorizado: Inicia sesión nuevamente"
+            401 -> {
+                // Emit session expired event for centralized handling
+                return AuthEventBus.handleUnauthorized()
+            }
             403 -> "No tienes permiso para realizar esta acción"
             404 -> "No encontrado"
             500 -> "Error del servidor"

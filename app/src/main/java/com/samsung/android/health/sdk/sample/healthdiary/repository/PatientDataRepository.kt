@@ -9,6 +9,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.PatientHealt
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.HeartRateHistoryResponse
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestCreate
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.SyncRequestResponse
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -70,7 +71,7 @@ class PatientDataRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para ver los datos de este paciente"
                     404 -> "Paciente no encontrado"
                     500 -> "Error del servidor"
@@ -129,7 +130,7 @@ class PatientDataRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para ver las alertas de este paciente"
                     404 -> "Paciente no encontrado"
                     500 -> "Error del servidor"
@@ -242,7 +243,7 @@ class PatientDataRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para ver el resumen de este paciente"
                     404 -> "Paciente no encontrado"
                     500 -> "Error del servidor"
@@ -295,7 +296,7 @@ class PatientDataRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para ver el historial de este paciente"
                     404 -> "Paciente no encontrado"
                     500 -> "Error del servidor"
@@ -347,7 +348,7 @@ class PatientDataRepository(private val context: Context) {
                 Result.success(data)
             } else {
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para solicitar sync de este paciente"
                     404 -> "Paciente no encontrado"
                     500 -> "Error del servidor"

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Challenge Drawing: Star with Moon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Night sky background -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M0,0 L200,0 L200,200 L0,200 Z" />
+    <!-- Moon (crescent) -->
+    <path
+        android:fillColor="#F5F5DC"
+        android:pathData="M150,60 a35,35 0 1,1 0,1 a25,25 0 1,0 0,-1" />
+    <!-- Large star -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M70,100 L80,130 L50,110 L90,110 L60,130 Z" />
+    <!-- Small stars -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,40 L33,48 L25,43 L35,43 L27,48 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M100,30 L103,38 L95,33 L105,33 L97,38 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,150 L43,158 L35,153 L45,153 L37,158 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M120,170 L123,178 L115,173 L125,173 L117,178 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M170,140 L173,148 L165,143 L175,143 L167,148 Z" />
+</vector>

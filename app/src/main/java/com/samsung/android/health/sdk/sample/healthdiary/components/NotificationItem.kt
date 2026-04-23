@@ -108,6 +108,8 @@ private fun getNotificationIcon(type: NotificationType): ImageVector {
         NotificationType.WARNING -> Icons.Default.Warning
         NotificationType.APPOINTMENT -> Icons.Default.CalendarToday
         NotificationType.REPORT -> Icons.Default.Update
+        NotificationType.HEALTH_TIP -> Icons.Default.Lightbulb
+        NotificationType.VITALS -> Icons.Default.Favorite
     }
 }
 
@@ -122,6 +124,8 @@ private fun getNotificationColors(type: NotificationType): Pair<Color, Color> {
         NotificationType.WARNING -> Color(0xFFFFFBEB) to Color(0xFFD97706) // amber-50, amber-600
         NotificationType.APPOINTMENT -> Color(0xFFFAF5FF) to Color(0xFF9333EA) // purple-50, purple-600
         NotificationType.REPORT -> SandboxPrimaryFixed.copy(alpha = 0.3f) to SandboxPrimary
+        NotificationType.HEALTH_TIP -> Color(0xFFF0FDFA) to Color(0xFF0D9488) // teal-50, teal-600
+        NotificationType.VITALS -> Color(0xFFFEF2F2) to Color(0xFFDC2626) // red-50, red-600
     }
 }
 

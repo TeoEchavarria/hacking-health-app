@@ -10,11 +10,11 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.PairingEntity
 import com.samsung.android.health.sdk.sample.healthdiary.model.*
 import com.samsung.android.health.sdk.sample.healthdiary.repository.PatientDataRepository
+import com.samsung.android.health.sdk.sample.healthdiary.repository.NotificationRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 /**
  * Linked patient info for caregiver mode.
@@ -66,6 +66,7 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
     val uiState: StateFlow<VitalsUiState> = _uiState.asStateFlow()
     
     private val patientDataRepository = PatientDataRepository(context)
+    private val notificationRepository = NotificationRepository(context)
     private val pairingDao = AppDatabase.getDatabase(context).pairingDao()
     
     private var pollingJob: Job? = null
@@ -218,10 +219,29 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
             _uiState.update { it.copy(isLoading = true) }
             
             try {
-                // Generate mock notifications
-                val mockNotifications = generateMockNotifications()
+                // Fetch notifications from API
+                val notificationsResult = notificationRepository.getNotifications()
+                val notifications = notificationsResult.getOrElse { 
+                    Log.w(TAG, "Failed to fetch notifications from API, using empty list: ${it.message}")
+                    emptyList()
+                }
                 
-                // Mock location (Madrid, Spain)
+                // Find most urgent notification as current alert
+                val urgentNotification = notifications
+                    .filter { it.priority == NotificationPriority.HIGH || it.priority == NotificationPriority.URGENT }
+                    .filter { !it.isRead }
+                    .maxByOrNull { it.timestamp }
+                
+                val currentAlert = urgentNotification?.let { notif ->
+                    HealthAlert(
+                        title = notif.title,
+                        description = notif.message,
+                        timestamp = notif.timestamp,
+                        metricType = notif.type.name.lowercase()
+                    )
+                }
+                
+                // Mock location (Madrid, Spain) - TODO: Implement real location tracking
                 val mockLocation = LocationData(
                     latitude = 40.4168,
                     longitude = -3.7038,
@@ -230,85 +250,22 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                     accuracy = 10f
                 )
                 
-                // Mock urgent alert (simulating high blood pressure)
-                val mockAlert = HealthAlert(
-                    title = "Alerta: Presión Arterial Elevada",
-                    description = "Detectada hace 15 min. Se recomienda reposo.",
-                    timestamp = System.currentTimeMillis() - 900_000, // 15 min ago
-                    metricType = "blood_pressure"
-                )
-                
                 _uiState.update { state ->
                     state.copy(
-                        currentAlert = mockAlert,
+                        currentAlert = currentAlert,
                         lastLocation = mockLocation,
-                        notifications = mockNotifications,
+                        notifications = notifications,
                         isLoading = false
                     )
                 }
                 
-                Log.d(TAG, "Initial data loaded successfully")
+                Log.d(TAG, "Initial data loaded successfully with ${notifications.size} notifications from API")
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading initial data", e)
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
-    }
-    
-    /**
-     * Generate mock notifications for testing
-     */
-    private fun generateMockNotifications(): List<Notification> {
-        val now = System.currentTimeMillis()
-        
-        return listOf(
-            Notification(
-                id = UUID.randomUUID().toString(),
-                type = NotificationType.MEDICATION,
-                title = "Recordatorio de Medicación",
-                message = "Es hora de tomar su Enalapril (10mg).",
-                timestamp = now,
-                isRead = false,
-                priority = NotificationPriority.HIGH
-            ),
-            Notification(
-                id = UUID.randomUUID().toString(),
-                type = NotificationType.ACHIEVEMENT,
-                title = "Objetivo de Pasos",
-                message = "¡Felicidades! Has alcanzado el 50% de tu meta diaria.",
-                timestamp = now - 3_600_000, // 1 hour ago
-                isRead = false,
-                priority = NotificationPriority.NORMAL
-            ),
-            Notification(
-                id = UUID.randomUUID().toString(),
-                type = NotificationType.WARNING,
-                title = "Batería del Sensor Baja",
-                message = "El dispositivo de monitoreo está al 15%. Favor cargar.",
-                timestamp = now - 10_800_000, // 3 hours ago
-                isRead = false,
-                priority = NotificationPriority.HIGH
-            ),
-            Notification(
-                id = UUID.randomUUID().toString(),
-                type = NotificationType.APPOINTMENT,
-                title = "Cita Médica Mañana",
-                message = "Confirmación: Cita con Cardiología a las 10:30 AM.",
-                timestamp = now - 21_600_000, // 6 hours ago
-                isRead = false,
-                priority = NotificationPriority.NORMAL
-            ),
-            Notification(
-                id = UUID.randomUUID().toString(),
-                type = NotificationType.REPORT,
-                title = "Actualización de Informe",
-                message = "Su resumen semanal de salud ya está disponible.",
-                timestamp = now - 86_400_000, // Yesterday
-                isRead = true,
-                priority = NotificationPriority.LOW
-            )
-        )
     }
     
     /**
@@ -319,9 +276,10 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
     }
     
     /**
-     * Mark notification as read
+     * Mark notification as read (updates both UI and API)
      */
     fun markNotificationAsRead(notificationId: String) {
+        // Update UI immediately for responsiveness
         _uiState.update { state ->
             state.copy(
                 notifications = state.notifications.map { notification ->
@@ -332,6 +290,36 @@ class VitalsViewModel(private val context: Context) : ViewModel() {
                     }
                 }
             )
+        }
+        
+        // Sync with API in background
+        viewModelScope.launch {
+            val result = notificationRepository.markAsRead(notificationId)
+            if (result.isFailure) {
+                Log.w(TAG, "Failed to sync notification read status to API: ${result.exceptionOrNull()?.message}")
+                // Note: Not reverting UI since user action was intentional
+            }
+        }
+    }
+    
+    /**
+     * Refresh notifications from API
+     */
+    fun refreshNotifications() {
+        viewModelScope.launch {
+            try {
+                val result = notificationRepository.getNotifications()
+                result.onSuccess { notifications ->
+                    _uiState.update { state ->
+                        state.copy(notifications = notifications)
+                    }
+                    Log.d(TAG, "Notifications refreshed: ${notifications.size} notifications")
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to refresh notifications: ${error.message}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing notifications", e)
+            }
         }
     }
     

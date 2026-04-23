@@ -11,6 +11,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.models.ValidatePair
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.ValidatePairingCodeResponse
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.PairingEntity
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -57,7 +58,7 @@ class PairingRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permisos para generar un código"
                     429 -> "Demasiadas solicitudes, intenta más tarde"
                     500 -> "Error del servidor: $errorBody"
@@ -116,7 +117,7 @@ class PairingRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     404 -> "Código inválido o expirado"
                     410 -> "Este código ya fue utilizado"
                     429 -> "Demasiados intentos, espera un momento"
@@ -164,7 +165,7 @@ class PairingRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     404 -> "Código no encontrado o expirado"
                     500 -> "Error del servidor: $errorBody"
                     else -> "Error ${response.code()}: $errorBody"
@@ -302,7 +303,7 @@ class PairingRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     403 -> "No tienes permiso para revocar esta vinculación"
                     404 -> "Vinculación no encontrada"
                     500 -> "Error del servidor: $errorBody"

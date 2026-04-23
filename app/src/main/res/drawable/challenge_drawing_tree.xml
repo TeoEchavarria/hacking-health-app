@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Challenge Drawing: Tree with Apples -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Tree trunk -->
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M85,100 L85,180 L115,180 L115,100 Z" />
+    <!-- Tree crown -->
+    <path
+        android:fillColor="#228B22"
+        android:pathData="M100,20 m-60,0 a60,50 0 1,0 120,0 a60,50 0 1,0 -120,0" />
+    <path
+        android:fillColor="#228B22"
+        android:pathData="M50,60 m-40,0 a40,35 0 1,0 80,0 a40,35 0 1,0 -80,0" />
+    <path
+        android:fillColor="#228B22"
+        android:pathData="M150,60 m-40,0 a40,35 0 1,0 80,0 a40,35 0 1,0 -80,0" />
+    <!-- Apples -->
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M70,50 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" />
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M130,45 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" />
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M100,35 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" />
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M55,70 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" />
+    <path
+        android:fillColor="#FF0000"
+        android:pathData="M145,70 m-8,0 a8,8 0 1,1 16,0 a8,8 0 1,1 -16,0" />
+</vector>

@@ -28,7 +28,9 @@ enum class NotificationType {
     ACHIEVEMENT,     // ✓ Goal achievements
     WARNING,         // ⚠ Warnings
     APPOINTMENT,     // 📅 Medical appointments
-    REPORT          // 📄 Health reports
+    REPORT,          // 📄 Health reports
+    HEALTH_TIP,      // 💡 Health tips/advice
+    VITALS           // ❤️ Vital signs notifications
 }
 
 /**
@@ -50,6 +52,8 @@ fun NotificationType.getIconName(): String = when (this) {
     NotificationType.WARNING -> "warning"
     NotificationType.APPOINTMENT -> "calendar_today"
     NotificationType.REPORT -> "update"
+    NotificationType.HEALTH_TIP -> "lightbulb"
+    NotificationType.VITALS -> "favorite"
 }
 
 /**
@@ -61,4 +65,6 @@ fun NotificationType.getColorScheme(): Pair<String, String> = when (this) {
     NotificationType.WARNING -> "amber-50" to "amber-600"
     NotificationType.APPOINTMENT -> "purple-50" to "purple-600"
     NotificationType.REPORT -> "primary-fixed/30" to "primary"
+    NotificationType.HEALTH_TIP -> "teal-50" to "teal-600"
+    NotificationType.VITALS -> "red-50" to "red-600"
 }

@@ -2,6 +2,7 @@ package com.samsung.android.health.sdk.sample.healthdiary.api
 
 import android.util.Log
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.RefreshRequest
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import okhttp3.Authenticator
 import okhttp3.Request
@@ -124,15 +125,17 @@ class TokenAuthenticator : Authenticator {
                 val errorBody = refreshResponse.errorBody()?.string()
                 Log.e(TAG, "🔄 [AUTO-REFRESH] ❌ Refresh failed: ${refreshResponse.code()} - $errorBody")
                 
-                // If refresh token is also invalid, clear all tokens (force re-login)
+                // If refresh token is also invalid, emit session expired event
                 if (refreshResponse.code() == 403 || refreshResponse.code() == 401) {
-                    Log.w(TAG, "🔄 [AUTO-REFRESH] Refresh token invalid, clearing credentials")
-                    // Don't clear here - let the app handle the auth flow
+                    Log.w(TAG, "🔄 [AUTO-REFRESH] Refresh token invalid, emitting session expired")
+                    AuthEventBus.emitSessionExpired(AuthEventBus.SessionExpiredReason.REFRESH_FAILED)
                 }
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "🔄 [AUTO-REFRESH] ❌ Exception during refresh: ${e.message}", e)
+            // Network error during refresh - emit session expired so user can re-login
+            AuthEventBus.emitSessionExpired(AuthEventBus.SessionExpiredReason.REFRESH_FAILED)
             null
         }
     }

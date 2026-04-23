@@ -6,6 +6,7 @@ import com.samsung.android.health.sdk.sample.healthdiary.api.RetrofitClient
 import com.samsung.android.health.sdk.sample.healthdiary.api.models.FullUserProfileResponse
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.AppDatabase
 import com.samsung.android.health.sdk.sample.healthdiary.data.room.entity.PairingEntity
+import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import com.samsung.android.health.sdk.sample.healthdiary.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -81,7 +82,7 @@ class UserRepository(private val context: Context) {
             } else {
                 val errorBody = response.errorBody()?.string() ?: "Unknown error"
                 val errorMessage = when (response.code()) {
-                    401 -> "No autorizado: Inicia sesión nuevamente"
+                    401 -> return@withContext AuthEventBus.handleUnauthorized()
                     404 -> "Usuario no encontrado"
                     500 -> "Error del servidor"
                     else -> "Error ${response.code()}"

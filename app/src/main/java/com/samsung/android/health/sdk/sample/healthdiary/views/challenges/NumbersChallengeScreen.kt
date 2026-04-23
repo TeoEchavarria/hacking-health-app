@@ -1,0 +1,249 @@
+package com.samsung.android.health.sdk.sample.healthdiary.views.challenges
+
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.samsung.android.health.sdk.sample.healthdiary.components.SandboxButton
+import com.samsung.android.health.sdk.sample.healthdiary.components.SandboxTopBar
+import com.samsung.android.health.sdk.sample.healthdiary.components.ButtonVariant
+import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxTheme
+import com.samsung.android.health.sdk.sample.healthdiary.utils.TextToSpeechHelper
+import kotlin.random.Random
+
+/**
+ * Numbers Challenge Screen
+ * 
+ * Displays a random 3-digit number that the user must memorize.
+ * Features:
+ * - Random number generation (100-999)
+ * - Direction indicator (forward/reverse)
+ * - TTS reads digits one by one, repeats twice
+ * - Hide/Reveal/Next controls
+ */
+@Composable
+fun NumbersChallengeScreen(
+    onNavigateBack: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    // State
+    var currentNumber by remember { mutableStateOf(generateRandomNumber()) }
+    var isReverse by remember { mutableStateOf(Random.nextBoolean()) }
+    var isHidden by remember { mutableStateOf(false) }
+    var isSpeaking by remember { mutableStateOf(false) }
+    var ttsReady by remember { mutableStateOf(false) }
+    
+    // TTS Helper
+    val ttsHelper = remember {
+        TextToSpeechHelper(
+            context = context,
+            onInitialized = { ttsReady = true },
+            onError = { /* Handle error */ }
+        )
+    }
+    
+    // Cleanup TTS on dispose
+    DisposableEffect(Unit) {
+        onDispose {
+            ttsHelper.release()
+        }
+    }
+    
+    // Generate new challenge
+    fun generateNewChallenge() {
+        ttsHelper.stop()
+        isSpeaking = false
+        currentNumber = generateRandomNumber()
+        isReverse = Random.nextBoolean()
+        isHidden = false
+    }
+    
+    // Speak the number
+    fun speakNumber() {
+        if (!ttsReady || isSpeaking) return
+        
+        isSpeaking = true
+        val numberToSpeak = if (isReverse) {
+            currentNumber.toString().reversed().toInt()
+        } else {
+            currentNumber
+        }
+        
+        ttsHelper.speakNumber(
+            number = numberToSpeak,
+            delayBetweenDigits = 800L,
+            repetitions = 2,
+            delayBetweenRepetitions = 1500L,
+            onComplete = { isSpeaking = false }
+        )
+    }
+    
+    Scaffold(
+        topBar = {
+            SandboxTopBar(
+                title = "Reto de Números",
+                onNavigationClick = onNavigateBack
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Instructions
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Memoriza el número",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Direction indicator
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isReverse) Color(0xFFEF4444) else Color(0xFF10B981)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = if (isReverse) "Al revés" else "Al derecho",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            // Number display
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.Transparent
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF6366F1),
+                                        Color(0xFF8B5CF6)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Crossfade(
+                            targetState = isHidden,
+                            label = "number_visibility"
+                        ) { hidden ->
+                            if (!hidden) {
+                                Text(
+                                    text = currentNumber.toString(),
+                                    fontSize = 72.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    letterSpacing = 16.sp
+                                )
+                            } else {
+                                Text(
+                                    text = "? ? ?",
+                                    fontSize = 72.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    letterSpacing = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Controls
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Play audio button
+                SandboxButton(
+                    text = if (isSpeaking) "Reproduciendo..." else "Escuchar",
+                    onClick = { speakNumber() },
+                    icon = Icons.Default.PlayArrow,
+                    fullWidth = true,
+                    enabled = ttsReady && !isSpeaking,
+                    isLoading = isSpeaking
+                )
+                
+                // Hide/Reveal row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SandboxButton(
+                        text = if (isHidden) "Revelar" else "Ocultar",
+                        onClick = { isHidden = !isHidden },
+                        icon = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        variant = ButtonVariant.Secondary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    SandboxButton(
+                        text = "Siguiente",
+                        onClick = { generateNewChallenge() },
+                        icon = Icons.Default.Refresh,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun generateRandomNumber(): Int {
+    return Random.nextInt(100, 1000)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun NumbersChallengeScreenPreview() {
+    SandboxTheme {
+        NumbersChallengeScreen(onNavigateBack = {})
+    }
+}

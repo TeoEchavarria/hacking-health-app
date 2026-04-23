@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Challenge Drawing: House with Sun -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Sun -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M160,40 m-20,0 a20,20 0 1,1 40,0 a20,20 0 1,1 -40,0" />
+    <!-- Sun rays -->
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="3"
+        android:pathData="M160,10 L160,20 M160,60 L160,70 M130,40 L140,40 M180,40 L190,40 M140,20 L145,25 M175,55 L180,60 M140,60 L145,55 M175,25 L180,20" />
+    <!-- House body -->
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M30,100 L30,170 L130,170 L130,100 Z" />
+    <!-- Roof -->
+    <path
+        android:fillColor="#DC143C"
+        android:pathData="M20,100 L80,50 L140,100 Z" />
+    <!-- Door -->
+    <path
+        android:fillColor="#654321"
+        android:pathData="M65,120 L65,170 L95,170 L95,120 Z" />
+    <!-- Window -->
+    <path
+        android:fillColor="#87CEEB"
+        android:pathData="M40,110 L40,140 L55,140 L55,110 Z" />
+    <!-- Window frame -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M47.5,110 L47.5,140 M40,125 L55,125" />
+</vector>
