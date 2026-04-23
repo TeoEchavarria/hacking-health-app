@@ -105,7 +105,8 @@ fun CalendarScreen(
             .padding(top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Header Section
+        // Header Section - COMMENTED OUT
+        /*
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -155,6 +156,7 @@ fun CalendarScreen(
                 )
             }
         }
+        */
         
         // Alert Banner (only if there's a critical alert from BiometricsViewModel)
         biometricsUiState.currentAlert?.let { alert ->
@@ -167,6 +169,24 @@ fun CalendarScreen(
             )
         }
         
+        // Recordatorios Section (Medications from database)
+        MedicationsSectionReal(
+            medications = medicationsState.medications,
+            isLoading = medicationsState.isLoading,
+            error = medicationsState.error,
+            isEditable = medicationsState.isEditable,
+            onMarkAsTaken = { medicationId, isTaken ->
+                if (isTaken) {
+                    calendarViewModel.untakeMedication(medicationId)
+                } else {
+                    calendarViewModel.takeMedication(medicationId)
+                }
+            },
+            onRefresh = { calendarViewModel.loadMedications() },
+            onAddMedication = onNavigateToAddMedication
+        )
+        
+        /* CALENDAR GRID - COMMENTED OUT
         // Two Column Layout
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -222,10 +242,12 @@ fun CalendarScreen(
                 )
             }
         }
+        */
         
         // Full Width Sections
         
-        // Upcoming Appointment
+        // Upcoming Appointment - COMMENTED OUT
+        /*
         AppointmentHeroCard(
             appointmentType = "Chequeo de Cardiología",
             timeRange = "4:00 PM - 5:00 PM",
@@ -238,6 +260,7 @@ fun CalendarScreen(
                 Toast.makeText(context, "Más opciones", Toast.LENGTH_SHORT).show()
             }
         )
+        */
         
         // Biometric Analysis Section (Heart Rate only with history)
         BiometricAnalysisSection(
@@ -261,6 +284,7 @@ fun CalendarScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
     
+    /* DAY MEDICATION HISTORY SHEET - COMMENTED OUT (depends on calendar selection)
     // Day Medication History Bottom Sheet
     if (showDayHistorySheet) {
         val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
@@ -282,6 +306,7 @@ fun CalendarScreen(
             }
         )
     }
+    */
 }
 
 /**

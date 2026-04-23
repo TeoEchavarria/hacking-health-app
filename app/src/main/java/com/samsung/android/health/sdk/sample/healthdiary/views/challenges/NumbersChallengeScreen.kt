@@ -197,47 +197,119 @@ fun NumbersChallengeScreen(
                 }
             }
             
-            // Controls
+            // Controls - Large buttons for better visibility
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Play audio button
-                SandboxButton(
-                    text = if (isSpeaking) "Reproduciendo..." else "Escuchar",
+                // Play audio button - Extra large
+                Button(
                     onClick = { speakNumber() },
-                    icon = Icons.Default.PlayArrow,
-                    fullWidth = true,
                     enabled = ttsReady && !isSpeaking,
-                    isLoading = isSpeaking
-                )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF10B981),
+                        contentColor = Color.White
+                    )
+                ) {
+                    if (isSpeaking) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Reproduciendo...",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Escuchar",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 
-                // Hide/Reveal row
+                // Hide/Reveal and Next buttons row - Large
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    SandboxButton(
-                        text = if (isHidden) "Revelar" else "Ocultar",
+                    // Hide/Reveal button
+                    Button(
                         onClick = { isHidden = !isHidden },
-                        icon = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        variant = ButtonVariant.Secondary,
-                        modifier = Modifier.weight(1f)
-                    )
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isHidden) Color(0xFF3B82F6) else Color(0xFF6B7280),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isHidden) "Revelar" else "Ocultar",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     
-                    SandboxButton(
-                        text = "Siguiente",
+                    // Next button
+                    Button(
                         onClick = { generateNewChallenge() },
-                        icon = Icons.Default.Refresh,
-                        modifier = Modifier.weight(1f)
-                    )
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF59E0B),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Siguiente",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Generates a random 3-digit number where all digits are different
+ */
 private fun generateRandomNumber(): Int {
-    return Random.nextInt(100, 1000)
+    val digits = (0..9).shuffled().take(3)
+    // Ensure first digit is not 0
+    val firstDigit = if (digits[0] == 0) digits[1] else digits[0]
+    val remainingDigits = digits.filter { it != firstDigit }.take(2)
+    return firstDigit * 100 + remainingDigits[0] * 10 + remainingDigits[1]
 }
 
 @Preview(showBackground = true)

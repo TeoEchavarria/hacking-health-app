@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -243,26 +244,44 @@ fun DrawingChallengeScreen(
                 }
             }
             
-            // Controls
+            // Controls - Large buttons for better visibility
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Start timer button (only shown if timer hasn't started)
+                // Start timer button (only shown if timer hasn't started) - Extra large
                 if (!hasTimerStarted && !isHidden) {
-                    SandboxButton(
-                        text = "Iniciar (15 seg)",
+                    Button(
                         onClick = { startTimer() },
-                        fullWidth = true
-                    )
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF10B981),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Iniciar (15 seg)",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 
-                // Hide/Reveal row
+                // Hide/Reveal and Next buttons row - Large
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    SandboxButton(
-                        text = if (isHidden) "Revelar" else "Ocultar",
+                    // Hide/Reveal button
+                    Button(
                         onClick = { 
                             isHidden = !isHidden
                             if (!isHidden && hasTimerStarted) {
@@ -270,17 +289,52 @@ fun DrawingChallengeScreen(
                                 isTimerRunning = false
                             }
                         },
-                        icon = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        variant = ButtonVariant.Secondary,
-                        modifier = Modifier.weight(1f)
-                    )
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isHidden) Color(0xFF3B82F6) else Color(0xFF6B7280),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (isHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isHidden) "Revelar" else "Ocultar",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     
-                    SandboxButton(
-                        text = "Siguiente",
+                    // Next button
+                    Button(
                         onClick = { generateNewChallenge() },
-                        icon = Icons.Default.Refresh,
-                        modifier = Modifier.weight(1f)
-                    )
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF59E0B),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Siguiente",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

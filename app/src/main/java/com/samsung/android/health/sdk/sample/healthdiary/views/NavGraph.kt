@@ -16,7 +16,6 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import com.samsung.android.health.sdk.sample.healthdiary.activity.LoginActivity
 import com.samsung.android.health.sdk.sample.healthdiary.repository.DocumentRepository
-import com.samsung.android.health.sdk.sample.healthdiary.utils.AuthEventBus
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
@@ -66,18 +65,6 @@ fun NavGraph() {
                     navController.navigate(Screen.Training.route)
                 }
             }
-        }
-    }
-    
-    // Observe session expired events and redirect to login
-    LaunchedEffect(Unit) {
-        AuthEventBus.sessionExpired.collect { reason ->
-            android.util.Log.w("NavGraph", "🔐 Session expired ($reason), redirecting to login")
-            val intent = Intent(context, LoginActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-            context.startActivity(intent)
-            activity?.finish()
         }
     }
 
