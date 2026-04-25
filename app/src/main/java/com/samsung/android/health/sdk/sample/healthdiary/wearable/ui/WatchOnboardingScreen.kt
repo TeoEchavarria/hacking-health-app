@@ -192,9 +192,10 @@ fun WatchOnboardingScreen(
             }
         }
         
-        // Bottom action button
+        // Bottom action button - positioned at the bottom for better UX
         if (connectionState is WatchConnectionState.Connected) {
             BottomActionButton(
+                modifier = Modifier.align(Alignment.BottomCenter),
                 onConnect = {
                     scope.launch {
                         val connectedNode = (connectionState as? WatchConnectionState.Connected)?.node
@@ -287,7 +288,7 @@ private fun TopNavigationBar(onClose: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Digital Sanctuary",
+            text = "Santuario Digital",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -780,9 +781,12 @@ private fun EmptyDeviceState(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun BottomActionButton(onConnect: () -> Unit) {
+private fun BottomActionButton(
+    onConnect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {

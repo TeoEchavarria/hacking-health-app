@@ -3,8 +3,8 @@ package com.samsung.android.health.sdk.sample.healthdiary.data.domain
 import android.content.Context
 
 /**
- * User role in the Digital Sanctuary health monitoring system.
- * Determines the onboarding flow and initial navigation path.
+ * Rol de usuario en el sistema de monitoreo de salud Santuario Digital.
+ * Determina el flujo de onboarding y la ruta de navegación inicial.
  */
 enum class UserRole(val value: String, val displayName: String) {
     /**

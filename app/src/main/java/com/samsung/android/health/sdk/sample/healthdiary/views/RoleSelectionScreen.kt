@@ -29,8 +29,8 @@ import com.samsung.android.health.sdk.sample.healthdiary.data.domain.UserRole
 import androidx.compose.material.icons.filled.Groups
 
 /**
- * Role selection screen for Digital Sanctuary onboarding.
- * Users choose between Caregiver (monitor) or Patient (monitored) roles.
+ * Pantalla de selección de rol para el onboarding de Santuario Digital.
+ * Los usuarios eligen entre rol de Cuidador (monitorea) o Paciente (monitoreado).
  */
 @Composable
 fun RoleSelectionScreen(
@@ -135,7 +135,7 @@ private fun BrandIdentity() {
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = "Digital Sanctuary",
+            text = "Santuario Digital",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,

@@ -146,7 +146,7 @@ private fun ContinuationBrandIdentity() {
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = "Digital Sanctuary",
+            text = "Santuario Digital",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onSurface,

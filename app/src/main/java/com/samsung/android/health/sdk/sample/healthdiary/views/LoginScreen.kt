@@ -4,8 +4,6 @@ import android.app.Activity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -286,17 +284,17 @@ private fun GoogleSignInButton(
             )
             Spacer(modifier = Modifier.width(12.dp))
         } else {
-            // Google "G" icon (using material icon as placeholder)
+            // Official Google "G" logo
             Icon(
-                imageVector = Icons.Outlined.Email,
-                contentDescription = null,
+                painter = painterResource(id = R.drawable.ic_google),
+                contentDescription = "Google",
                 modifier = Modifier.size(20.dp),
-                tint = Color(0xFF4285F4) // Google blue
+                tint = Color.Unspecified // Use original colors from drawable
             )
             Spacer(modifier = Modifier.width(12.dp))
         }
         Text(
-            text = "Continue with Google",
+            text = "Continuar con Google",
             style = MaterialTheme.typography.labelLarge
         )
     }
