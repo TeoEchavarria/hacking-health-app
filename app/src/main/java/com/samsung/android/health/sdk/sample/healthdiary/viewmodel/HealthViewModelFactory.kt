@@ -183,6 +183,13 @@ class HealthViewModelFactory(private val context: Context) : ViewModelProvider.F
                 AuthViewModel(AuthRepository())
             }
 
+            BloodPressureVoiceViewModel::class.java -> {
+                Log.d(TAG, "Creando BloodPressureVoiceViewModel")
+                // Initialize TokenManager to ensure secure token access
+                TokenManager.initialize(context)
+                BloodPressureVoiceViewModel(context.applicationContext as android.app.Application)
+            }
+
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     } catch (e: Exception) {

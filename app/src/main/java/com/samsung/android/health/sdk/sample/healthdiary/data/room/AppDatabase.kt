@@ -38,9 +38,10 @@ import com.samsung.android.health.sdk.sample.healthdiary.workout.data.WorkoutSes
         WatchDailySummaryEntity::class,
         PairedDeviceEntity::class,
         LocationPointEntity::class,
-        PairingEntity::class
+        PairingEntity::class,
+        BloodPressureReadingEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -61,6 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pairedDeviceDao(): PairedDeviceDao
     abstract fun locationDao(): LocationDao
     abstract fun pairingDao(): PairingDao
+    abstract fun bloodPressureReadingDao(): BloodPressureReadingDao
 
     companion object {
         @Volatile
@@ -490,6 +492,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create blood_pressure_readings table for offline-first BP sync
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS blood_pressure_readings (
+                        idempotencyKey TEXT PRIMARY KEY NOT NULL,
+                        userId TEXT NOT NULL,
+                        systolic INTEGER NOT NULL,
+                        diastolic INTEGER NOT NULL,
+                        pulse INTEGER,
+                        timestamp TEXT NOT NULL,
+                        source TEXT NOT NULL DEFAULT 'voice',
+                        crisisFlag INTEGER NOT NULL DEFAULT 0,
+                        lowConfidenceFlag INTEGER NOT NULL DEFAULT 0,
+                        syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+                        createdAt INTEGER NOT NULL,
+                        lastSyncAttempt INTEGER,
+                        syncError TEXT,
+                        serverStage TEXT,
+                        serverSeverity TEXT,
+                        serverAlertGenerated INTEGER
+                    )
+                """.trimIndent())
+                
+                // Create indexes for efficient queries
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_blood_pressure_readings_syncStatus ON blood_pressure_readings(syncStatus)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_blood_pressure_readings_userId ON blood_pressure_readings(userId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_blood_pressure_readings_createdAt ON blood_pressure_readings(createdAt)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -497,7 +530,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_diary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
                     .fallbackToDestructiveMigration() // Only for development
                     .build()
                 INSTANCE = instance

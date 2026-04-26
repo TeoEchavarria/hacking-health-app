@@ -1,5 +1,6 @@
 package com.samsung.android.health.sdk.sample.healthdiary.views
 
+import android.Manifest
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,9 +19,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.samsung.android.health.sdk.sample.healthdiary.activity.LoginActivity
 import com.samsung.android.health.sdk.sample.healthdiary.components.*
+import com.samsung.android.health.sdk.sample.healthdiary.components.BPVoiceFlow.BPVoiceFlowDialog
 import com.samsung.android.health.sdk.sample.healthdiary.ui.theme.SandboxBackground
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.BloodPressureVoiceViewModel
+import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HealthViewModelFactory
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.HomeViewModel
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.LogoutState
 import com.samsung.android.health.sdk.sample.healthdiary.viewmodel.ProfileViewModel
@@ -158,9 +165,10 @@ fun MainScaffold(
  * 
  * Main dashboard view with:
  * - Health tip nudge card
- * - AI interaction button
+ * - AI interaction button (Blood Pressure Voice Flow)
  * - Emergency button
  */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DashboardTabContent(
     userName: String = "",
@@ -171,14 +179,89 @@ fun DashboardTabContent(
     onNavigateToStepsHistory: () -> Unit = {},
     onNavigateToSleepHistory: () -> Unit = {},
     onNavigateToDailyChallenge: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bpVoiceViewModel: BloodPressureVoiceViewModel = viewModel(
+        factory = HealthViewModelFactory(LocalContext.current)
+    )
 ) {
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .padding(top = 16.dp, bottom = 8.dp)
+    val context = LocalContext.current
+    
+    // BP Voice Flow state
+    val bpVoiceState by bpVoiceViewModel.uiState.collectAsState()
+    
+    // Snackbar host state for notifications
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Audio permission state for voice recording
+    val audioPermissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+    
+    // Track if we should start listening after permission is granted
+    var pendingStartListening by remember { mutableStateOf(false) }
+    
+    // Start listening when permission is granted after request
+    LaunchedEffect(audioPermissionState.status.isGranted, pendingStartListening) {
+        if (audioPermissionState.status.isGranted && pendingStartListening) {
+            pendingStartListening = false
+            bpVoiceViewModel.startListening()
+        }
+    }
+    
+    // Track processing state and show notifications
+    var lastIsUploading by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(bpVoiceState.isUploading) {
+        if (bpVoiceState.isUploading && !lastIsUploading) {
+            // Started uploading - show processing notification
+            snackbarHostState.showSnackbar(
+                message = "📤 Procesando registro de presión...",
+                duration = SnackbarDuration.Indefinite
+            )
+        } else if (!bpVoiceState.isUploading && lastIsUploading) {
+            // Finished uploading - dismiss and show result
+            snackbarHostState.currentSnackbarData?.dismiss()
+            if (bpVoiceState.parseResult != null) {
+                snackbarHostState.showSnackbar(
+                    message = "✅ Registro procesado: ${bpVoiceState.parseResult?.systolic ?: "--"}/${bpVoiceState.parseResult?.diastolic ?: "--"} mmHg",
+                    duration = SnackbarDuration.Short
+                )
+            } else if (bpVoiceState.error != null) {
+                snackbarHostState.showSnackbar(
+                    message = "❌ Error: ${bpVoiceState.error}",
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+        lastIsUploading = bpVoiceState.isUploading
+    }
+    
+    // Show success notification when submission completes
+    LaunchedEffect(bpVoiceState.submissionSuccess) {
+        if (bpVoiceState.submissionSuccess) {
+            snackbarHostState.showSnackbar(
+                message = "✅ Se ha guardado un nuevo registro de presión arterial",
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+    
+    // Show dialog when any flow is active
+    val showBPDialog = bpVoiceState.isListening || 
+                       bpVoiceState.isUploading ||  // Include uploading state
+                       bpVoiceState.isParsing || 
+                       bpVoiceState.showLowConfidenceDialog || 
+                       bpVoiceState.showCrisisDialog || 
+                       bpVoiceState.showSuccessDialog ||
+                       bpVoiceState.error != null
+    
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .padding(top = 16.dp, bottom = 8.dp)
+        ) {
         val minContentHeight = 450.dp // Minimum height needed for content
         val needsScroll = maxHeight < minContentHeight
         
@@ -208,9 +291,16 @@ fun DashboardTabContent(
             ) {
                 AiInteractionButton(
                     userName = userName,
-                    isListening = false, // Placeholder - no functionality yet
+                    isListening = bpVoiceState.isListening,
                     onTap = {
-                        // Placeholder - no action yet
+                        // Check for RECORD_AUDIO permission before starting
+                        if (audioPermissionState.status.isGranted) {
+                            bpVoiceViewModel.startListening()
+                        } else {
+                            // Request permission and set flag to start listening when granted
+                            pendingStartListening = true
+                            audioPermissionState.launchPermissionRequest()
+                        }
                     }
                 )
             }
@@ -224,6 +314,31 @@ fun DashboardTabContent(
             
             Spacer(modifier = Modifier.height(16.dp))
         }
+        }  // Close BoxWithConstraints
+        
+        // Snackbar for notifications - positioned at bottom
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        )
+    }  // Close outer Box
+    
+    // BP Voice Flow Dialog
+    if (showBPDialog) {
+        BPVoiceFlowDialog(
+            state = bpVoiceState,
+            onDismiss = { bpVoiceViewModel.resetState() },
+            onRetry = { bpVoiceViewModel.retryMeasurement() },
+            onConfirm = { bpVoiceViewModel.confirmAndSubmit() },
+            onEditValues = { s, d, p -> bpVoiceViewModel.editValues(s, d, p) },
+            onOpenLanguageSettings = { bpVoiceViewModel.openLanguageSettings() },
+            onStopRecording = { 
+                android.util.Log.i("BPVoiceFlow", "🛑 User tapped Stop Recording")
+                bpVoiceViewModel.stopRecording() 
+            }
+        )
     }
 }
 
